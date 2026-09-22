@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demerzel — Architecture</title>
+<style>
+  :root { --ink:#1a1d21; --muted:#5b6470; --line:#d3d9e0; --paper:#ffffff; --card:#f6f8fa;
+          --accent:#2f5fd0; --accent-soft:#e8efff; --warn:#b45309; --ok:#0a7d4f; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; color:var(--ink);
+         background:#eef1f5; margin:0; padding:32px 16px; line-height:1.55; }
+  .page { max-width:1060px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 28px; font-size:15px; }
+  h2 { font-size:19px; margin:36px 0 10px; border-bottom:2px solid var(--accent); padding-bottom:6px; }
+  .panel { background:var(--paper); border:1px solid var(--line); border-radius:12px;
+           padding:16px; margin:14px 0; box-shadow:0 1px 3px rgba(16,24,40,.06); }
+  .grid5 { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .node { background:var(--card); border:1px solid var(--line); border-radius:8px;
+          padding:10px 12px; font-size:13px; font-weight:600; }
+  .node small { display:block; font-weight:400; color:var(--muted); margin-top:3px; font-size:11.5px; }
+  .layer { background:var(--accent-soft); border:1px solid var(--accent); border-radius:8px;
+           padding:10px 12px; font-size:13.5px; font-weight:600; }
+  .layer small { display:block; font-weight:400; color:var(--muted); margin-top:2px; }
+  .arrow { text-align:center; color:var(--muted); font-size:13px; margin:6px 0; }
+  .ours { border:1.5px dashed var(--warn); }
+  .ours::after { content:" ours"; color:var(--warn); font-size:10.5px; font-weight:700;
+                 text-transform:uppercase; letter-spacing:.05em; }
+  .donor { border-left:3px solid var(--accent); }
+  .rule { border-left:3px solid var(--ok); background:#f0faf5; }
+  .warn { border-left:3px solid var(--warn); background:#fdf6ec; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+  th,td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:var(--card); }
+  code { background:var(--card); padding:1px 5px; border-radius:4px; font-size:12px; }
+  .tag { display:inline-block; background:var(--accent-soft); color:var(--accent);
+         border-radius:20px; padding:2px 10px; font-size:11px; font-weight:700; margin:2px 4px 2px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .states { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .state { border:1.5px solid var(--accent); border-radius:8px; padding:10px; font-size:12.5px;
+           background:var(--paper); }
+  .state b { color:var(--accent); }
+  li { margin:5px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Demerzel — Architecture: how the modules fit and stay swappable</h1>
+<p class="sub">2026-09-22 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track</p>
+
+<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with a <b>pool of accounts behind every provider</b> — several Claude or Codex subscriptions, API-key collections, cloud providers — with deterministic serial failover between them. Three questions, answered visually: what we borrow from where · how the modules fit · why any module can be replaced later.</p>
+
+<h2>1 · The five layers</h2>
+
+<div class="panel">
+  <div class="grid5">
+    <div class="node">Claude Code</div>
+    <div class="node">Codex CLI</div>
+    <div class="node">omp / harnesses</div>
+    <div class="node">Cline / Cursor</div>
+    <div class="node">curl / SDKs</div>
+  </div>
+  <div class="arrow">▼ one local endpoint: <code>127.0.0.1:3001/v1</code> ▼</div>
+  <div class="layer">L2 · EDGE — protocol facade <small>OpenAI / Anthropic / Gemini shapes in · admin API out · nothing else lives here</small></div>
+  <div class="arrow">▼</div>
+  <div class="layer">L1 · MODEL POLICY — stage 1 <small>which <b>model</b>: fixed today · escalation/stage/classifier/prefill via our Switchyard-pattern engine</small></div>
+  <div class="arrow">▼</div>
+  <div class="layer">L0 · ACCOUNTS — stage 2 <small>which <b>account</b> in that model's pool: eligibility → cooldown → quota → serial-failover cursor → lease</small></div>
+  <div class="arrow">▼</div>
+  <div class="layer">CREDENTIAL SERVICES <small>vault · OAuth refresh · quota ledger · observability — the modules that know state, none of which touch the network</small></div>
+  <div class="arrow">▼</div>
+  <div class="layer">L-1 · EXECUTORS <small>one per provider/auth kind — the ONLY layer that talks to the internet</small></div>
+  <div class="arrow">▼</div>
+  <div class="grid4">
+    <div class="node">Claude ×3 subs</div>
+    <div class="node">Codex ×2 subs</div>
+    <div class="node">Anthropic API ×N</div>
+    <div class="node">OpenAI API ×N</div>
+    <div class="node">Alibaba personal + team</div>
+    <div class="node">OpenRouter · Kimi · Cohere · Together · Groq · xAI · Cerebras · Fireworks · Perplexity</div>
+    <div class="node">Bedrock · Azure · Vertex (native credential chains)</div>
+    <div class="node ours">TypeSafe Jev · Custom APIs</div>
+  </div>
+</div>
+
+<div class="panel rule">
+<b>The one-way knowledge rule is the whole trick.</b> An executor knows its provider's wire protocol and one account's credentials — nothing about routing strategy. The selector knows pools and quota state — nothing about HTTP. The vault knows secrets — nothing about any of it. Because knowledge only flows down, any layer can be swapped without its neighbors noticing.
+</div>
+
+<h2>2 · Where every line comes from</h2>
+
+<div class="panel">
+  <div class="grid2">
+    <div>
+      <b>Donors (upstream, pinned)</b>
+      <div class="node donor" style="margin-top:8px">gpt-load v2 @1f615d83 — MIT<small>registry · scheduler · refresh lifecycle · encryption split — the fork baseline</small></div>
+      <div class="node donor">CLIProxyAPI @ffe6ad3c — MIT<small>OAuth executors + selectors — arrives via gpt-load's pinned dep graph</small></div>
+      <div class="node donor">Bifrost @40c3f7ee — Apache-2.0<small>provider execution + protocol conversion — via gpt-load</small></div>
+      <div class="node donor">OmniRoute @06f1df9d — MIT<small>strategy semantics — <b>reference only, no code</b></small></div>
+      <div class="node donor">CRS / grok2api — MIT<small>patterns read, no code (CRS crypto fails open)</small></div>
+    </div>
+    <div>
+      <b>Demerzel modules (ours)</b>
+      <div class="node ours" style="margin-top:8px">Core registry · selector · lease<small>inherited from gpt-load — ours to keep + harden</small></div>
+      <div class="node ours">Executors behind OUR interface<small>CLIProxyAPI / Bifrost impls plugged in, never imported deep</small></div>
+      <div class="node ours">Vault — REWRITTEN<small>fail-closed · Keychain (macOS) · Secret Service/libsecret (Linux) · age-file headless fallback</small></div>
+      <div class="node ours">Policy engine — model selection<small>Switchyard-pattern: escalation / stage / classifier / prefill (NVIDIA repo = evaluation oracle)</small></div>
+      <div class="node ours">Jev + Custom-API connectors<small>first-party; custom gets SSRF guardrails</small></div>
+    </div>
+  </div>
+  <p class="muted" style="margin:12px 0 0">Ledger: <code>VENDORING.md</code> — one row per donor: repo, immutable commit, source paths, destination module, SPDX license, our modifications, retained notices.</p>
+</div>
+
+<table>
+<thead><tr><th>Layer</th><th>Module</th><th>Source</th><th>Interface it hides behind</th></tr></thead>
+<tbody>
+<tr><td>L2 edge</td><td>Protocol facade + admin API</td><td>gpt-load (vendored)</td><td>OpenAI/Anthropic wire in · admin REST out</td></tr>
+<tr><td>L1 policy</td><td>Model-selection engine</td><td><b>ours</b></td><td><code>PolicyEngine.Pick(ctx, req) → ModelChoice</code></td></tr>
+<tr><td>L0 accounts</td><td>Registry · selector · lease</td><td>gpt-load (vendored, hardened)</td><td><code>Selector.Pick(pool, state) → AccountID</code></td></tr>
+<tr><td>services</td><td>Vault</td><td><b>rewritten by us</b> — fail-closed</td><td><code>Vault.Get/Put(accountUUID)</code> · keychain/libsecret/age backends</td></tr>
+<tr><td>services</td><td>OAuth refresh</td><td>CLIProxyAPI + gpt-load lifecycle</td><td><code>Refresher.EnsureFresh(accountUUID)</code></td></tr>
+<tr><td>services</td><td>Quota ledger</td><td>gpt-load patterns</td><td><code>Ledger.Observe(accountID, usage|429|reset)</code></td></tr>
+<tr><td>L-1</td><td>Executors (per provider/auth)</td><td>CLIProxyAPI + Bifrost — plugged, not deep-imported</td><td><code>Executor.Do(ctx, account, req) → resp</code></td></tr>
+<tr><td>connectors</td><td>TypeSafe Jev · Custom API</td><td><b>ours</b></td><td>same Executor interface · custom adds SSRF guardrails</td></tr>
+</tbody></table>
+
+<h2>3 · The two-stage request path</h2>
+
+<div class="panel">
+  <div class="grid4" style="grid-template-columns:1fr 1.3fr 1.3fr 1fr">
+    <div class="node">request</div>
+    <div class="state"><b>STAGE 1 — model policy</b><br>L1 picks <i>what</i> to ask: fixed model, or escalation/stage/classifier/prefill (our Switchyard-pattern engine)</div>
+    <div class="state"><b>STAGE 2 — account pool</b><br>L0 picks <i>whom to ask as</i>: eligibility → cooldown → quota → cursor → lease → execute</div>
+    <div class="node">provider API</div>
+  </div>
+  <p class="muted" style="margin:10px 0 0">Stage 2 is policy-armored: no model-router result, cache hint, or escalation decision can bypass account eligibility, cooldown, or a permanent-denial identity. Stage 1 picks <i>what</i>; stage 2 picks <i>as whom</i>; neither ever crosses.</p>
+</div>
+
+<h2>4 · Serial failover, precisely</h2>
+
+<div class="panel states">
+  <div class="state"><b>ACTIVE (N)</b><br>cursor on account N; all traffic; reserve threshold armed</div>
+  <div class="state"><b>LIMIT HIT</b><br>classified 429 / usage-cap, or provider quota telemetry &lt; reserve → persist reset + cooldown</div>
+  <div class="state"><b>ADVANCE (N+1)</b><br>cursor moves; N+1 becomes active; no flapping back</div>
+  <div class="state"><b>FAILBACK</b><br>after N's reset + grace → one probe → success → cursor home</div>
+</div>
+
+<div class="panel">
+<b>What makes it deterministic (and testable):</b>
+<ul>
+<li>Never estimate "low tokens" from local counts — only provider quota telemetry or a classified limit response moves the cursor.</li>
+<li>Cursor is persisted — a restart doesn't reshuffle accounts.</li>
+<li>Failback happens once, after reset + grace, via a single probe — not on whichever request arrives next.</li>
+</ul>
+</div>
+
+<h2>5 · Swappability mechanics — the actual trick</h2>
+
+<div class="panel">
+<ul>
+<li><b>Tiny interfaces we own.</b> Donor code (CLIProxyAPI executors, Bifrost conversions) is adapted at the boundary — never imported deep. Replacing Bifrost with another converter touches one adapter file.</li>
+<li><b>Pinned commits + ledger.</b> VENDORING.md records donor, commit, paths, destination, license, modifications. Upgrading a donor = bump the pin + run that module's golden tests. Rebasing the gpt-load baseline is an explicit <code>git merge upstream/main</code> — never a silent package update.</li>
+<li><b>One outbound edge.</b> Only executors speak to the internet. Vault, selector, scheduler, UI make no network calls — a donor with phone-home habits is neutered by construction.</li>
+<li><b>State lives in one place.</b> SQLite + Keychain/libsecret key. The contract with reality (the DB schema) is narrow, so modules can be rewritten freely.</li>
+</ul>
+</div>
+
+<h2>6 · Distribution (your other computers + the team)</h2>
+
+<div class="panel">
+  <div class="grid4">
+    <div class="node">CI release<small>cross-build matrix · cosign sign + SBOM · <code>release.json.sig</code></small></div>
+    <div class="node">Homebrew tap (private)<small><code>brew install &lt;you&gt;/tap/demerzel</code> · bottles · <code>brew services</code></small></div>
+    <div class="node">bunx installer<small><code>bunx @&lt;you&gt;/demerzel install</code> · verifies manifest + checksum first</small></div>
+    <div class="node">tar / container<small>Linux systemd --user · XDG dirs · libsecret</small></div>
+  </div>
+  <p class="muted" style="margin:12px 0 0">Every installer frontend verifies the same cosign-signed manifest before installing. The core never self-updates, never phones home. Subscription tokens never ship in any artifact — each machine bootstraps its own vault and accounts. Release matrix is a proof gate: darwin/arm64 verified today; darwin/amd64, linux/amd64, linux/arm64 are CI acceptance items, not promises.</p>
+</div>
+
+<h2>7 · Phased build</h2>
+
+<div class="panel">
+<ul>
+<li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed vault (Keychain/libsecret) · module interfaces · default-off outbound (incl. models.dev sync) · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress.</i></li>
+<li><b>M2 — account control plane + serial failover + Switchyard spike:</b> registry UI/CLI · deterministic failover. <i>Accept: scripted-429 test (persisted cursor, reset+grace, single-probe failback) + spike report (NVIDIA = eval oracle only).</i></li>
+<li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
+<li><b>M4 — distribution:</b> tap + bunx + tar/container, all verifying the signed manifest; Linux = macOS parity. <i>Accept: install → service → health/auth → upgrade → rollback → uninstall on darwin/arm64 + linux/amd64.</i></li>
+<li><b>M5 — our model-selection engine to production</b>, gated on M2 spike evidence.</li>
+</ul>
+</div>
+
+<h2>8 · Open questions</h2>
+
+<div class="panel">
+<ul>
+<li><b>Vault master-key custody on macOS:</b> Keychain via <code>security</code> CLI (recommended — no file on disk) vs age passphrase file (portable, but a file exists).</li>
+<li><b>Subscription executors (Claude/Codex OAuth) in v1:</b> ship disabled behind a flag with a compliance warning (recommended) vs enable day one.</li>
+</ul>
+</div>
+
+<p class="muted" style="margin-top:28px">Plan-of-record detail lives in kos-infra: <code>docs/kos-infra-adaptech/discovery/2026-09-21-llm-router-research.md</code> (assessment) + <code>2026-09-22-llm-gateway-execution-plan.md</code> (phases/acceptance). This page is the architecture review artifact.</p>
+
+</div>
+</body>
+</html>
