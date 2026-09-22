@@ -168,12 +168,12 @@
     <div class="crit"><b>Tue 14:02</b><br>429 (5h window)<br><code>reset=19:00</code></div>
     <div><b>Tue 14:02+</b><br>acct-2 active<br/><code>cursor=2</code></div>
     <div><b>Tue 19:15</b><br>grace passed → probe acct-1 ✓<br><code>cursor=1</code></div>
-    <div><b>Wed…</b><br>acct-1 active again<br>single probe, never flapping</div>
+    <div><b>Wed…</b><br>acct-1 active again<br>probes with backoff, never flapping</div>
   </div>
   <ul>
     <li>Cursor is <b>persisted</b> — a restart doesn't reshuffle accounts.</li>
     <li>Never estimate "low tokens" from local counts — only provider quota telemetry or a classified limit response moves the cursor.</li>
-    <li>Failback happens once per reset window, via a single probe.</li>
+    <li>Failback happens once per reset window, via probes with exponential backoff.</li>
   </ul>
 </div>
 
@@ -228,7 +228,7 @@
 <div class="panel">
 <ul>
 <li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed vault (Keychain/libsecret) · module interfaces · default-off outbound (incl. models.dev sync) · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress.</i></li>
-<li><b>M2 — account control plane + serial failover + Switchyard spike:</b> registry UI/CLI · deterministic failover. <i>Accept: scripted-429 failover test (persisted cursor, reset+grace, single-probe failback) + spike report (NVIDIA = eval oracle only).</i></li>
+<li><b>M2 — account control plane + serial failover + Switchyard spike:</b> registry UI/CLI · deterministic failover. <i>Accept: scripted-429 failover test (persisted cursor, reset+grace, backoff-probe failback) + spike report (NVIDIA = eval oracle only).</i></li>
 <li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
 <li><b>M4 — distribution:</b> tap + bunx + tar/container, all verifying the signed manifest; Linux = macOS parity. <i>Accept: install → service → health/auth → upgrade → rollback → uninstall on darwin/arm64 + linux/amd64.</i></li>
 <li><b>M5 — our model-selection engine to production</b>, gated on M2 spike evidence.</li>
