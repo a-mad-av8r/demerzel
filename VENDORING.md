@@ -12,3 +12,9 @@ row. Retain upstream LICENSE files; add Apache NOTICE where required.
 | maximhq/bifrost | `40c3f7ee3a1a` | (already vendored inside gpt-load v2 as pinned dependency) | provider execution/conversion via gpt-load | Apache-2.0 | none yet | covered by gpt-load THIRD_PARTY_NOTICES |
 
 New vendored code (beyond the fork baseline) MUST append a row in the same commit.
+
+**NOTICE rule (Apache-2.0 donors):** any Apache-2.0 donor's `NOTICE` file must be
+carried into this fork's top-level `NOTICE` (or its content appended) whenever its
+code is present in a built artifact. Verify on every donor bump: if the donor ships
+a NOTICE, ours must reflect it before release. MIT donors have no NOTICE clause;
+Apache-2.0 donors do.

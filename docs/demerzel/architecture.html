@@ -96,6 +96,10 @@
 <b>The one-way knowledge rule is the whole trick.</b> An executor knows its provider's wire protocol and one account's credentials — nothing about routing strategy. The selector knows pools and quota state — nothing about HTTP. The vault knows secrets — nothing about any of it. Knowledge only flows down, so any layer can be swapped without its neighbors noticing.
 </div>
 
+<div class="panel warn">
+<b>Design-review finding (internal, 2026-09-22):</b> the stage-1 → stage-2 order can mismatch when stage 1 picks a model no account in the pool can serve (404/403 after policy fires). <b>Fix:</b> stage 1 selects from the <i>served-model set</i> (the union of models the pool's accounts actually expose), and stage 2 answers "which account that can serve this model" — the pool is the capability source of truth, not the catalog.
+</div>
+
 <h2>2 · Where every line comes from</h2>
 
 <div class="panel">
@@ -151,9 +155,9 @@
 <div class="panel">
   <div class="grid4">
     <div class="state"><b>ACTIVE (N)</b><br>cursor on account N; all traffic; reserve threshold armed</div>
-    <div class="state"><b>LIMIT HIT</b><br>classified 429 / usage-cap, or provider quota telemetry &lt; reserve → persist reset + cooldown</div>
-    <div class="state"><b>ADVANCE (N+1)</b><br>cursor moves; N+1 becomes active; no flapping back</div>
-    <div class="state"><b>FAILBACK</b><br>after N's reset + grace → one probe → success → cursor home</div>
+    <div class="state"><b>CLEAN ERROR?</b><br>transient 5xx/network → short cooldown, retry same account. Only a classified 429/usage-cap moves on.</div>
+    <div class="state"><b>LIMIT HIT → ADVANCE (N+1)</b><br>persist reset + cooldown; cursor moves; N+1 becomes active; no flapping back</div>
+    <div class="state"><b>FAILBACK</b><br>after N's reset + grace → probe with backoff (not once) → success → cursor home</div>
   </div>
 </div>
 
