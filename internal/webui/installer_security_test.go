@@ -60,6 +60,9 @@ func TestInstallerRefusesToUninstallAnUnownedPrefix(t *testing.T) {
 	if err := os.MkdirAll(prefix, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(prefix, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	otherApp := filepath.Join(prefix, "other-application-data")
 	if err := os.WriteFile(otherApp, []byte("preserve"), 0o600); err != nil {
 		t.Fatal(err)
@@ -72,6 +75,69 @@ func TestInstallerRefusesToUninstallAnUnownedPrefix(t *testing.T) {
 	}
 	if contents, err := os.ReadFile(otherApp); err != nil || string(contents) != "preserve" {
 		t.Fatalf("uninstall deleted unrelated app data: %v", err)
+	}
+	info, err := os.Stat(prefix)
+	if err != nil || info.Mode().Perm() != 0o755 {
+		t.Fatalf("refused uninstall changed unrelated prefix permissions: %v, info=%v", err, info)
+	}
+}
+
+func TestInstallerRefusesToInstallIntoUnownedPrefix(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("POSIX installer")
+	}
+	if runtime.GOARCH != "arm64" && runtime.GOARCH != "amd64" {
+		t.Skip("installer supports amd64 and arm64")
+	}
+	root := t.TempDir()
+	trusted := filepath.Join(root, "trusted")
+	artifacts := filepath.Join(root, "artifacts")
+	prefix := filepath.Join(root, "unrelated")
+	for _, dir := range []string{trusted, artifacts, prefix} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	original := filepath.Join(prefix, "keep-existing-file")
+	if err := os.WriteFile(original, []byte("preserve"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(prefix, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installer := []byte(readRepositoryFile(t, "packaging/install.sh"))
+	verifier := []byte("#!/bin/sh\nif [ \"${3-}\" = --print-version ]; then printf '2.0.1\\n'; fi\n")
+	for path, contents := range map[string][]byte{
+		filepath.Join(trusted, "install.sh"):          installer,
+		filepath.Join(trusted, "verify-release.sh"):   verifier,
+		filepath.Join(artifacts, "install.sh"):        installer,
+		filepath.Join(artifacts, "verify-release.sh"): verifier,
+	} {
+		if err := os.WriteFile(path, contents, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	osName := runtime.GOOS
+	if osName == "darwin" {
+		osName = "macos"
+	}
+	if err := os.WriteFile(filepath.Join(artifacts, "demerzel-"+osName+"-"+runtime.GOARCH),
+		[]byte("synthetic binary"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("bash", filepath.Join(trusted, "install.sh"), "install",
+		"--artifacts", artifacts, "--prefix", prefix)
+	command.Env = []string{"HOME=" + root, "PATH=" + os.Getenv("PATH")}
+	if output, err := command.CombinedOutput(); err == nil {
+		t.Fatalf("installer accepted unrelated prefix: %s", output)
+	}
+	contents, err := os.ReadFile(original)
+	if err != nil || string(contents) != "preserve" {
+		t.Fatalf("unrelated prefix contents changed: %v", err)
+	}
+	info, err := os.Stat(prefix)
+	if err != nil || info.Mode().Perm() != 0o755 {
+		t.Fatalf("unrelated prefix permissions changed: %v, info=%v", err, info)
 	}
 }
 

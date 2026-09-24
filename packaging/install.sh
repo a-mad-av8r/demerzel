@@ -152,6 +152,18 @@ assert_installed_prefix() {
     fail "binary prefix is missing its Demerzel installation files: ${prefix}"
 }
 
+assert_safe_install_prefix() {
+  if [[ -e "${prefix}" || -L "${prefix}" ]]; then
+    [[ -d "${prefix}" && ! -L "${prefix}" ]] ||
+      fail "install prefix is not a regular directory: ${prefix}"
+    if [[ -e "${prefix}/current" || -L "${prefix}/current" ]]; then
+      assert_installed_prefix
+    elif [[ -n "$(find "${prefix}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+      fail "install prefix contains unrelated or incomplete state: ${prefix}"
+    fi
+  fi
+}
+
 write_launcher() {
   local recipient="$1"
   local launcher="${prefix}/bin/demerzel"
@@ -212,6 +224,7 @@ install_artifact() {
   bash "${trusted_verifier}" "${artifact_dir}" install.sh >/dev/null
   bash "${trusted_verifier}" "${artifact_dir}" verify-release.sh >/dev/null
   [[ "${version}" =~ ^2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || fail "unsupported signed release version: ${version}"
+  assert_safe_install_prefix
   validate_prefix
   restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
@@ -285,11 +298,14 @@ rollback_install() {
 }
 
 uninstall_install() {
+  [[ "${prefix}" == /* && -d "${prefix}" && ! -L "${prefix}" ]] ||
+    fail "not an installed Demerzel binary prefix: ${prefix}"
+  prefix="$(cd "${prefix}" && pwd -P)"
+  assert_installed_prefix
   validate_prefix
   restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
-  assert_installed_prefix
   if [[ "${purge}" == true ]]; then
     [[ "${data_dir}" == /* ]] || fail "DATA_DIR must be an absolute path"
     [[ ! -L "${data_dir}" ]] || fail "refusing to purge a symlinked DATA_DIR"

@@ -31,6 +31,13 @@ Sigstore bundle against the exact versioned Demerzel release-workflow identity,
 then compares the selected binary with the signed manifest. No donor release
 or unverified `curl | sh` bootstrap is used.
 
+The formula stages its own checked local tap file rather than asking Homebrew
+to fetch a private release URL before authentication. Its install step fetches
+the binary with the scoped token, verifies the signed manifest and checksum,
+then installs a launcher that reads the pinned data root. Loading the formula
+and its service definition was checked locally; actual tap installation remains
+unverified until approved artifacts and a private tap exist.
+
 The installed binary is in the Homebrew prefix. The formula provisions explicit
 age custody on first install and registers a launchd service definition; start
 it only when ready:
@@ -183,16 +190,16 @@ untouched.
 Before the command at the top can be used, an authorized release owner must:
 
 1. Create/approve the private `a-mad-av8r/homebrew-tap` repository and grant
-   repository-read access; this worker does not create or push a tap.
-2. Copy the versioned formula into the tap's `Formula/demerzel.rb` and set it to
-   the exact approved stable release version.
-3. Configure the `demerzel-release` GitHub Environment with required reviewers
-   and set repository variable `DEMERZEL_RELEASE_APPROVED_TAG` to the exact
-   authorized tag.
-4. Approve a strict `v2.x` tag, complete release checks, and publish the signed
+   repository-read access; this work does not create or push a tap.
+2. Configure the `demerzel-release` GitHub Environment with required reviewers
+   and set `DEMERZEL_RELEASE_APPROVED_TAG` to the exact authorized tag.
+3. Approve a strict `v2.x` tag, complete release checks, and publish the signed
    manifest, bundle, checksums, and binary assets to the private GitHub Release.
-5. Verify the release-identity certificate, formula's binary architecture and
-   digest, first boot age custody, service restart, backup, and a real upgrade /
-   rollback restore drill before treating launchd operation as supported.
+4. Verify the signed manifest and `demerzel.rb` digest, then copy that exact
+   versioned formula into the tap's `Formula/demerzel.rb` **without editing it**
+   after signing.
+5. Audit and install from the actual private tap; verify the release certificate,
+   selected binary digest, first-boot age custody, service restart, backups,
+   and a real upgrade/rollback restore drill before calling launchd supported.
 
 No tap, package, GitHub Release, or production service is claimed by this guide.

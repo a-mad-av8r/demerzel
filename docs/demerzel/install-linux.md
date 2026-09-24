@@ -200,6 +200,8 @@ bash "$HOME/.local/opt/demerzel/install.sh" uninstall
 Uninstall refuses a prefix without its Demerzel version pointer, installer,
 launcher and versioned binary; it does not recursively remove an arbitrary
 `--prefix` directory.
+Install likewise refuses a non-empty prefix without those installation files;
+it does not overwrite unrelated software or change its directory permissions.
 
 Alternatively, while the trusted binary prefix still exists, explicit data
 removal is a separate gated operation:
