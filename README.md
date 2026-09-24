@@ -43,8 +43,8 @@ query `tbphp/gpt-load` releases.
 
 ## Runtime and recovery invariants
 
-- macOS Homebrew service: installed binary under the Homebrew prefix; persistent
-  `DATA_DIR=$HOME/.demerzel`; external age identity at
+- macOS Homebrew service: binary under the Homebrew prefix; fresh data defaults
+  to `$HOME/.demerzel`, with an external age identity at
   `$HOME/.config/demerzel/identity.txt`.
 - Homebrew pins its selected absolute root in
   `$HOME/.config/demerzel/data-dir` and retains that path across upgrades.

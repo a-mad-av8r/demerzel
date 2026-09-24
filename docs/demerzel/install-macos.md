@@ -40,11 +40,10 @@ brew services start demerzel
 
 The service binds to loopback and uses:
 
-- `DATA_DIR=$HOME/.demerzel` (mode `0700`),
+- `DATA_DIR` read from `$HOME/.config/demerzel/data-dir` (mode `0700`;
+  fresh installs default to `$HOME/.demerzel`),
 - `$HOME/.config/demerzel/identity.txt` (mode `0600`, outside `DATA_DIR`),
-- the recipient derived from that identity at service start.
-- `$HOME/.config/demerzel/data-dir` pins the canonical absolute `DATA_DIR`
-  across upgrades.
+- the recipient derived from that identity at service start,
 - owner-only `DATA_DIR/control.sock` for the secret-bearing account CLI.
 
 The new Homebrew default does not discover or move an old source-development
@@ -69,27 +68,25 @@ CLI commands use only the owner's Unix socket, never a plain HTTP endpoint; run
 the CLI as the same user with the same `DATA_DIR` as launchd:
 
 ```sh
-DATA_DIR="$HOME/.demerzel" "$(brew --prefix)/bin/demerzel" accounts list
+DATA_DIR="$(cat "$HOME/.config/demerzel/data-dir")" "$(brew --prefix)/bin/demerzel" accounts list
 ```
 
-Do not move or replace `~/.demerzel`, change its canonical absolute `DATA_DIR`,
+Do not move or replace the pinned `DATA_DIR`, change its canonical absolute path,
 or generate a replacement identity against its database. Keychain/Secret
 Service custody is not used for unattended macOS service mode until stable
 Developer-ID signing and a real upgrade/ACL test are release gates. The age
 identity is created from first boot and must be backed up separately from the
 data directory.
 
-Earlier development builds may have used a repository-relative `./data`
-directory. Homebrew does not move that data or its path-bound Keychain item to
-`~/.demerzel`. Before starting the service against old state, follow the
-[key-custody restore/import procedure](key-custody.md) with the original master
-key and a verified database backup; never regenerate age custody over an
-unmigrated database.
+An old native Keychain-only data directory cannot be started by an age-custodied
+launchd service without importing the original master key. Follow the
+[key-custody restore/import procedure](key-custody.md) with a verified database
+backup; never generate a replacement age master against unmigrated ciphertext.
 
 For non-secret vault escrow/recovery metadata, record the read-only locator:
 
 ```sh
-demerzel key-locator --data-dir "$HOME/.demerzel"
+demerzel key-locator --data-dir "$(cat "$HOME/.config/demerzel/data-dir")"
 ```
 
 The returned identifier is not a key and does not prove a restore. A complete

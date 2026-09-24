@@ -9,6 +9,13 @@ import (
 	"testing"
 )
 
+func requireDockerCompose(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker Compose CLI is unavailable; CI exercises this contract")
+	}
+}
+
 func writeComposeAgeFixture(t *testing.T, projectDir string) string {
 	t.Helper()
 	path := filepath.Join(projectDir, "age-identity.txt")
@@ -24,6 +31,7 @@ func composeAgeEnvironment(identityPath string) string {
 }
 
 func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
+	requireDockerCompose(t)
 	t.Setenv("HOST", "")
 	t.Setenv("BIND_ADDRESS", "")
 	t.Setenv("OAUTH_CALLBACK_BIND_ADDRESS", "")
@@ -97,6 +105,7 @@ func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 }
 
 func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T) {
+	requireDockerCompose(t)
 	projectDir := t.TempDir()
 	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
@@ -356,6 +365,7 @@ func TestDockerfileDistributesDeclaredThirdPartyLicenseTexts(t *testing.T) {
 }
 
 func TestComposeBindsLoopbackAndConfiguresContainerAllInterfaces(t *testing.T) {
+	requireDockerCompose(t)
 	t.Setenv("HOST", "")
 	t.Setenv("BIND_ADDRESS", "")
 	t.Setenv("OAUTH_CALLBACK_BIND_ADDRESS", "")
@@ -419,6 +429,7 @@ func TestComposeBindsLoopbackAndConfiguresContainerAllInterfaces(t *testing.T) {
 }
 
 func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testing.T) {
+	requireDockerCompose(t)
 	t.Setenv("HOST", "")
 	t.Setenv("BIND_ADDRESS", "")
 	t.Setenv("OAUTH_CALLBACK_BIND_ADDRESS", "")
@@ -516,6 +527,7 @@ func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testin
 }
 
 func TestComposeUsesOwnedImageNamedDataVolumeAndExternalAgeIdentity(t *testing.T) {
+	requireDockerCompose(t)
 	t.Setenv("DATA_DIR", "/host/path/must-not-reach-container")
 	t.Setenv("DATABASE_DSN", "/host/database/must-not-reach-container.db")
 	t.Setenv("DEMERZEL_VERSION", "")

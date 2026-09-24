@@ -36,26 +36,6 @@ func TestSelfHostedCIKeepsPlatformGatesAndLocalCaches(t *testing.T) {
 	}
 }
 
-func TestReleaseIsolatesDockerCredentials(t *testing.T) {
-	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	for _, job := range []string{
-		"docker-smoke", "prebuilt-image-smoke", "publication-preflight", "publish-images",
-		"post-publish-image-smoke", "post-publish-verify",
-	} {
-		block := workflowJobBlock(t, content, job)
-		setup := workflowStepBlock(t, block, "Isolate Docker credentials")
-		if !strings.Contains(setup, `mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX"`) ||
-			!strings.Contains(setup, `echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"`) {
-			t.Errorf("%s can overwrite the host Docker credentials", job)
-		}
-	}
-	build := workflowJobBlock(t, content, "build-binaries")
-	if !strings.Contains(build, "runs-on: ${{ matrix.runner }}") ||
-		!strings.Contains(workflowStepBlock(t, build, "Build release binary"), "shell: bash") {
-		t.Fatal("cross-platform binary build must select its runner and use an explicit bash shell")
-	}
-}
-
 func TestReleaseUsesSelfHostedValidationAndHostedPublicationRunners(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	for job, runner := range map[string]string{

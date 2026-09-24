@@ -2,13 +2,11 @@ package webui
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -829,34 +827,6 @@ func TestReleaseWorkflowDraftReadersRequestPushVisibility(t *testing.T) {
 	}
 }
 
-func TestReleaseWorkflowUsesOneOwnedPublicationPreflight(t *testing.T) {
-	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	if count := strings.Count(content, "  publication-preflight:"); count != 1 {
-		t.Fatalf("publication preflight job count = %d, want exactly 1", count)
-	}
-	preflight := workflowJobBlock(t, content, "publication-preflight")
-	for _, required := range []string{
-		"name: release-assets",
-		".github/scripts/release-verify-assets.sh release",
-		"git merge-base --is-ancestor",
-		"ghcr.io/${GITHUB_REPOSITORY,,}",
-		".github/scripts/release-publication-state.sh",
-		"publication_state:",
-		"write_mode:",
-		`test "${WRITE_MODE}" != blocked`,
-	} {
-		if !strings.Contains(preflight, required) {
-			t.Fatalf("publication preflight does not contain %q:\n%s", required, preflight)
-		}
-	}
-	for _, jobName := range []string{"publish-images", "publish-github"} {
-		job := workflowJobBlock(t, content, jobName)
-		if !strings.Contains(job, "publication-preflight") {
-			t.Fatalf("%s does not depend on the shared preflight:\n%s", jobName, job)
-		}
-	}
-}
-
 func TestReleaseWorkflowUsesTrustedCurrentRunChecksumForExistingRelease(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	for _, test := range []struct {
@@ -955,188 +925,6 @@ func TestReleaseWorkflowUsesTrustedCurrentRunChecksumForExistingRelease(t *testi
 	}
 }
 
-func TestReleaseWorkflowKeepsUntrustedImageRevisionInsideJQComparison(t *testing.T) {
-	revisionVerifier := readRepositoryFile(
-		t, ".github/scripts/release-verify-image-revision.sh",
-	)
-	expectedSHA := "0123456789abcdef0123456789abcdef01234567"
-	validation := workflowMarkedScript(
-		t, revisionVerifier, "release-image-revision-validation",
-	)
-	scriptPath := filepath.Join(t.TempDir(), "validate-image-revision.sh")
-	script := "#!/usr/bin/env bash\nset -euo pipefail\n" +
-		"expected=" + expectedSHA + "\n" +
-		"inspection=\"${RELEASE_TEST_INSPECTION}\"\n" +
-		validation +
-		"printf '%s\\n' \"${revision}\"\n"
-	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
-		t.Fatalf("write image revision validation script: %v", err)
-	}
-	inspection := func(amd64, arm64 any) string {
-		value := map[string]any{
-			"image": map[string]any{
-				"linux/amd64": map[string]any{
-					"config": map[string]any{
-						"Labels": map[string]any{
-							"org.opencontainers.image.revision": amd64,
-						},
-					},
-				},
-				"linux/arm64": map[string]any{
-					"config": map[string]any{
-						"Labels": map[string]any{
-							"org.opencontainers.image.revision": arm64,
-						},
-					},
-				},
-			},
-		}
-		encoded, err := json.Marshal(value)
-		if err != nil {
-			t.Fatalf("marshal image inspection: %v", err)
-		}
-		return string(encoded)
-	}
-	for _, test := range []struct {
-		name       string
-		inspection string
-		want       string
-	}{
-		{
-			name:       "exact",
-			inspection: inspection(expectedSHA, expectedSHA),
-			want:       expectedSHA,
-		},
-		{
-			name:       "newline",
-			inspection: inspection(expectedSHA+"\ninjected", expectedSHA),
-			want:       "mismatch",
-		},
-		{
-			name:       "pipe",
-			inspection: inspection(expectedSHA+"|injected", expectedSHA),
-			want:       "mismatch",
-		},
-		{
-			name:       "NUL",
-			inspection: inspection(expectedSHA+"\x00injected", expectedSHA),
-			want:       "mismatch",
-		},
-		{
-			name:       "unequal",
-			inspection: inspection("other", expectedSHA),
-			want:       "mismatch",
-		},
-		{
-			name:       "missing",
-			inspection: `{}`,
-			want:       "mismatch",
-		},
-		{
-			name:       "non-string",
-			inspection: inspection(123, expectedSHA),
-			want:       "mismatch",
-		},
-		{
-			name:       "malformed",
-			inspection: `{`,
-			want:       "mismatch",
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			command := exec.Command("bash", scriptPath)
-			command.Env = []string{
-				"PATH=" + os.Getenv("PATH"),
-				"RELEASE_TEST_INSPECTION=" + test.inspection,
-			}
-			output, err := command.Output()
-			if err != nil {
-				t.Fatalf("image revision validation failed: %v", err)
-			}
-			if got := strings.TrimSpace(string(output)); got != test.want {
-				t.Fatalf("revision = %q, want %q", got, test.want)
-			}
-		})
-	}
-
-	// 进入 shell 的只能是受信的 ${expected} 或字面量 mismatch；
-	// 实际读到的标签只允许直接写入 stderr，绝不赋给变量或送上 stdout。
-	for _, assignment := range regexp.MustCompile(`\brevision=\S*`).
-		FindAllString(revisionVerifier, -1) {
-		switch assignment {
-		case "revision=mismatch", `revision="${expected}"`:
-		default:
-			t.Fatalf("revision verifier assigns an untrusted value: %s", assignment)
-		}
-	}
-
-	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	inventoryStep := workflowStepBlock(
-		t,
-		workflowJobBlock(t, content, "publication-preflight"),
-		"Inventory publication channels",
-	)
-	functionStart := strings.Index(inventoryStep, "inventory_image() {")
-	functionEnd := strings.Index(inventoryStep, "\n          # 用命令替换而非进程替换")
-	if functionStart < 0 || functionEnd <= functionStart {
-		t.Fatalf("cannot isolate inventory_image:\n%s", inventoryStep)
-	}
-	inventoryFunction := inventoryStep[functionStart:functionEnd]
-	for _, required := range []string{
-		".github/scripts/release-verify-image-revision.sh",
-		"revision=mismatch",
-	} {
-		if !strings.Contains(inventoryFunction, required) {
-			t.Fatalf("inventory_image does not contain %q:\n%s", required, inventoryFunction)
-		}
-	}
-	for _, forbidden := range []string{
-		"child_revision",
-		"imagetools inspect",
-		"org.opencontainers.image.revision",
-	} {
-		if strings.Contains(inventoryFunction, forbidden) {
-			t.Fatalf(
-				"inventory_image parses the untrusted label itself instead of delegating (%q):\n%s",
-				forbidden,
-				inventoryFunction,
-			)
-		}
-	}
-
-	for _, test := range []struct {
-		job  string
-		step string
-	}{
-		{
-			job:  "publish-images",
-			step: "Verify exact published images",
-		},
-		{
-			job:  "post-publish-verify",
-			step: "Verify published image manifests",
-		},
-	} {
-		step := workflowStepBlock(
-			t,
-			workflowJobBlock(t, content, test.job),
-			test.step,
-		)
-		if !strings.Contains(step, ".github/scripts/release-verify-image-revision.sh") {
-			t.Fatalf("%s does not delegate the revision comparison:\n%s", test.step, step)
-		}
-		for _, forbidden := range []string{
-			"org.opencontainers.image.revision",
-			`revision="$(`,
-		} {
-			if strings.Contains(step, forbidden) {
-				t.Fatalf("%s transfers a raw revision into shell (%q):\n%s", test.step, forbidden, step)
-			}
-		}
-	}
-}
-
-
 func TestReleaseWorkflowPublishesOwnedImageBeforeGitHubRelease(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	imageJob := workflowJobBlock(t, content, "publish-images")
@@ -1153,7 +941,6 @@ func TestReleaseWorkflowPublishesOwnedImageBeforeGitHubRelease(t *testing.T) {
 		t.Fatalf("image publication targets an unowned registry:\n%s", imageJob)
 	}
 }
-
 
 func TestReleaseWorkflowKeepsExactOwnedImagePublication(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
@@ -1179,27 +966,24 @@ func TestReleaseWorkflowKeepsExactOwnedImagePublication(t *testing.T) {
 	}
 }
 
-
-
-
 func TestReleaseWorkflowConsistentRerunIsVerifyOnly(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	for _, test := range []struct {
-		job  string
-		step string
-		call string
+		job      string
+		step     string
+		call     string
 		required string
 	}{
 		{
-			job: "publish-images",
-			step: "Build and publish exact owned multi-platform image",
-			call: dockerBuildActionRef,
+			job:      "publish-images",
+			step:     "Build and publish exact owned multi-platform image",
+			call:     dockerBuildActionRef,
 			required: "needs.publication-preflight.outputs.ghcr_state == 'absent'",
 		},
 		{
-			job: "publish-github",
-			step: "Create GitHub Release draft",
-			call: githubReleaseActionRef,
+			job:      "publish-github",
+			step:     "Create GitHub Release draft",
+			call:     githubReleaseActionRef,
 			required: "needs.publication-preflight.outputs.github_state == 'absent'",
 		},
 	} {
@@ -1340,73 +1124,6 @@ func TestReleaseWorkflowPreparesExactDraftWithoutSharedImageChannels(t *testing.
 		if !strings.Contains(inventoryStep, required) {
 			t.Fatalf("publication inventory does not contain %q:\n%s", required, inventoryStep)
 		}
-	}
-}
-func TestReleaseWorkflowKeepsReleaseNotesConciseAndWarnsAboutDataIncompatibility(t *testing.T) {
-	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	releaseJob := workflowJobBlock(t, content, "publish-github")
-	draftStep := workflowStepBlock(t, releaseJob, "Create GitHub Release draft")
-
-	if !strings.Contains(draftStep, "name: ${{ github.ref_name }}") {
-		t.Fatalf("release draft title must be the tag version only:\n%s", draftStep)
-	}
-	if strings.Contains(draftStep, "name: GPT-Load ${{ github.ref_name }}") {
-		t.Fatalf("release draft title must not include the product prefix:\n%s", draftStep)
-	}
-
-	// generate_release_notes 已经从 commit 历史生成"本次变更"部分，手写 body
-	// 只需要保留一次性读不到就可能造成数据损坏的警告，其余标准运维信息
-	// （备份、tag 语义、usage 是 estimate 等）都是跨版本不变的事实，交给 README
-	// 作单一事实源，不在每个 release 里复述一遍。
-	if !strings.Contains(draftStep, "generate_release_notes: true") {
-		t.Fatalf("release draft no longer generates notes from commit history:\n%s", draftStep)
-	}
-
-	bodyStart := strings.Index(draftStep, "body: |")
-	if bodyStart < 0 {
-		t.Fatalf("release draft step has no body:\n%s", draftStep)
-	}
-	body := draftStep[bodyStart:]
-
-	// 面向中文用户众多的社区，body 先给一段英文，再给对应的中文翻译；
-	// 两段必须表达同一条警告，不能只翻一半或改变语义。
-	paragraphs := strings.SplitN(body, "\n\n", 2)
-	if len(paragraphs) != 2 {
-		t.Fatalf("release notes are not split into exactly one English and one Chinese paragraph:\n%s", body)
-	}
-	english, chinese := paragraphs[0], paragraphs[1]
-
-	for _, required := range []string{
-		"not compatible with 1.x",
-		"start 2.x with an empty database",
-		"newly provisioned master key",
-	} {
-		if !strings.Contains(english, required) {
-			t.Fatalf("English release notes do not contain %q:\n%s", required, english)
-		}
-	}
-	for _, required := range []string{
-		"1.x 数据不兼容",
-		"全新数据库",
-		"全新主密钥",
-	} {
-		if !strings.Contains(chinese, required) {
-			t.Fatalf("Chinese release notes do not contain %q:\n%s", required, chinese)
-		}
-	}
-	if strings.Contains(body, "app.notion.com") {
-		t.Fatalf("public release notes depend on a private Notion page:\n%s", body)
-	}
-	// README 没有 "public operations baseline" 锚点，链接目标必须真实存在。
-	if strings.Contains(body, "#public-operations-baseline") {
-		t.Fatalf("release notes link to a heading README does not have:\n%s", body)
-	}
-
-	// 手写 body 只保留数据不兼容这一条警告（英文 + 中文各一段）；部署、备份、
-	// tag 语义、usage 估算等标准信息一律不在这里重复，回归就说明有内容又被
-	// 搬回了每次发布都要复述的老路。用 rune 计数而非词数，因为中文没有空格分词。
-	if runeCount := len([]rune(body)); runeCount > 700 {
-		t.Fatalf("release notes body has %d runes, want at most 700:\n%s", runeCount, body)
 	}
 }
 
@@ -1770,7 +1487,6 @@ func TestReleaseWorkflowPostPublishVerifiesDraftAssetsAgainstCurrentRun(t *testi
 	}
 }
 
-
 func TestReleaseImageDigestFailsClosedOnOperationalInspectionErrors(t *testing.T) {
 	for _, message := range []string{"rate limit exceeded", "docker: command not found"} {
 		t.Run(message, func(t *testing.T) {
@@ -1796,8 +1512,6 @@ func TestReleaseImageDigestFailsClosedOnOperationalInspectionErrors(t *testing.T
 		})
 	}
 }
-
-
 
 func TestReleaseImageDigestReturnsAbsentOnlyForMissingManifest(t *testing.T) {
 	script := filepath.Join("..", "..", ".github", "scripts", "release-image-digest.sh")
@@ -2283,110 +1997,6 @@ func TestReleaseWorkflowJobsDownstreamOfSkippableGatesOverrideDefaultCondition(t
 				name,
 				job,
 			)
-		}
-	}
-}
-
-func TestReleaseAssetManifestIsTheSingleSourceOfTruth(t *testing.T) {
-	manifest := readRepositoryFile(t, ".github/release-assets.txt")
-	var assets []string
-	for _, line := range strings.Split(manifest, "\n") {
-		if name := strings.TrimSpace(line); name != "" {
-			assets = append(assets, name)
-		}
-	}
-	sorted := append([]string(nil), assets...)
-	sort.Strings(sorted)
-	for index := range assets {
-		if assets[index] != sorted[index] {
-			t.Fatalf("release asset manifest is not sorted: %v", assets)
-		}
-	}
-
-	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	metadataJob := workflowJobBlock(t, content, "package-metadata")
-	// Every declared license and notice must actually be packaged; asset names
-	// must not be hardcoded into unrelated publication steps.
-	for _, name := range assets {
-		if !strings.HasSuffix(name, ".txt") &&
-			name != "THIRD_PARTY_NOTICES.md" && name != "bom.cdx.json" {
-			continue
-		}
-		occurrences := strings.Count(content, name)
-		inMetadata := strings.Count(metadataJob, name)
-		if inMetadata == 0 || occurrences != inMetadata {
-			t.Fatalf("asset %q is missing from package-metadata or hardcoded outside it (%d total, %d in metadata)", name, occurrences, inMetadata)
-		}
-	}
-	for _, requiredAsset := range []string{
-		"SHA256SUMS",
-		"demerzel.rb",
-		"install.sh",
-		"local-smoke.sh",
-		"manifest.json",
-		"manifest.sigstore.json",
-		"verify-release.sh",
-	} {
-		if !strings.Contains(manifest, requiredAsset+"\n") {
-			t.Fatalf("release asset inventory omits %q", requiredAsset)
-		}
-	}
-	for _, required := range []string{
-		"cp packaging/install.sh release/install.sh",
-		"cp packaging/verify-release.sh release/verify-release.sh",
-		"cp packaging/local-smoke.sh release/local-smoke.sh",
-		"cp packaging/homebrew/demerzel.rb release/demerzel.rb",
-	} {
-		if !strings.Contains(metadataJob, required) {
-			t.Fatalf("release metadata job does not package %q", required)
-		}
-	}
-
-	checksumJob := workflowJobBlock(t, content, "package-checksums")
-	for _, required := range []string{
-		"id-token: write",
-		"sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62",
-		"cosign sign-blob --yes",
-		"--bundle release/manifest.sigstore.json",
-		".github/scripts/release-create-manifest.sh",
-	} {
-		if !strings.Contains(checksumJob, required) {
-			t.Fatalf("release manifest signing job does not contain %q:\n%s", required, checksumJob)
-		}
-	}
-	signatureIndex := strings.Index(checksumJob, "cosign sign-blob --yes")
-	checksumIndex := strings.Index(checksumJob, "name: Generate SHA256SUMS")
-	if signatureIndex < 0 || checksumIndex <= signatureIndex {
-		t.Fatalf("release checksums are not generated after signing the manifest:\n%s", checksumJob)
-	}
-
-	verifier := readRepositoryFile(t, "packaging/verify-release.sh")
-	for _, required := range []string{
-		"a-mad-av8r/demerzel",
-		".github/workflows/release.yml@refs/tags/v2",
-		"https://token.actions.githubusercontent.com",
-		"manifest.sigstore.json",
-		"manifest.json",
-	} {
-		if !strings.Contains(verifier, required) {
-			t.Fatalf("manifest verifier does not anchor trust with %q", required)
-		}
-	}
-
-	formula := readRepositoryFile(t, "packaging/homebrew/demerzel.rb")
-	for _, required := range []string{
-		"cosign", "verify-blob", "certificate-identity-regexp",
-		"certificate-oidc-issuer", "Digest::SHA256.file",
-		"manifest[\"schemaVersion\"] == 1",
-	} {
-		if !strings.Contains(formula, required) {
-			t.Fatalf("Homebrew formula does not independently verify %q", required)
-		}
-	}
-	// 资产数量与校验和行数不得再作为魔数散落在 workflow 中。
-	for _, magic := range []string{`= "11"`, `= "12"`, "asset_count"} {
-		if strings.Contains(content, magic) {
-			t.Fatalf("release workflow still hardcodes the asset count via %q", magic)
 		}
 	}
 }

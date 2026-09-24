@@ -190,25 +190,27 @@ systemctl --user disable --now demerzel.service
 rm -f "$HOME/.config/systemd/user/demerzel.service"
 ```
 
-This does not touch the data or age identity.
-Default uninstall removes the binary prefix and preserves all runtime data and
-the external age identity:
+The systemd unit is separate from the installer. Default uninstall uses the
+already verified installed script, removes only the binary prefix and preserves
+runtime data, the owner-only path pin and the external age identity:
 
 ```sh
-bash "$release_dir/install.sh" uninstall
+bash "$HOME/.local/opt/demerzel/install.sh" uninstall
 ```
 
-
-Data removal is intentionally separate and gated:
+Alternatively, while the trusted binary prefix still exists, explicit data
+removal is a separate gated operation:
 
 ```sh
-bash "$release_dir/install.sh" uninstall --purge
+bash "$HOME/.local/opt/demerzel/install.sh" uninstall --purge
 ```
 
 The script accepts only a data directory named `.demerzel` or `demerzel`, then
 requires typing `PURGE` followed by the exact absolute path. It removes only
-that data directory; it never removes the external identity. Do not use this to
-replace a backup or erase state whose recovery has not been verified.
+that data directory; `$HOME/.config/demerzel/data-dir` and the external age
+identity remain outside the binary prefix. Restore or retire the pin only
+through a supervised custody procedure. Never use purge to replace a backup
+or erase state whose recovery has not been verified.
 
 ## Platform boundary
 
