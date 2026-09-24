@@ -51,6 +51,43 @@ func (fake runtimeCheckpointFake) Save(ctx context.Context) error {
 	return fake.save(ctx)
 }
 
+func TestFailedBootstrapCannotOverwriteLastGoodRuntimeCheckpoint(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime-state.checkpoint.json")
+	const previous = "last-good-scheduling-cursor"
+	if err := os.WriteFile(path, []byte(previous), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	db, err := storage.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootErr := errors.New("master-key identity mismatch")
+	application := NewApp(AppParams{
+		Engine:           mustNewEngine(t),
+		Config:           testConfig(t),
+		DB:               db,
+		StartupBootstrap: startupBootstrapFunc(func(context.Context) error { return bootErr }),
+		RuntimeState:     runtimeStateLoaderFunc(func(context.Context) error { t.Fatal("runtime loader ran after failed identity bootstrap"); return nil }),
+		RuntimeCheckpoint: runtimeCheckpointFake{
+			save: func(context.Context) error {
+				return os.WriteFile(path, []byte("overwritten-empty-runtime"), 0o600)
+			},
+		},
+		ControlRuntime: newControlRuntimeFake(nil, false),
+		RequestLogs:    newRequestLogRuntimeFake(nil, nil),
+	})
+	if err := application.Start(); !errors.Is(err, bootErr) {
+		t.Fatalf("Start() = %v, want identity refusal", err)
+	}
+	if err := application.Stop(t.Context()); err != nil {
+		t.Fatalf("Stop() after failed startup: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != previous {
+		t.Fatalf("failed startup changed last good checkpoint: %q, error=%v", got, err)
+	}
+}
+
 func TestAppRestoresCheckpointAfterRuntimeRecovery(t *testing.T) {
 	db, err := storage.Open(":memory:")
 	if err != nil {

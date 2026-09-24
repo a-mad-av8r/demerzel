@@ -38,12 +38,13 @@ type App struct {
 	executionRuntime  ExecutionRuntime
 	listen            func(network, address string) (net.Listener, error)
 
-	mu            sync.Mutex
-	httpServer    *http.Server
-	listener      net.Listener
-	serveErrors   chan error
-	runtimeCancel context.CancelFunc
-	runtimeDone   chan struct{}
+	mu              sync.Mutex
+	httpServer      *http.Server
+	listener        net.Listener
+	serveErrors     chan error
+	runtimeCancel   context.CancelFunc
+	runtimeDone     chan struct{}
+	checkpointReady bool
 }
 
 // RuntimeStateLoader initializes the in-memory runtime state from persistence.
@@ -148,6 +149,7 @@ func (a *App) Start() error {
 	if a.httpServer != nil {
 		return fmt.Errorf("application is already started")
 	}
+	a.checkpointReady = false
 	logrus.WithField("event", "startup.begin").Info("application startup started")
 	if err := i18n.Init(); err != nil {
 		return a.startupFailure("i18n", fmt.Errorf("initialize i18n: %w", err))
@@ -179,6 +181,7 @@ func (a *App) Start() error {
 			logrus.WithField("event", "startup.checkpoint_restore").Info("runtime state checkpoint checked")
 		}
 	}
+	a.checkpointReady = true
 	if a.executionRuntime != nil {
 		if err := a.executionRuntime.Start(context.Background()); err != nil {
 			return a.startupFailure("execution_runtime", fmt.Errorf("start execution runtime: %w", err))
@@ -274,6 +277,7 @@ func (a *App) Stop(ctx context.Context) error {
 	requestLogs := a.requestLogs
 	executionRuntime := a.executionRuntime
 	runtimeCheckpoint := a.runtimeCheckpoint
+	checkpointReady := a.checkpointReady
 	lifecycle := a.lifecycle
 	a.mu.Unlock()
 
@@ -336,7 +340,7 @@ func (a *App) Stop(ctx context.Context) error {
 			logrus.WithField("event", "shutdown.http_handlers_drained").Info("HTTP handlers drained")
 		}
 	}
-	if runtimeCheckpoint != nil {
+	if runtimeCheckpoint != nil && checkpointReady {
 		if err := runtimeCheckpoint.Save(context.Background()); err != nil {
 			logrus.WithError(err).WithField("event", "shutdown.checkpoint_save").Warn(
 				"runtime state checkpoint could not be saved; continuing shutdown",
