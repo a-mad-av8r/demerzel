@@ -83,7 +83,7 @@ For native-vault escrow and recovery, record the non-secret locator alongside
 backup metadata:
 
 ```sh
-demerzel key-locator --data-dir "$HOME/.demerzel"
+demerzel key-locator --data-dir "${DATA_DIR:-$(cat "$HOME/.config/demerzel/data-dir")}"
 ```
 
 The locator is not key material and does not replace a tested database-plus-key

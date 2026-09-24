@@ -57,7 +57,7 @@
 <h1>Demerzel — Architecture &amp; Design</h1>
 <p class="sub">Updated 2026-09-24 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · optional contributor platform: <a href="https://github.com/Kaidera-AI/cortex">Cortex</a></p>
 
-<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with multiple accounts per provider. The M1 fork hardens custody, outbound defaults and module seams; deterministic serial failover, model policy, extra connectors and team installers remain planned. This page answers: what we borrow from where · how the modules fit · which seams exist now · how it is intended to ship to the team.</p>
+<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with multiple accounts per provider. M1 hardens custody, outbound defaults and module seams. The M2 feature branch implements per-group serial failover and account CLI management, and stages verified installers without publishing them; model policy and additional connectors remain planned. This page maps the donor modules, runtime seams and gated team distribution path.</p>
 
 <h2>1 · The five layers</h2>
 
@@ -129,8 +129,8 @@
 <thead><tr><th>Layer</th><th>Module</th><th>Source</th><th>Interface it hides behind</th></tr></thead>
 <tbody>
 <tr><td>L2 edge</td><td>Protocol facade + admin API</td><td>gpt-load (vendored)</td><td>OpenAI/Anthropic wire in · admin REST out</td></tr>
-<tr><td>L1 policy</td><td>Model-selection engine</td><td>planned for M2/M5</td><td>No alternative policy contract is wired in M1</td></tr>
-<tr><td>L0 accounts</td><td>Registry · selector · lease</td><td>gpt-load fork, hardened</td><td><code>gateway.SelectionFactory → scheduler.SelectionIterator.Next()</code></td></tr>
+<tr><td>L1 policy</td><td>Model-selection engine</td><td>planned for M5, evaluated in M2 spike</td><td>No alternative model-policy contract is wired yet</td></tr>
+<tr><td>L0 accounts</td><td>Registry · serial/weighted-fair selector · lease</td><td>gpt-load fork, hardened</td><td>Per-group selection via <code>gateway.SelectionFactory → scheduler.SelectionIterator.Next()</code></td></tr>
 <tr><td>services</td><td>Credential encryption + custody</td><td>fork-owned fail-closed boundary</td><td><code>encryption.Service.Encrypt/Decrypt/Hash</code> · native Keychain/Secret Service or explicit age custody</td></tr>
 <tr><td>services</td><td>OAuth refresh</td><td>CLIProxyAPI + fork lifecycle</td><td>Existing credential manager; not a replaceable M1 seam</td></tr>
 <tr><td>services</td><td>Quota ledger</td><td>gpt-load patterns</td><td>Existing quota runtime, not a new M1 interface</td></tr>
@@ -228,7 +228,7 @@
 <div class="panel">
 <ul>
 <li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed master-key custody (Keychain/Secret Service/age) · replaceable Go seams · default-off Models.dev auto-sync · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress; backup/restore and cross-platform checks before release.</i></li>
-<li><b>M2 — account control plane + serial failover + Switchyard spike + installer staging:</b> registry UI/CLI · deterministic failover · signed-artifact and tap formula paths. <i>Accept: scripted-429 failover (persisted cursor, grace, bounded failback), honest spike report, verified native install/upgrade/rollback, and separate publication gates.</i></li>
+<li><b>M2 — account control plane + serial failover + Switchyard spike + installer staging:</b> registry UI/CLI · deterministic failover · signed-artifact and tap formula paths. <i>Accept: scripted-429 failover (persisted cursor, grace, bounded failback), honest spike report, and fail-closed installer/path-preservation checks. Real signed-artifact upgrade and rollback need M4 publication gates.</i></li>
 <li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
 <li><b>M4 — publication and distribution hardening:</b> publish approved signed artifacts and the private tap, then verify service health, upgrade, rollback, uninstall and restore on darwin/arm64 and linux/amd64. <i>Never equate a prepared formula with a published package.</i></li>
 <li><b>M5 — our model-selection engine to production</b>, gated on M2 spike evidence.</li>
