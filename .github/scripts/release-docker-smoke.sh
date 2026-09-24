@@ -117,7 +117,8 @@ chmod 0444 "${task_tmp}/fake-response.json"
 chmod 0555 "${task_tmp}/fake-respond.sh"
 
 smoke_stage="detect-platform"
-docker_arch="$(docker info --format '{{.Architecture}}')"
+docker_arch="$(docker info --format '{{.Architecture}}' 2>/dev/null)" ||
+  docker_arch="$(docker info --format '{{.Host.Arch}}' 2>/dev/null)"
 case "${docker_arch}" in
   arm64 | aarch64)
     platform="linux/arm64"
