@@ -55,7 +55,7 @@
 <div class="page">
 
 <h1>Demerzel — Architecture &amp; Design</h1>
-<p class="sub">Updated 2026-09-24 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · optional contributor platform: <a href="https://github.com/Kaidera-AI/cortex">Cortex</a></p>
+<p class="sub">Updated 2026-09-24 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · Cortex contributor integration deferred during migration</p>
 
 <p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with multiple accounts per provider. M1 hardens custody, outbound defaults and module seams. The M2 feature branch implements per-group serial failover and account CLI management, and stages verified installers without publishing them; model policy and additional connectors remain planned. This page maps the donor modules, runtime seams and gated team distribution path.</p>
 
@@ -218,7 +218,7 @@
 <thead><tr><th>Component</th><th>Demerzel needs it?</th><th>Install guide</th></tr></thead>
 <tbody>
 <tr><td>Demerzel gateway</td><td>yes</td><td>Source/native local build available; signed-artifact and Homebrew routes are prepared but cannot be installed remotely until publication gates pass.</td></tr>
-<tr><td><b>Cortex</b> (optional agent memory/handoffs, not a gateway dependency)</td><td>optional for end users; agent contributors may use it</td><td><b><a href="https://github.com/Kaidera-AI/cortex">Kaidera-AI/cortex</a></b> · <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-macos.md">macOS</a> / <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-linux.md">Linux</a> guides: v0.1.002 installs the launcher/preflight only; standalone <code>cortex install</code> refuses until the v0.1.003 digest-pinned payload ships. Rootless Podman ≥5.0 required.</td></tr>
+<tr><td><b>Cortex</b> (optional contributor memory/handoffs)</td><td>no gateway dependency</td><td>Integration deferred during Cortex migration. No Cortex API, credentials, process or environment configuration is needed to build or run Demerzel.</td></tr>
 <tr><td>Provider credentials</td><td>per provider</td><td>Management UI and <code>demerzel accounts</code> CLI use authenticated APIs; the secret-bearing CLI connects only through an owner-only Unix socket under <code>DATA_DIR</code>. No published package is claimed.</td></tr>
 </tbody></table>
 </div>

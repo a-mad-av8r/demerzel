@@ -139,11 +139,10 @@ not send `AUTH_KEY` or upstream keys through a plain HTTP listener. Generated
 management authentication is stored in `DATA_DIR/auth.key`. This is a
 development recipe, not a production service or backup system.
 
-## Optional contributor tooling: Cortex
+## Cortex integration (deferred)
 
-Demerzel runs without Cortex. Contributors who want agent memory and handoffs
-can read [Kaidera-AI/cortex](https://github.com/Kaidera-AI/cortex), with
-[macOS](https://github.com/Kaidera-AI/cortex/blob/main/docs/install-macos.md)
-and [Linux](https://github.com/Kaidera-AI/cortex/blob/main/docs/install-linux.md)
-guides. Rootless Podman is an optional contributor/deployment runtime, not a
-Demerzel cloud dependency.
+Cortex is being migrated. Demerzel does not require a Cortex API, credentials,
+process, or environment variable to build, start, serve the UI, or manage
+accounts. Keep Cortex out of the service configuration; contributor memory and
+handoff integration can be connected after that migration. Rootless Podman is
+also optional for native installations, not a gateway dependency.
