@@ -23,7 +23,6 @@ func composeAgeEnvironment(identityPath string) string {
 		"\nDEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT=age1fixture\n"
 }
 
-
 func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 	t.Setenv("HOST", "")
 	t.Setenv("BIND_ADDRESS", "")
@@ -633,6 +632,10 @@ func TestInstallerUninstallPreservesDataUnlessExactPurgeConfirmation(t *testing.
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		t.Fatalf("create data directory: %v", err)
 	}
+	canonicalDataDir, err := filepath.EvalSymlinks(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Dir(identity), 0o700); err != nil {
 		t.Fatalf("create external identity directory: %v", err)
 	}
@@ -677,7 +680,7 @@ func TestInstallerUninstallPreservesDataUnlessExactPurgeConfirmation(t *testing.
 	if _, err := os.Stat(filepath.Join(dataDir, "gpt-load.db")); err != nil {
 		t.Fatalf("rejected purge removed runtime data: %v", err)
 	}
-	if err := run("PURGE "+dataDir+"\n", "--prefix", prefix, "--data-dir", dataDir, "--purge"); err != nil {
+	if err := run("PURGE "+canonicalDataDir+"\n", "--prefix", prefix, "--data-dir", dataDir, "--purge"); err != nil {
 		t.Fatalf("exactly confirmed purge failed: %v", err)
 	}
 	if _, err := os.Stat(dataDir); !os.IsNotExist(err) {

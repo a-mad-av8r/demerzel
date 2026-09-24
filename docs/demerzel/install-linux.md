@@ -52,12 +52,15 @@ Verify the signed manifest and the hashes of the executable installer tools
 before running either downloaded script:
 
 ```sh
-identity='^https://github\.com/a-mad-av8r/demerzel/\.github/workflows/release\.yml@refs/tags/v2\.[0-9]+\.[0-9]+(-[A-Za-z0-9][A-Za-z0-9.-]*)?$'
+[[ "$tag" =~ ^v2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+escaped_tag="${tag//./\\.}"
+identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
   --bundle "$release_dir/manifest.sigstore.json" \
   --certificate-identity-regexp "$identity" \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   "$release_dir/manifest.json"
+test "$(jq -er '.tag' "$release_dir/manifest.json")" = "$tag"
 for tool in install.sh verify-release.sh local-smoke.sh; do
   expected="$(jq -er --arg name "$tool" '.assets[] | select(.name == $name) | .sha256' "$release_dir/manifest.json")"
   actual="$(sha256sum "$release_dir/$tool" | cut -d ' ' -f 1)"
@@ -135,20 +138,41 @@ Account CLI usage is documented in [accounts](accounts.md); the
 
 ## Upgrade and rollback from artifacts
 
-Download the next and previous signed artifact sets into separate directories.
-Upgrade atomically switches the `current` link after verifying the manifest;
-previous version directories remain available for rollback:
+Download each approved signed artifact set into a separate private directory.
+Do not execute a script from a newly downloaded directory to verify itself.
+The first verified installation keeps `install.sh` and `verify-release.sh` in
+`$HOME/.local/opt/demerzel`; use those trusted local copies for an upgrade:
 
 ```sh
-bash "$new_dir/install.sh" install --artifacts "$new_dir"
-bash "$new_dir/install.sh" rollback
+trusted="$HOME/.local/opt/demerzel"
+bash "$trusted/install.sh" install --artifacts "$new_dir"
+bash "$trusted/install.sh" rollback
 ```
 
-`bash "$new_dir/local-smoke.sh" "$old_dir" "$new_dir"` exercises two signed
-generated release directories: install, upgrade, run `help`, roll back, and
-uninstall while checking that a sentinel in persistent data survives. It needs
-`cosign`, `jq`, and `age-keygen`, but no source checkout. The smoke cannot be
-run until two signed release artifact directories exist.
+The installer uses its adjacent trusted verifier to authenticate the new binary
+**and** both new installer tools against the signed manifest before copying or
+executing them. The canonical `DATA_DIR` pin under
+`$HOME/.config/demerzel/data-dir` survives upgrade and uninstall; a requested
+different root fails closed. A custom age-identity directory must be passed
+again with `--config-dir` on upgrade so the installed custody pin can be found.
+
+For an artifact-only install/upgrade/rollback smoke, first authenticate the
+smoke tool and installer scripts in **both** signed directories with an already
+trusted verifier. Never start with an unverified `$new_dir/local-smoke.sh`:
+
+```sh
+for dir in "$old_dir" "$new_dir"; do
+  for tool in install.sh verify-release.sh local-smoke.sh; do
+    bash "$trusted/verify-release.sh" "$dir" "$tool"
+  done
+done
+bash "$new_dir/local-smoke.sh" "$old_dir" "$new_dir"
+```
+
+On a fresh host without an installed verifier, repeat the signed-manifest and
+tool-hash preflight above separately for both directories before this smoke.
+It needs `cosign`, `jq`, and `age-keygen` but no source checkout or live service.
+Two distinct signed releases are required; none have been published by this work.
 
 A rollback switches binaries only; it does not reverse database changes. Back
 up and restore the database, `auth.key`, age identity plus `encryption.key.age`,

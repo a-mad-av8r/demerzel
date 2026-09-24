@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestReleaseManifestSignsEveryDistributedArtifact(t *testing.T) {
+func TestReleaseManifestBindsEveryDistributedArtifact(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("release manifest is generated on Linux")
 	}

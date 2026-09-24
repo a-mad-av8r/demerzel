@@ -50,6 +50,10 @@ default_data_dir() {
 validate_prefix() {
   [[ "${prefix}" == /* ]] || fail "install prefix must be an absolute path: ${prefix}"
   [[ ! -L "${prefix}" ]] || fail "install prefix must not be a symlink"
+  [[ "${config_dir}" == /* && ! -L "${config_dir}" ]] || fail "age identity directory must be absolute and not symlinked"
+  if [[ -d "${config_dir}" ]]; then
+    config_dir="$(cd "${config_dir}" && pwd -P)"
+  fi
   if [[ -n "${data_dir}" ]]; then
     [[ "${data_dir}" == /* ]] || fail "DATA_DIR must be an absolute path"
     [[ ! -L "${data_dir}" ]] || fail "DATA_DIR must not be a symlink"
@@ -69,10 +73,66 @@ validate_prefix() {
       fail "refusing unsafe install prefix: ${prefix}"
       ;;
   esac
+  chmod 0700 "${prefix}"
   if [[ -n "${data_dir}" ]]; then
     case "${prefix}" in
       "${data_dir}"|"${data_dir}/"*) fail "install prefix must be outside DATA_DIR" ;;
     esac
+    case "${data_dir}" in
+      "${prefix}"|"${prefix}/"*) fail "DATA_DIR must be outside the binary install prefix" ;;
+    esac
+  fi
+  case "${config_dir}" in
+    "${prefix}"|"${prefix}/"*) fail "age identity directory must be outside the binary install prefix" ;;
+  esac
+}
+
+restorePinnedPaths() {
+  local pin="${config_dir}/data-dir" config_pin="${prefix}/config-dir" pinned_data pinned_config
+  if [[ -e "${config_pin}" || -L "${config_pin}" ]]; then
+    [[ -f "${config_pin}" && ! -L "${config_pin}" && -O "${config_pin}" ]] ||
+      fail "installed age identity directory pin is unsafe"
+    IFS= read -r pinned_config <"${config_pin}" || fail "installed age identity directory pin is incomplete"
+    [[ "${pinned_config}" == /* && -d "${pinned_config}" && ! -L "${pinned_config}" ]] ||
+      fail "installed age identity directory is missing"
+    [[ "$(cd "${pinned_config}" && pwd -P)" == "${config_dir}" ]] ||
+      fail "age identity directory is pinned; restore the original custody path"
+  elif [[ -e "${prefix}/current" || -L "${prefix}/current" ]]; then
+    fail "existing installation is missing its custody path pin; inspect custody before upgrading"
+  fi
+  if [[ ! -e "${pin}" && ! -L "${pin}" ]]; then
+    [[ ! -e "${prefix}/current" && ! -L "${prefix}/current" ]] ||
+      fail "existing installation is missing its data-root pin; inspect custody before changing paths"
+    return
+  fi
+  [[ -f "${pin}" && ! -L "${pin}" && -O "${pin}" ]] ||
+    fail "installation data-root pin must be an owner-only regular file"
+  chmod 0600 "${pin}"
+  IFS= read -r pinned_data <"${pin}" || fail "installation data-root pin is incomplete"
+  [[ "${pinned_data}" == /* && -d "${pinned_data}" && ! -L "${pinned_data}" ]] ||
+    fail "pinned DATA_DIR is missing; restore it before continuing"
+  pinned_data="$(cd "${pinned_data}" && pwd -P)"
+  if [[ -n "${data_dir}" ]]; then
+    [[ -d "${data_dir}" && ! -L "${data_dir}" ]] || fail "requested DATA_DIR is unavailable"
+    [[ "$(cd "${data_dir}" && pwd -P)" == "${pinned_data}" ]] ||
+      fail "DATA_DIR is pinned; moving state requires a supervised restore/import"
+  fi
+  data_dir="${pinned_data}"
+}
+
+writePinnedPaths() {
+  local pin="${config_dir}/data-dir" config_pin="${prefix}/config-dir"
+  [[ "${data_dir}" != *$'\n'* && "${config_dir}" != *$'\n'* ]] ||
+    fail "installation paths must not contain line breaks"
+  if [[ ! -e "${config_pin}" && ! -L "${config_pin}" ]]; then
+    printf '%s\n' "${config_dir}" >"${config_pin}.tmp.$$"
+    chmod 0600 "${config_pin}.tmp.$$"
+    mv -f "${config_pin}.tmp.$$" "${config_pin}"
+  fi
+  if [[ ! -e "${pin}" && ! -L "${pin}" ]]; then
+    printf '%s\n' "${data_dir}" >"${pin}.tmp.$$"
+    chmod 0600 "${pin}.tmp.$$"
+    mv -f "${pin}.tmp.$$" "${pin}"
   fi
 }
 
@@ -133,12 +193,19 @@ provision_age_identity() {
 }
 
 install_artifact() {
-  local asset version old_version target temp_binary recipient
+  local asset version old_version target temp_binary recipient trusted_verifier installer_dir
   [[ -n "${artifact_dir}" && -d "${artifact_dir}" ]] || fail "install requires --artifacts DIR"
   asset="$(platform_asset)"
+  installer_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  trusted_verifier="${installer_dir}/verify-release.sh"
+  [[ -f "${trusted_verifier}" && ! -L "${trusted_verifier}" ]] || fail "trusted release verifier is missing"
   [[ -f "${artifact_dir}/install.sh" && -f "${artifact_dir}/verify-release.sh" ]] || fail "artifact directory is missing signed installer tools"
-  version="$(bash "${artifact_dir}/verify-release.sh" "${artifact_dir}" "${asset}" --print-version)"
+  version="$(bash "${trusted_verifier}" "${artifact_dir}" "${asset}" --print-version)"
+  bash "${trusted_verifier}" "${artifact_dir}" install.sh >/dev/null
+  bash "${trusted_verifier}" "${artifact_dir}" verify-release.sh >/dev/null
   [[ "${version}" =~ ^2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || fail "unsupported signed release version: ${version}"
+  validate_prefix
+  restorePinnedPaths
   data_dir="${data_dir:-$(default_data_dir)}"
   [[ "${data_dir}" == /* && "${config_dir}" == /* ]] || fail "DATA_DIR and age identity directory must be absolute paths"
   [[ ! -L "${data_dir}" ]] || fail "DATA_DIR must not be a symlink"
@@ -174,10 +241,13 @@ install_artifact() {
     cp "${artifact_dir}/${asset}" "${temp_binary}"
     chmod 0755 "${temp_binary}"
     mv "${temp_binary}" "${target}/bin/gpt-load"
-    cp "${artifact_dir}/install.sh" "${prefix}/install.sh.tmp.$$"
-    chmod 0755 "${prefix}/install.sh.tmp.$$"
-    mv -f "${prefix}/install.sh.tmp.$$" "${prefix}/install.sh"
   fi
+  for tool in install.sh verify-release.sh; do
+    cp "${artifact_dir}/${tool}" "${prefix}/${tool}.tmp.$$"
+    chmod 0755 "${prefix}/${tool}.tmp.$$"
+    mv -f "${prefix}/${tool}.tmp.$$" "${prefix}/${tool}"
+  done
+  writePinnedPaths
   recipient="$(provision_age_identity)"
   if [[ -n "${old_version}" && "${old_version}" != "${version}" ]]; then
     ln -sfn "versions/${old_version}" "${prefix}/previous.next"
@@ -191,6 +261,8 @@ install_artifact() {
 
 rollback_install() {
   local current previous
+  validate_prefix
+  restorePinnedPaths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
   current="$(current_target)" || fail "no installed Demerzel version to roll back"
@@ -205,6 +277,8 @@ rollback_install() {
 }
 
 uninstall_install() {
+  validate_prefix
+  restorePinnedPaths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
   if [[ "${purge}" == true ]]; then

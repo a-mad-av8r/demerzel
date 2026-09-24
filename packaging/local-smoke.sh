@@ -9,8 +9,18 @@ new_artifacts="${2:?usage: local-smoke.sh OLD_ARTIFACT_DIR NEW_ARTIFACT_DIR}"
   exit 1
 }
 
-old_version="$(bash "${old_artifacts}/verify-release.sh" "${old_artifacts}" --print-version)"
-new_version="$(bash "${new_artifacts}/verify-release.sh" "${new_artifacts}" --print-version)"
+smoke_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+trusted_verifier="${smoke_dir}/verify-release.sh"
+[[ -f "${trusted_verifier}" && ! -L "${trusted_verifier}" ]] || {
+  printf 'the trusted release verifier must accompany this smoke tool\n' >&2
+  exit 1
+}
+old_version="$(bash "${trusted_verifier}" "${old_artifacts}" --print-version)"
+new_version="$(bash "${trusted_verifier}" "${new_artifacts}" --print-version)"
+for artifacts in "${old_artifacts}" "${new_artifacts}"; do
+  bash "${trusted_verifier}" "${artifacts}" install.sh >/dev/null
+  bash "${trusted_verifier}" "${artifacts}" verify-release.sh >/dev/null
+done
 [[ "${old_version}" != "${new_version}" ]] || {
   printf 'upgrade smoke requires two different signed versions\n' >&2
   exit 1

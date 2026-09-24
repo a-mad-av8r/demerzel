@@ -110,12 +110,16 @@ manifest signature and hashes:
 
 ```sh
 release_dir="/path/to/generated/release-assets"
-identity='^https://github\.com/a-mad-av8r/demerzel/\.github/workflows/release\.yml@refs/tags/v2\.[0-9]+\.[0-9]+(-[A-Za-z0-9][A-Za-z0-9.-]*)?$'
+release_tag=v2.0.0  # Replace with the exact approved tag for this directory.
+[[ "$release_tag" =~ ^v2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+escaped_tag="${release_tag//./\\.}"
+identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
   --bundle "$release_dir/manifest.sigstore.json" \
   --certificate-identity-regexp "$identity" \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   "$release_dir/manifest.json"
+test "$(jq -er '.tag' "$release_dir/manifest.json")" = "$release_tag"
 for tool in demerzel.rb install.sh verify-release.sh local-smoke.sh; do
   expected="$(jq -er --arg name "$tool" '.assets[] | select(.name == $name) | .sha256' "$release_dir/manifest.json")"
   actual="$(shasum -a 256 "$release_dir/$tool" | cut -d ' ' -f 1)"
@@ -131,15 +135,20 @@ no Git checkout:
 HOMEBREW_DEMERZEL_ARTIFACT_DIR="$release_dir" brew install --formula "$release_dir/demerzel.rb"
 ```
 
-For a signed upgrade/rollback smoke, provide two generated artifact directories:
+For an artifact-only upgrade/rollback smoke, verify the signed manifest
+**and** `install.sh`, `verify-release.sh`, and `local-smoke.sh` digests with the
+preflight above separately for `$old_dir` and `$new_dir`. Pin each certificate
+identity to that directory's operator-selected release tag. Never execute a
+downloaded installer or smoke script before checking its own signed digest:
 
 ```sh
 bash "$new_dir/local-smoke.sh" "$old_dir" "$new_dir"
 ```
 
-The smoke needs `cosign`, `jq`, and `age-keygen`; it exercises real binaries and
-does not need a Git checkout. It has not been run because no signed release
-artifact directories exist.
+The verified smoke tool uses its adjacent trusted verifier to check both sets
+again before executing their installers. It needs `cosign`, `jq`, and
+`age-keygen`, but no Git checkout; no two signed releases exist yet, so this
+runtime upgrade/rollback path has not been exercised.
 
 ## Upgrade, rollback, and uninstall
 
