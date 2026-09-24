@@ -201,25 +201,25 @@
 </ul>
 </div>
 
-<h2>7 · Distribution &amp; installation (team)</h2>
+<h2>7 · Distribution &amp; installation (team; publication-gated)</h2>
 
 <div class="panel">
   <div class="grid4">
-    <div class="node">CI release<small>cross-build matrix · cosign sign + SBOM · <code>release.json.sig</code></small></div>
-    <div class="node">Homebrew tap (private)<small><code>brew install &lt;you&gt;/tap/demerzel</code> · bottles · <code>brew services</code></small></div>
-    <div class="node">bunx installer<small><code>bunx @&lt;you&gt;/demerzel install</code> · verifies manifest + checksum first</small></div>
-    <div class="node">tar / container<small>Linux systemd --user · XDG dirs · Secret Service or explicit age mode</small></div>
+    <div class="node">Release CI<small>cross-build matrix · keyless signed manifest covering distributed assets · SBOM</small></div>
+    <div class="node">Homebrew formula (tap pending)<small><code>brew install a-mad-av8r/tap/demerzel</code> after private tap and signed release approval</small></div>
+    <div class="node">Signed GitHub artifacts<small>Linux installer and verifier · immutable versioned binaries · no <code>curl | sh</code></small></div>
+    <div class="node">Rootless Podman<small>local owned image · persistent named volume · separately custodied age identity</small></div>
   </div>
-  <p class="muted" style="margin:12px 0 0">Installer frontends and cosign-signed release manifests are M4 targets, not published M1 features. Fresh boots do not automatically sync catalog, and the gateway core never checks GitHub releases; installer frontends own update discovery. A process opt-in or authenticated catalog-sync action can make outbound calls. Secrets never ship in artifacts. Cross-platform builds, native custody and restore proof remain release gates.</p>
+  <p class="muted" style="margin:12px 0 0">M2 contains the installer scripts, tap-ready formula and gated release workflow; no tag, tap, signed release or image has been published. The gateway never checks GitHub releases. Native installers use a working-directory-independent data root, and unattended services use explicit age custody from first boot. <a href="install-macos.md">macOS</a> · <a href="install-linux.md">Linux</a> · <a href="install-containers.md">containers</a>. Restore-proof, signed publication and an isolated container smoke remain release gates.</p>
 </div>
 
 <div class="panel">
 <table>
 <thead><tr><th>Component</th><th>Demerzel needs it?</th><th>Install guide</th></tr></thead>
 <tbody>
-<tr><td>Demerzel gateway</td><td>yes</td><td>Source build only today; brew tap / bunx / tar installers are M4 targets, not published methods.</td></tr>
+<tr><td>Demerzel gateway</td><td>yes</td><td>Source/native local build available; signed-artifact and Homebrew routes are prepared but cannot be installed remotely until publication gates pass.</td></tr>
 <tr><td><b>Cortex</b> (optional agent memory/handoffs, not a gateway dependency)</td><td>optional for end users; agent contributors may use it</td><td><b><a href="https://github.com/Kaidera-AI/cortex">Kaidera-AI/cortex</a></b> · <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-macos.md">macOS</a> / <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-linux.md">Linux</a> guides: v0.1.002 installs the launcher/preflight only; standalone <code>cortex install</code> refuses until the v0.1.003 digest-pinned payload ships. Rootless Podman ≥5.0 required.</td></tr>
-<tr><td>Provider credentials</td><td>per provider</td><td>Current management UI stores account credentials; dedicated <code>demerzel accounts</code> CLI is planned, not shipped in M1.</td></tr>
+<tr><td>Provider credentials</td><td>per provider</td><td>Management UI and <code>demerzel accounts</code> CLI use authenticated APIs; the secret-bearing CLI connects only through an owner-only Unix socket under <code>DATA_DIR</code>. No published package is claimed.</td></tr>
 </tbody></table>
 </div>
 
@@ -228,9 +228,9 @@
 <div class="panel">
 <ul>
 <li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed master-key custody (Keychain/Secret Service/age) · replaceable Go seams · default-off Models.dev auto-sync · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress; backup/restore and cross-platform checks before release.</i></li>
-<li><b>M2 — account control plane + serial failover + Switchyard spike:</b> registry UI/CLI · deterministic failover. <i>Accept: scripted-429 failover test (persisted cursor, reset+grace, backoff-probe failback) + spike report (NVIDIA = eval oracle only).</i></li>
+<li><b>M2 — account control plane + serial failover + Switchyard spike + installer staging:</b> registry UI/CLI · deterministic failover · signed-artifact and tap formula paths. <i>Accept: scripted-429 failover (persisted cursor, grace, bounded failback), honest spike report, verified native install/upgrade/rollback, and separate publication gates.</i></li>
 <li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
-<li><b>M4 — distribution:</b> tap + bunx + tar/container, all verifying the signed manifest; Linux = macOS parity. <i>Accept: install → service → health/auth → upgrade → rollback → uninstall on darwin/arm64 + linux/amd64.</i></li>
+<li><b>M4 — publication and distribution hardening:</b> publish approved signed artifacts and the private tap, then verify service health, upgrade, rollback, uninstall and restore on darwin/arm64 and linux/amd64. <i>Never equate a prepared formula with a published package.</i></li>
 <li><b>M5 — our model-selection engine to production</b>, gated on M2 spike evidence.</li>
 </ul>
 </div>

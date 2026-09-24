@@ -101,14 +101,12 @@ labels before removal.
 
 ## Local Podman smoke safety
 
-A local image smoke requires an isolated Podman host/provider with enough free
-disk for the runtime image and temporary data. Do not run source builds, pull a
-large scanner image, prune resources, or stop unrelated workloads to make room.
-The shared `kos-e020-uat` Podman VM was measured at 97% disk usage with 3.2 GiB
-free; do not use it without a separately approved maintenance window. The
-separately provisioned development VM cannot run concurrently with that UAT VM.
-Use another isolated provider/host or wait for an approved window. No Podman
-smoke is claimed by this work.
+A local image smoke requires an isolated Podman host with enough free disk for
+the runtime image and temporary data. Do not build, pull images, prune resources,
+or create volumes/networks on an engine hosting unrelated live services. On
+macOS, Podman Machines may not run concurrently; use another isolated host
+instead of stopping a live service to start a disposable VM. No local Podman
+runtime smoke is claimed by this work.
 
 The owned GHCR image is private and release publication is still approval-gated;
 no cloud runtime or managed deployment is created here.

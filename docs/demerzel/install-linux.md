@@ -80,6 +80,13 @@ installer fails closed; restore the original identity instead of creating a
 replacement. The generated launcher uses the same absolute `DATA_DIR` on every
 run.
 
+Previous development installations may have used `./data`; the installer
+does not move those files to the XDG default. Keep `DATA_DIR` at the old
+canonical absolute location with the original key, or perform a supervised
+database-plus-key restore into the new location using the
+[key-custody runbook](key-custody.md). Do not start a fresh key against old
+ciphertext or assume an empty XDG root contains your accounts.
+
 The gateway creates the owner-only account-control socket at
 `$DATA_DIR/control.sock`. Run secret-bearing account CLI commands as the same
 Unix user with the same absolute `DATA_DIR`; the CLI uses this socket only and

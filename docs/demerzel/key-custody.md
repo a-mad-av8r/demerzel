@@ -70,10 +70,17 @@ is rotated to make startup succeed.
 
 The Keychain account / Linux Secret Service `installation` attribute is the
 non-secret digest of the **canonical** absolute `DATA_DIR` path. The installed
-binary prints that locator without opening or revealing the vault:
+binary prints that locator without opening or revealing the vault. Use the
+running process's actual `DATA_DIR`; when it is unset the defaults are
+`$HOME/.demerzel` on macOS and
+`${XDG_DATA_HOME:-$HOME/.local/share}/demerzel` on Linux:
 
 ```sh
-export DATA_DIR="$HOME/.demerzel"
+if [ "$(uname -s)" = "Darwin" ]; then
+  export DATA_DIR="${DATA_DIR:-$HOME/.demerzel}"
+else
+  export DATA_DIR="${DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/demerzel}"
+fi
 locator="$(demerzel key-locator --data-dir "$DATA_DIR")"
 printf 'Vault account locator: %s\n' "$locator"
 ```

@@ -60,6 +60,13 @@ Developer-ID signing and a real upgrade/ACL test are release gates. The age
 identity is created from first boot and must be backed up separately from the
 data directory.
 
+Earlier development builds may have used a repository-relative `./data`
+directory. Homebrew does not move that data or its path-bound Keychain item to
+`~/.demerzel`. Before starting the service against old state, follow the
+[key-custody restore/import procedure](key-custody.md) with the original master
+key and a verified database backup; never regenerate age custody over an
+unmigrated database.
+
 For non-secret vault escrow/recovery metadata, record the read-only locator:
 
 ```sh
