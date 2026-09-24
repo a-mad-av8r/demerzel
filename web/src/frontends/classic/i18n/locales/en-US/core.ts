@@ -188,8 +188,8 @@ export default {
       fileTitle: 'Managed key file',
       fileDescription:
         'Without the environment variable, the instance reads or creates {path}; containers use {containerPath} by default',
-      dockerTitle: 'Docker instance',
-      dockerDescription:
+      containerTitle: 'Podman Compose service',
+      containerDescription:
         'Run {command} in a controlled terminal before reading the managed file. Never paste its output into logs, tickets, or chats',
     },
     recoveryPrefix:
@@ -229,7 +229,7 @@ export default {
     useLightTheme: 'Use light theme',
     useDarkTheme: 'Use dark theme',
     projectCommunity: 'Project & community',
-    starInvitation: 'Star the original GPT-Load project on GitHub',
+    starInvitation: 'Star the Demerzel project on GitHub',
     signOut: 'Sign out',
     placeholderDescription: 'This management feature will arrive in a later task in this stage.',
     backHome: 'Back to Home',

@@ -146,9 +146,6 @@ function databaseLabel(database: DatabaseDriver): string {
 <style scoped>
 .settings-section {
   display: grid;
-}
-
-.settings-section {
   gap: var(--space-4);
   scroll-margin-top: 76px;
 }
@@ -243,7 +240,7 @@ function databaseLabel(database: DatabaseDriver): string {
   font-family: var(--font-mono);
 }
 
-
+@media (max-width: 800px) {
   .settings-system__row {
     grid-template-columns: 115px minmax(0, 1fr);
   }

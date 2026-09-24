@@ -20,11 +20,7 @@ import CredentialCardActions from './CredentialCardActions.vue'
 import CredentialOutcomeSummary from './CredentialOutcomeSummary.vue'
 import CredentialQuotaRows from './CredentialQuotaRows.vue'
 import CredentialPlanBadge from './CredentialPlanBadge.vue'
-import {
-  credentialDisplayName,
-  credentialStatus,
-  credentialTime,
-} from './credential-presentation'
+import { credentialDisplayName, credentialStatus, credentialTime } from './credential-presentation'
 
 const props = defineProps<{
   row: CredentialRow
@@ -86,10 +82,7 @@ useLoadingActivity(() => Boolean(props.pending))
         />
       </AppTooltip>
       <div class="modern-subscription-card-identity">
-        <AppOverflowText
-          class="modern-subscription-card-name"
-          :text="credentialDisplayName(row)"
-        />
+        <AppOverflowText class="modern-subscription-card-name" :text="credentialDisplayName(row)" />
         <div class="modern-subscription-card-subtitle">
           <div class="modern-subscription-card-plan">
             <CredentialPlanBadge v-if="plan" :name="plan" :level="observation?.planLevel" />

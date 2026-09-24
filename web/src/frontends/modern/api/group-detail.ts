@@ -123,9 +123,13 @@ function readSettings(value: unknown): GroupSettings {
   const proxy = record(data.proxy)
   const effective = readRuntime(data.effective)
   if (
-    [...runtimeNumbers, ...runtimeSwitches, 'header_rules', 'account_selection', 'serial_quota_reserve_percent'].some(
-      (key) => effective[key as keyof RuntimeSettings] === undefined,
-    )
+    [
+      ...runtimeNumbers,
+      ...runtimeSwitches,
+      'header_rules',
+      'account_selection',
+      'serial_quota_reserve_percent',
+    ].some((key) => effective[key as keyof RuntimeSettings] === undefined)
   )
     throw new InvalidResponseError()
   return {

@@ -142,10 +142,7 @@ useMessageSource(() => (error.value ? { text: error.value, tone: 'danger' } : un
       }
     "
   >
-    <AppDialogContent
-      :title="t('credentialCards.test')"
-      :description="credentialDisplayName(row)"
-    >
+    <AppDialogContent :title="t('credentialCards.test')" :description="credentialDisplayName(row)">
       <AppDialogHeader
         :title="t('credentialCards.test')"
         :description="credentialDisplayName(row)"

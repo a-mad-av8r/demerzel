@@ -188,8 +188,8 @@ export default {
       fileTitle: '管理キーのファイル',
       fileDescription:
         '環境変数がない場合、インスタンスは {path} を読み込むか生成します。コンテナの既定値は {containerPath} です',
-      dockerTitle: 'Docker インスタンス',
-      dockerDescription:
+      containerTitle: 'Podman Compose サービス',
+      containerDescription:
         '管理された端末で {command} を実行してからキーのファイルを確認してください。出力をログ、チケット、チャットに貼り付けないでください',
     },
     recoveryPrefix: 'サービスが無効な応答を返す場合は、インスタンスのアドレスと状態を確認してから',
@@ -228,7 +228,7 @@ export default {
     useLightTheme: 'ライトテーマを使用',
     useDarkTheme: 'ダークテーマを使用',
     projectCommunity: 'プロジェクトとコミュニティ',
-    starInvitation: 'オリジナルの GPT-Load プロジェクトに Star を',
+    starInvitation: 'Demerzel プロジェクトに Star を',
     signOut: 'ログアウト',
     placeholderDescription: 'この管理機能は、このステージの後続タスクで実装されます。',
     backHome: 'ホームへ戻る',

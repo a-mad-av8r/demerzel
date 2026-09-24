@@ -436,7 +436,10 @@ function policyCountError(key: GroupPolicyCountKey): string | undefined {
 
 function setAccountSelection(value: string): void {
   if (!draft.value || (value !== 'serial' && value !== 'weighted_fair')) return
-  const overrides = { ...draft.value.overrides, account_selection: value }
+  const overrides: GroupSettingsDraft['overrides'] = {
+    ...draft.value.overrides,
+    account_selection: value,
+  }
   if (value === 'serial' && overrides.serial_quota_reserve_percent === undefined) {
     overrides.serial_quota_reserve_percent =
       saved.value?.effective.serial_quota_reserve_percent ?? 10
@@ -781,16 +784,14 @@ onBeforeUnmount(() => {
                 @update:model-value="setAccountSelection"
               />
             </div>
-            <div
-              v-if="accountSelection === 'serial'"
-              class="group-settings__account-policy"
-            >
+            <div v-if="accountSelection === 'serial'" class="group-settings__account-policy">
               <div class="group-settings__account-policy-text">
                 <strong>{{ t('group.settings.runtime.serialQuotaReservePercent') }}</strong>
                 <p>{{ t('group.settings.runtime.serialQuotaReserveHelp') }}</p>
               </div>
               <div class="group-settings__runtime-input">
                 <CompactFieldError
+                  id="group-settings-serial-quota-reserve-percent"
                   :error="serialQuotaReserveError || undefined"
                 >
                   <template #default="{ invalid, describedBy }">

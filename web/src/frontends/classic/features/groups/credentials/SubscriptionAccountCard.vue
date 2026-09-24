@@ -1336,11 +1336,7 @@ function runMenuAction(
               autocomplete="off"
               @update:model-value="labelDraft = $event"
             />
-            <AppButton
-              type="submit"
-              size="compact"
-              :disabled="busy || labelDraft === item.label"
-            >
+            <AppButton type="submit" size="compact" :disabled="busy || labelDraft === item.label">
               {{ t('group.credentials.saveLabel') }}
             </AppButton>
           </form>

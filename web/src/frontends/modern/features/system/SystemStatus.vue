@@ -78,5 +78,4 @@ const versionLabel = computed(() =>
   align-items: center;
   justify-content: center;
 }
-
 </style>

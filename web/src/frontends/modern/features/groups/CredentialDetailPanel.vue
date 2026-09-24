@@ -23,11 +23,7 @@ import {
   AppTooltip,
 } from '@modern/components/ui'
 import { useApiClient } from '@shared/http/client-context'
-import {
-  credentialDisplayName,
-  credentialStatus,
-  credentialTime,
-} from './credential-presentation'
+import { credentialDisplayName, credentialStatus, credentialTime } from './credential-presentation'
 import { validProxyURL } from '@modern/app/proxy'
 import GroupWorkspacePanel from './GroupWorkspacePanel.vue'
 import CredentialAccountInfo from './CredentialAccountInfo.vue'

@@ -72,7 +72,6 @@ const router = useRouter()
   line-height: var(--line-compact);
 }
 
-
 .home-welcome__action {
   white-space: nowrap;
 }

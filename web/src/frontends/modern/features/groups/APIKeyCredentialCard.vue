@@ -11,11 +11,7 @@ import {
   AppSwitch,
   AppTooltip,
 } from '@modern/components/ui'
-import {
-  credentialDisplayName,
-  credentialStatus,
-  credentialTime,
-} from './credential-presentation'
+import { credentialDisplayName, credentialStatus, credentialTime } from './credential-presentation'
 import CredentialCardActions from './CredentialCardActions.vue'
 import CredentialCardFrame from './CredentialCardFrame.vue'
 import CredentialOutcomeSummary from './CredentialOutcomeSummary.vue'
@@ -59,11 +55,7 @@ const issues = computed(() =>
           :disabled="disabled"
           @update:model-value="$emit('select', $event)"
       /></AppTooltip>
-      <AppOverflowText
-        v-if="row.label"
-        class="modern-api-card-label"
-        :text="row.label"
-      />
+      <AppOverflowText v-if="row.label" class="modern-api-card-label" :text="row.label" />
       <div class="modern-api-card-secret">
         <AppCopyValue
           :key="row.secretVersion"

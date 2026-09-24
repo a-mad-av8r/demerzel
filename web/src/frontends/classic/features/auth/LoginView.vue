@@ -275,11 +275,11 @@ async function submit(): Promise<void> {
                 </i18n-t>
               </div>
               <div class="ledger-login__auth-source">
-                <strong>{{ t('auth.help.dockerTitle') }}</strong>
-                <i18n-t keypath="auth.help.dockerDescription" tag="p">
+                <strong>{{ t('auth.help.containerTitle') }}</strong>
+                <i18n-t keypath="auth.help.containerDescription" tag="p">
                   <template #command>
-                    <OverflowTooltip as="code" content="docker exec -it demerzel sh">
-                      docker exec -it demerzel sh
+                    <OverflowTooltip as="code" content="podman-compose exec -T demerzel sh">
+                      podman-compose exec -T demerzel sh
                     </OverflowTooltip>
                   </template>
                 </i18n-t>

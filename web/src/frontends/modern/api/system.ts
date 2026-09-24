@@ -87,4 +87,3 @@ export async function getCurrentVersion(signal: AbortSignal): Promise<string> {
   if (record.status !== 'ok') throw new InvalidResponseError()
   return asNonBlankString(record.version)
 }
-

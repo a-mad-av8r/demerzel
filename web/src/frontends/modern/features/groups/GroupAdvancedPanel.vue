@@ -477,9 +477,9 @@ useMessageSource(() => (error.value ? { text: error.value, tone: 'danger' } : un
             :model-value="accountSelection"
             :label="t('groupDetail.accountSelection')"
             :options="accountSelectionOptions"
-            @update:model-value="setAccountSelection"
             size="sm"
             :disabled="busy"
+            @update:model-value="setAccountSelection"
           />
           <AppTextField
             v-if="accountSelection === 'serial'"

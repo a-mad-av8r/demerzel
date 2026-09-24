@@ -676,11 +676,7 @@ function normalizePatch(patch: CredentialPatch): CredentialPatch {
   if (
     keys.length === 0 ||
     keys.some(
-      (key) =>
-        key !== 'status' &&
-        key !== 'weight_manual' &&
-        key !== 'proxy' &&
-        key !== 'label',
+      (key) => key !== 'status' && key !== 'weight_manual' && key !== 'proxy' && key !== 'label',
     )
   ) {
     throw new Error('INVALID_CREDENTIAL_PATCH')

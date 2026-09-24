@@ -239,10 +239,7 @@ defineExpose({ nudge })
         </clipPath>
       </defs>
       <rect v-if="compact" class="modern-brand-mascot-tile" width="512" height="512" rx="128" />
-      <g
-        class="modern-brand-mascot-figure"
-        :transform="'translate(51.2 145.7518) scale(0.7474)'"
-      >
+      <g class="modern-brand-mascot-figure" :transform="'translate(51.2 145.7518) scale(0.7474)'">
         <g ref="body" class="modern-brand-mascot-body">
           <g class="modern-brand-mascot-tail">
             <use :href="'#' + silhouette" :clip-path="'url(#' + tailClip + ')'" />

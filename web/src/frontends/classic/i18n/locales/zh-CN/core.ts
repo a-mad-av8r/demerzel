@@ -178,8 +178,8 @@ export default {
       environmentDescription: '如果启动实例时设置了 {key}，请使用部署系统中受保护的值',
       fileTitle: '受管密钥文件',
       fileDescription: '未设置环境变量时，实例读取或生成 {path}；容器默认位于 {containerPath}',
-      dockerTitle: 'Docker 实例',
-      dockerDescription:
+      containerTitle: 'Podman Compose 服务',
+      containerDescription:
         '可在受控终端执行 {command} 后读取受管文件。不要把输出粘贴到日志、工单或聊天中',
     },
     recoveryPrefix: '如果服务返回无效响应，请先确认实例地址与健康状态，再',
@@ -217,7 +217,7 @@ export default {
     useLightTheme: '使用浅色主题',
     useDarkTheme: '使用深色主题',
     projectCommunity: '项目与社区',
-    starInvitation: '欢迎为原始 GPT-Load 项目点个 Star',
+    starInvitation: '欢迎为 Demerzel 项目点个 Star',
     signOut: '退出登录',
     placeholderDescription: '该管理功能将在当前实施阶段的后续任务中完成。',
     backHome: '返回首页',

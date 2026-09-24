@@ -92,7 +92,8 @@ export default {
       adminTitle: '管理员密钥',
       admin: '如果实例设置了 AUTH_KEY，使用部署系统中的对应值。',
       file: '未设置 AUTH_KEY 时，密钥位于 {path}；容器默认路径为 {containerPath}。',
-      docker: 'Docker 部署可在自己的终端进入容器后读取文件；不要把密钥贴到日志或聊天中。',
+      container:
+        'Podman Compose 部署可在自己的终端进入容器后读取文件；不要把密钥贴到日志或聊天中。',
     },
   },
   pages: {

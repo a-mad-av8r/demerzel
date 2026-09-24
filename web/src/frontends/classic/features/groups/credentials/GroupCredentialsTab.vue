@@ -1900,7 +1900,9 @@ async function runBatch(
             @test="openCredentialTest"
             @toggle="mutateItem($event, 'toggle')"
             @restore="mutateItem($event, 'restore')"
-            @remove="deleteTarget = { ids: [$event.credential_id], mask: credentialDisplayName($event) }"
+            @remove="
+              deleteTarget = { ids: [$event.credential_id], mask: credentialDisplayName($event) }
+            "
           />
         </LedgerRecordList>
         <PaginationBar

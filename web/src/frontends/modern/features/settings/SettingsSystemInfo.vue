@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { SystemInfo } from '@modern/api/system'
-import {
-  AppBadge,
-  AppButton,
-  AppCollectionState,
-  AppCopyValue,
-} from '@modern/components/ui'
+import { AppBadge, AppButton, AppCollectionState, AppCopyValue } from '@modern/components/ui'
 import { useI18n } from 'vue-i18n'
 
 defineProps<{ data?: SystemInfo; loading: boolean; failed: boolean }>()

@@ -94,8 +94,8 @@ export default {
       adminTitle: '管理者キー',
       admin: 'AUTH_KEY が設定されている場合は、デプロイ環境にある値を使用します。',
       file: 'AUTH_KEY が未設定の場合、キーは {path} にあります。コンテナの既定パスは {containerPath} です。',
-      docker:
-        'Docker の場合は自分の端末からコンテナに入り、ファイルを確認してください。キーをログやチャットに貼り付けないでください。',
+      container:
+        'Podman Compose の場合は自分の端末からコンテナに入り、ファイルを確認してください。キーをログやチャットに貼り付けないでください。',
     },
   },
   pages: {
