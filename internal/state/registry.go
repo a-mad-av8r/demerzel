@@ -56,6 +56,8 @@ type CredentialMeta struct {
 	IdentityGeneration uint64
 	WeightManual       *int
 	ModelCooldowns     map[string]time.Time
+	QuotaRemaining     *float64
+	QuotaResetAt       time.Time
 }
 
 type CredentialRef struct {
@@ -712,8 +714,10 @@ func (r *CredentialRegistry) collectCredentialCandidatesLocked(groupIDs []uint, 
 			meta := CredentialMeta{
 				ID: view.ID, GroupID: view.GroupID,
 				Version: view.Version, IdentityGeneration: view.IdentityGeneration,
-				WeightManual:   cloneWeight(view.WeightManual),
+				WeightManual: cloneWeight(view.WeightManual),
 				ModelCooldowns: view.ModelCooldowns,
+				QuotaRemaining: cloneFloat(view.QuotaRemaining),
+				QuotaResetAt: view.QuotaResetAt,
 			}
 			metas = append(metas, meta)
 		}

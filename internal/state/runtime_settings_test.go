@@ -38,6 +38,53 @@ func TestRouteStrategyAcceptsOnlyExplicitGlobalPolicies(t *testing.T) {
 	}
 }
 
+func TestGroupAccountSelectionDefaultsAndValidatesPolicy(t *testing.T) {
+	defaults, err := ResolveGroupRuntimeSettings(DefaultRuntimeSettings(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaults.AccountSelection != AccountSelectionWeightedFair || defaults.SerialQuotaReservePercent != 10 {
+		t.Fatalf("legacy defaults = %#v", defaults)
+	}
+	if IsRuntimeSettingKey(SettingAccountSelection) || IsRuntimeSettingKey(SettingSerialQuotaReservePercent) {
+		t.Fatal("group-only account selection was exposed as a system runtime setting")
+	}
+	for _, mode := range []AccountSelectionMode{AccountSelectionSerial, AccountSelectionWeightedFair} {
+		resolved, err := ResolveGroupRuntimeSettings(DefaultRuntimeSettings(), config.Settings{
+			SettingAccountSelection: string(mode),
+		})
+		if err != nil || resolved.AccountSelection != mode {
+			t.Fatalf("account_selection %q resolved to %#v, %v", mode, resolved, err)
+		}
+	}
+	resolved, err := ResolveGroupRuntimeSettings(DefaultRuntimeSettings(), config.Settings{
+		SettingAccountSelection:          string(AccountSelectionSerial),
+		SettingSerialQuotaReservePercent: json.Number("25"),
+	})
+	if err != nil || resolved.SerialQuotaReservePercent != 25 {
+		t.Fatalf("serial reserve = %#v, %v", resolved, err)
+	}
+	for _, test := range []struct {
+		key   string
+		value any
+	}{
+		{SettingAccountSelection, nil},
+		{SettingAccountSelection, ""},
+		{SettingAccountSelection, "Native_First"},
+		{SettingAccountSelection, "weighted_mix"},
+		{SettingAccountSelection, true},
+		{SettingSerialQuotaReservePercent, nil},
+		{SettingSerialQuotaReservePercent, json.Number("-1")},
+		{SettingSerialQuotaReservePercent, json.Number("101")},
+		{SettingSerialQuotaReservePercent, json.Number("1.5")},
+		{SettingSerialQuotaReservePercent, "10"},
+	} {
+		if _, err := ResolveGroupRuntimeSettings(DefaultRuntimeSettings(), config.Settings{test.key: test.value}); err == nil {
+			t.Errorf("group setting %s=%#v was accepted", test.key, test.value)
+		}
+	}
+}
+
 func TestCompilePublishesDefaultRuntimeSettingsWithoutGroups(t *testing.T) {
 	snapshot, err := Compile(CompileInput{})
 	if err != nil {

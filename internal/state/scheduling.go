@@ -54,11 +54,30 @@ func (m *SchedulingMember) Admit(baseline SchedulingProgress) {
 	m.Pending, m.suspended = false, false
 }
 
+type SerialAccountState struct {
+	IdentityGeneration       uint64
+	ResetAt                  time.Time
+	CooldownUntil            time.Time
+	NextProbeAt              time.Time
+	ProbeFailures            int
+	ProbeInFlight             bool
+	ProbeVerified            bool
+	ProbeUnsupported          bool
+	SuppressedQuotaResetAt   time.Time
+}
+
+type SerialGroupState struct {
+	CursorCredentialID       uint
+	CursorIdentityGeneration uint64
+	Accounts                 map[uint]*SerialAccountState
+}
+
 // SchedulingLedger 只在 SchedulingState.WithLock 回调内访问。
 // 凭据事实属于 Registry；本表独立保存分配历史，不随凭据配置替换而回退。
 type SchedulingLedger struct {
 	Members       map[uint]*SchedulingMember
 	ModelCursors  map[GroupModelKey][]string
+	SerialGroups  map[uint]*SerialGroupState
 	Groups        map[uint]bool
 	GroupRevision uint64
 	GroupsKnown   bool
@@ -78,6 +97,7 @@ func NewSchedulingState() *SchedulingState {
 	return &SchedulingState{ledger: SchedulingLedger{
 		Members: make(map[uint]*SchedulingMember), Groups: make(map[uint]bool),
 		ModelCursors: make(map[GroupModelKey][]string),
+		SerialGroups: make(map[uint]*SerialGroupState),
 	}}
 }
 
@@ -91,6 +111,12 @@ func (s *SchedulingState) syncCredentialLocked(view CredentialRuntimeView) {
 	d := &s.ledger
 	m := d.Members[view.ID]
 	if m == nil || m.GroupID != view.GroupID || m.IdentityGeneration != view.IdentityGeneration {
+		if groups := d.SerialGroups[view.GroupID]; groups != nil {
+			delete(groups.Accounts, view.ID)
+			if groups.CursorCredentialID == view.ID {
+				groups.CursorCredentialID, groups.CursorIdentityGeneration = 0, 0
+			}
+		}
 		// 启动先发布分组再加载凭据，尚未分配也要保留停用组的恢复边界。
 		m = &SchedulingMember{ID: view.ID, GroupID: view.GroupID,
 			IdentityGeneration: view.IdentityGeneration,
@@ -139,6 +165,15 @@ func (s *SchedulingState) Remove(id uint) {
 }
 
 func (s *SchedulingState) removeLocked(id uint) {
+	member := s.ledger.Members[id]
+	if member != nil {
+		if serial := s.ledger.SerialGroups[member.GroupID]; serial != nil {
+			delete(serial.Accounts, id)
+			if serial.CursorCredentialID == id {
+				serial.CursorCredentialID, serial.CursorIdentityGeneration = 0, 0
+			}
+		}
+	}
 	delete(s.ledger.Members, id)
 	if s.ledger.LastMember == id {
 		s.ledger.LastMember, s.ledger.Consecutive = 0, 0
@@ -166,6 +201,15 @@ func (s *SchedulingState) SyncGroups(snapshot *ConfigSnapshot) {
 			}
 		}
 		d.Groups, d.GroupRevision, d.GroupsKnown = groups, snapshot.Revision, true
+		for groupID, serial := range d.SerialGroups {
+			if _, exists := snapshot.GroupCatalog[groupID]; !exists {
+				delete(d.SerialGroups, groupID)
+				continue
+			}
+			for _, account := range serial.Accounts {
+				account.ProbeUnsupported = false
+			}
+		}
 		s.syncModelCursorsLocked(snapshot)
 	})
 }

@@ -18,6 +18,7 @@ import (
 	"gpt-load/internal/state"
 	stateloader "gpt-load/internal/state/loader"
 	"gpt-load/internal/storage/models"
+	"gpt-load/internal/platform/config"
 )
 
 type groupCreateDigestBody struct {
@@ -31,6 +32,7 @@ type groupCreateDigestBody struct {
 	StagedCredentialIDs []string              `json:"staged_credential_ids,omitempty"`
 	ConfirmSameTarget   bool                  `json:"confirm_same_target,omitempty"`
 	Proxy               *outboundproxy.Config `json:"proxy,omitempty"`
+	Overrides           json.RawMessage       `json:"overrides,omitempty"`
 }
 
 type credentialImportDigestBody struct {
@@ -53,6 +55,10 @@ func (s *Service) CreateGroupIdempotent(
 			return GroupCreateResult{}, err
 		}
 	}
+	digestOverrides, err := groupCreateDigestOverrides(normalized.settings)
+	if err != nil {
+		return GroupCreateResult{}, app_errors.ErrInternalServer
+	}
 	digestBody := groupCreateDigestBody{
 		PriceMultiplier:     priceMultiplierDigest(normalized.priceMultiplier),
 		Name:                normalized.explicitName,
@@ -64,6 +70,7 @@ func (s *Service) CreateGroupIdempotent(
 		StagedCredentialIDs: append([]string(nil), normalized.stagedCredentialIDs...),
 		ConfirmSameTarget:   normalized.confirmSameTarget,
 		Proxy:               normalized.proxy,
+		Overrides:           digestOverrides,
 	}
 	canonicalBody, err := canonicalIdempotencyBody(digestBody)
 	if err != nil {
@@ -207,6 +214,19 @@ func (s *Service) CreateGroupIdempotent(
 		s.catalogSync.RequestGroupSync()
 	}
 	return result, nil
+}
+func groupCreateDigestOverrides(settings config.Settings) (json.RawMessage, error) {
+	canonical := make(map[string]any, len(settings))
+	for key, value := range settings {
+		if key == state.SettingAccountSelection && value == string(state.AccountSelectionSerial) {
+			continue
+		}
+		canonical[key] = value
+	}
+	if len(canonical) == 0 {
+		return nil, nil
+	}
+	return canonicaljson.Marshal(canonical)
 }
 
 func (s *Service) ImportGroupCredentialsIdempotent(

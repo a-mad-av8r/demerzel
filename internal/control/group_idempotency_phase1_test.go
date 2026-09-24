@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"gpt-load/internal/channel"
+	"gpt-load/internal/platform/config"
 	app_errors "gpt-load/internal/platform/errors"
 	"gpt-load/internal/storage/models"
 )
@@ -52,6 +53,20 @@ func TestCreateGroupIdempotentReplaysOriginalCountsAndPreservesCredentialMultipl
 	different := request
 	different.Credentials = "K"
 	_, err = fixture.service.CreateGroupIdempotent(t.Context(), key, different)
+	assertAPIErrorCode(t, err, app_errors.ErrIdempotencyKeyReused.Code)
+	explicitDefault := request
+	explicitDefault.Overrides = optionalField[config.Settings]{Set: true, Value: config.Settings{
+		"account_selection": "serial",
+	}}
+	equivalent, err := fixture.service.CreateGroupIdempotent(t.Context(), key, explicitDefault)
+	if err != nil || !reflect.DeepEqual(equivalent, first) {
+		t.Fatalf("explicit serial default replay = %#v, %v", equivalent, err)
+	}
+	differentPolicy := request
+	differentPolicy.Overrides = optionalField[config.Settings]{Set: true, Value: config.Settings{
+		"account_selection": "weighted_fair",
+	}}
+	_, err = fixture.service.CreateGroupIdempotent(t.Context(), key, differentPolicy)
 	assertAPIErrorCode(t, err, app_errors.ErrIdempotencyKeyReused.Code)
 }
 
@@ -106,8 +121,8 @@ func TestCreateGroupIdempotentCanonicalizesDisabledAliasesAndReplaysNarrowResult
 	if err := fixture.db.First(&group, first.GroupID).Error; err != nil {
 		t.Fatalf("read created group: %v", err)
 	}
-	if got := string(group.Overrides); got != `{}` {
-		t.Fatalf("stored config = %s, want empty override", got)
+	if got := string(group.Overrides); got != `{"account_selection":"serial"}` {
+		t.Fatalf("stored account selection = %s", got)
 	}
 	if stored := loadCreatedGroupModels(t, fixture, first.GroupID); !reflect.DeepEqual(stored, []GroupModel{{ID: "provider-model"}}) {
 		t.Fatalf("stored models = %#v, want disabled alias omitted", stored)

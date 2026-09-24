@@ -30,6 +30,7 @@ type GroupCreateRequest struct {
 	ConnectionType      models.ConnectionType               `json:"connection_type"`
 	Params              json.RawMessage                     `json:"params"`
 	Models              optionalGroupModels                 `json:"models"`
+	Overrides           optionalField[config.Settings]      `json:"overrides"`
 	Credentials         string                              `json:"credentials"`
 	StagedCredentialIDs []string                            `json:"staged_credential_ids"`
 	ConfirmSameTarget   bool                                `json:"confirm_same_target"`
@@ -61,6 +62,7 @@ type normalizedGroupCreate struct {
 	hostname            string
 	explicitName        *string
 	models              []GroupModel
+	settings            config.Settings
 	encodedOverrides    models.JSON
 	credentials         normalizedCredentials
 	stagedCredentialIDs []string
@@ -220,6 +222,10 @@ func (s *Service) normalizeGroupCreate(
 			return normalizedGroupCreate{}, err
 		}
 	}
+	groupSettings, encodedOverrides, err := normalizeNewGroupSettings(request.Overrides)
+	if err != nil {
+		return normalizedGroupCreate{}, err
+	}
 
 	runtimeModels := make([]state.ModelConfig, 0, len(groupModels))
 	for _, model := range groupModels {
@@ -253,7 +259,7 @@ func (s *Service) normalizeGroupCreate(
 		Groups: []state.GroupConfig{{
 			ID: 1, Name: "candidate", ChannelID: request.ChannelID, PriceMultiplier: &priceMultiplier,
 			ConnectionType: string(connectionType), Params: canonicalParams,
-			Models: runtimeModels, Settings: config.Settings{}, Proxy: proxy, Enabled: true,
+			Models: runtimeModels, Settings: groupSettings, Proxy: proxy, Enabled: true,
 		}},
 	})
 	if err != nil {
@@ -278,7 +284,8 @@ func (s *Service) normalizeGroupCreate(
 		hostname:            hostname,
 		explicitName:        explicitName,
 		models:              groupModels,
-		encodedOverrides:    models.JSON(`{}`),
+		settings:            groupSettings,
+		encodedOverrides:    encodedOverrides,
 		credentials:         credentials,
 		stagedCredentialIDs: stagedCredentialIDs,
 		confirmSameTarget:   request.ConfirmSameTarget,
@@ -305,6 +312,27 @@ func (s *Service) resolveChannelConnectionType(
 	return connectionType, nil
 }
 
+func normalizeNewGroupSettings(request optionalField[config.Settings]) (config.Settings, models.JSON, error) {
+	if request.Set && request.Null {
+		return nil, nil, app_errors.ErrValidation
+	}
+	settings := config.Settings(nil)
+	if request.Set {
+		settings = request.Value
+	}
+	normalized, _, err := normalizeGroupSettings(settings)
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, exists := normalized[state.SettingAccountSelection]; !exists {
+		normalized[state.SettingAccountSelection] = string(state.AccountSelectionSerial)
+	}
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		return nil, nil, app_errors.ErrValidation
+	}
+	return normalized, models.JSON(encoded), nil
+}
 func normalizeGroupSettings(settings config.Settings) (config.Settings, models.JSON, error) {
 	if _, exists := settings[state.SettingRetryCount]; exists {
 		return nil, nil, app_errors.ErrValidation
@@ -334,6 +362,9 @@ func normalizeGroupSettings(settings config.Settings) (config.Settings, models.J
 			continue
 		}
 		normalized[key] = canonicalizeGroupSettingNumbers(value)
+	}
+	if _, err := state.ResolveGroupRuntimeSettings(state.DefaultRuntimeSettings(), normalized); err != nil {
+		return nil, nil, app_errors.ErrValidation
 	}
 	encoded, err = json.Marshal(normalized)
 	if err != nil {

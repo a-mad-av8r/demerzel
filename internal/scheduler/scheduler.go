@@ -38,12 +38,16 @@ type Query struct {
 type Selection struct {
 	CredentialID             uint
 	GroupID                  uint
+	IdentityGeneration       uint64
 	ChannelID                channel.ID
 	ResolvedTarget           channel.ResolvedTarget
 	RouteMode                channel.RouteMode
 	UpstreamModelID          *string
 	Group                    state.GroupView
 	ResponsesStoreDowngraded bool
+	SerialProbe              bool
+	SerialProbePending       bool
+	QuotaResetAt             time.Time
 }
 
 // SelectionIterator is the request-scoped selector contract. Implementations
@@ -65,8 +69,10 @@ type candidateTarget struct {
 }
 
 type weightedCredential struct {
-	meta   state.CredentialMeta
-	weight int64
+	meta              state.CredentialMeta
+	weight            int64
+	serialProbe        bool
+	serialProbePending bool
 }
 
 type candidatePool struct {
@@ -84,12 +90,14 @@ type Iterator struct {
 	storeDowngraded       candidatePool
 	routeModeTiers        [][]channel.RouteMode
 	allowedCredentialIDs  map[uint]struct{}
-	preferredCredentialID uint
-	tried                 map[uint]struct{}
-	skippedGroups         map[uint]struct{}
-	allowedCredentialRefs map[uint]credentialIdentity
-	staticReason          ReasonCode
-	now                   func() time.Time
+	preferredCredentialID  uint
+	tried                  map[uint]struct{}
+	skippedGroups          map[uint]struct{}
+	allowedCredentialRefs  map[uint]credentialIdentity
+	staticReason           ReasonCode
+	now                    func() time.Time
+	retrySameCredentialID  uint
+	retrySameGroupID       uint
 }
 
 type normalizedQuery struct {
@@ -214,7 +222,7 @@ func cloneAllowedCredentialIDs(query Query) map[uint]struct{} {
 }
 
 func (iterator *Iterator) SkipGroup(groupID uint) {
-	if iterator == nil || groupID == 0 {
+	if iterator == nil || groupID == 0 || iterator.retrySameGroupID == groupID {
 		return
 	}
 	if iterator.skippedGroups == nil {
@@ -252,7 +260,13 @@ func (iterator *Iterator) withWeightedPool(candidates *candidatePool, modes []ch
 			}
 		}
 	}
-	excluded := func(id uint) bool { _, tried := iterator.tried[id]; return tried }
+	excluded := func(id uint) bool {
+		if id == iterator.retrySameCredentialID {
+			return false
+		}
+		_, tried := iterator.tried[id]
+		return tried
+	}
 	consume := func(pool []state.CredentialMeta) {
 		weighted := make([]weightedCredential, 0, len(pool))
 		for _, credential := range pool {
@@ -298,22 +312,32 @@ func (iterator *Iterator) Next() (Selection, error) {
 	}
 	for _, pool := range []*candidatePool{&iterator.regular, &iterator.storeDowngraded} {
 		for _, modes := range iterator.routeModeTiers {
-			var selected state.CredentialMeta
+			var selected weightedCredential
 			var target candidateTarget
 			var found bool
 			now := iterator.now()
+			preferred := iterator.preferredCredentialID
+			if iterator.retrySameCredentialID != 0 {
+				preferred = iterator.retrySameCredentialID
+			}
 			iterator.withWeightedPool(pool, modes, now, func(weighted []weightedCredential) {
-				selected, found = iterator.selectCredential(weighted, iterator.preferredCredentialID)
+				selected, found = iterator.selectCredential(weighted, preferred, now)
 				if !found {
 					return
 				}
-				target = iterator.selectTarget(pool, modes, selected, now)
+				target = iterator.selectTarget(pool, modes, selected.meta, now)
 			})
 			if !found {
 				continue
 			}
-			iterator.tried[selected.ID] = struct{}{}
-			return newSelection(selected, target), nil
+			iterator.tried[selected.meta.ID] = struct{}{}
+			selection := newSelection(selected.meta, target)
+			selection.SerialProbe = selected.serialProbe
+			selection.SerialProbePending = selected.serialProbePending
+			if iterator.retrySameCredentialID == selected.meta.ID {
+				iterator.retrySameCredentialID, iterator.retrySameGroupID = 0, 0
+			}
+			return selection, nil
 		}
 	}
 	return Selection{}, ErrExhausted
@@ -416,18 +440,19 @@ func cloneWebsocketCapabilities(value *execution.WebsocketCapabilities) *executi
 }
 
 func newSelection(credential state.CredentialMeta, target candidateTarget) Selection {
-	upstreamModelID := optionalModel(target.target.UpstreamModelID)
 	resolvedTarget := target.target.ResolvedTarget
 	resolvedTarget.TargetConfig = append([]byte(nil), resolvedTarget.TargetConfig...)
 	return Selection{
 		CredentialID:             credential.ID,
 		GroupID:                  credential.GroupID,
+		IdentityGeneration:       credential.IdentityGeneration,
 		ChannelID:                resolvedTarget.ChannelID,
 		ResolvedTarget:           resolvedTarget,
 		RouteMode:                target.target.Mode,
-		UpstreamModelID:          upstreamModelID,
+		UpstreamModelID:          optionalModel(target.target.UpstreamModelID),
 		Group:                    cloneGroupView(target.group),
 		ResponsesStoreDowngraded: target.responsesStoreDowngraded,
+		QuotaResetAt:             credential.QuotaResetAt,
 	}
 }
 

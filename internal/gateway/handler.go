@@ -1023,6 +1023,7 @@ func (handler *Handler) executeAttempts(
 			attemptNow,
 			decisionContextForSelection(selection),
 		)
+		reportSerialAttempt(iterator, selection, decision, attemptNow, decision.Retry != health.RetryNone)
 		recordedAttempt := recorder.recordAttempt(
 			selection, nil, result, decision, attemptStarted, attemptCompleted,
 		)
@@ -1077,16 +1078,38 @@ func (handler *Handler) executeAttempts(
 			}
 			candidateRef, allowed := allowedCredentialRefs[selection.CredentialID]
 			if !allowed || candidateRef.GroupID != selection.GroupID {
+				if selection.SerialProbe {
+					reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				}
 				continue
 			}
 			ref = candidateRef
 		}
+		var serialProbeProtocol protocol.Protocol
+		var serialProbeMode execution.RouteMode
+		var serialProbeDialect dialect.Dialect
+		if selection.SerialProbe {
+			var supported bool
+			serialProbeProtocol, serialProbeMode, serialProbeDialect, supported =
+				serialListModelsRoute(selection.Group, handler.dialects)
+			if !supported {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeUnsupported, handler.now())
+				continue
+			}
+		}
 		encrypted, active := handler.registry.ActiveEncryptedCredentialDataIfMatch(ref)
 		if !active {
+			if selection.SerialProbe {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+			}
 			continue
 		}
 		prepared := prepareRequest(selection)
 		if prepared.err != nil {
+			if selection.SerialProbe {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				continue
+			}
 			if errors.Is(prepared.err, errRequestTooLarge) {
 				if parameterOverrideFailure == nil {
 					parameterOverrideFailure = &reasonRequestTooLarge
@@ -1111,6 +1134,10 @@ func (handler *Handler) executeAttempts(
 		attemptObservationsAvailable := prepared.observationsAvailable
 		decryptedCredential, err := handler.encryption.Decrypt(encrypted)
 		if err != nil {
+			if selection.SerialProbe {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				continue
+			}
 			if !recordCandidatePreparationFailure(
 				selection,
 				attemptObservations,
@@ -1131,6 +1158,10 @@ func (handler *Handler) executeAttempts(
 			decryptedCredential,
 		)
 		if err != nil {
+			if selection.SerialProbe {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				continue
+			}
 			if !recordCandidatePreparationFailure(
 				selection,
 				attemptObservations,
@@ -1156,6 +1187,10 @@ func (handler *Handler) executeAttempts(
 				code = "credential_proxy_prepare_failed"
 				summary = "Credential proxy configuration could not be prepared."
 				scope = execution.ErrorScopeCredential
+			}
+			if selection.SerialProbe {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				continue
 			}
 			if !recordCandidatePreparationFailure(
 				selection,
@@ -1185,16 +1220,56 @@ func (handler *Handler) executeAttempts(
 					handler.quotaNow(),
 				)
 				if !current {
+					if selection.SerialProbe {
+						reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+					}
 					handler.completeConfigurationChanged(ginContext, recorder)
 					return
 				}
 			}
 			if !decision.Allowed {
+				if selection.SerialProbe {
+					reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, handler.now())
+				}
 				handler.completeAccessQuotaReason(ginContext, recorder, decision)
 				return
 			}
 			quotaAdmission.ticket = ticket
 			quotaAdmission.admitted = true
+		}
+
+		if selection.SerialProbe {
+			probeRequestID := "serial-probe"
+			if recorder != nil && recorder.requestID != "" {
+				probeRequestID = recorder.requestID
+			}
+			probeInput := ForwardInput{
+				Dialect: serialProbeDialect, Group: selection.Group,
+				APIKey: normalizedCredential.apiKey,
+				CredentialSecrets: normalizedCredential.secrets,
+				Request: &dialect.ParsedRequest{
+					Method: http.MethodGet, Path: "/v1/models", Header: make(http.Header),
+				},
+				RequestID: probeRequestID,
+				AttemptID: probeRequestID + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
+				AttemptSequence: 1, ClientProtocol: serialProbeProtocol,
+				Operation: execution.OperationListModels,
+				ChannelID: string(selection.ChannelID), RouteMode: serialProbeMode,
+				TargetConfig: selection.ResolvedTarget.TargetConfig,
+				Credential: execution.NewCredentialSnapshot(
+					selection.CredentialID, ref.Version, ref.IdentityGeneration, normalizedCredential.payload,
+				),
+				Proxy: effectiveProxy, ProxyFingerprint: proxyFingerprint,
+			}
+			probeResult := handler.forwarder.Forward(ginContext.Request.Context(), probeInput)
+			probeNow := handler.now()
+			if !serialListModelsProbeSucceeded(probeResult) {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, probeNow)
+				continue
+			}
+			reportSerialProbe(iterator, selection, scheduler.SerialProbeSucceeded, probeNow)
+			selection.SerialProbe = false
+			selection.SerialProbePending = true
 		}
 
 		attemptSequence++
@@ -1298,6 +1373,9 @@ func (handler *Handler) executeAttempts(
 			attemptNow,
 			decisionContextForSelection(selection),
 		)
+		willRetry := !result.Committed && !requestCanceled &&
+			decision.Retry != health.RetryNone && forwardAttempts < forwardAttemptLimit
+		reportSerialAttempt(iterator, selection, decision, attemptNow, willRetry)
 		if result.Committed {
 			if recorder != nil {
 				recordedAttempt := recorder.recordStreamAttempt(

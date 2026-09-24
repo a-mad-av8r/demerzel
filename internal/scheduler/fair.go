@@ -17,12 +17,22 @@ func (iterator *Iterator) ChargeReplay(selection Selection, ref state.Credential
 			if meta.ID != ref.ID || meta.IdentityGeneration != ref.IdentityGeneration {
 				continue
 			}
-			if selection.UpstreamModelID != nil && modelCooldownUntil(meta.ModelCooldowns, *selection.UpstreamModelID, iterator.operation, iterator.now()).After(iterator.now()) {
+			now := iterator.now()
+			if selection.UpstreamModelID != nil &&
+				modelCooldownUntil(meta.ModelCooldowns, *selection.UpstreamModelID, iterator.operation, now).After(now) {
 				continue
 			}
 			weight := effectiveWeight(selection.Group.WeightManual, meta.WeightManual)
 			if weight > 0 {
-				_, charged = iterator.selectCredential([]weightedCredential{{meta: meta, weight: weight}}, ref.ID)
+				previousRetryID, previousRetryGroupID := iterator.retrySameCredentialID, iterator.retrySameGroupID
+				if selection.SerialProbePending {
+					iterator.retrySameCredentialID, iterator.retrySameGroupID = ref.ID, ref.GroupID
+				}
+				selected, found := iterator.selectCredential(
+					[]weightedCredential{{meta: meta, weight: weight}}, ref.ID, now,
+				)
+				iterator.retrySameCredentialID, iterator.retrySameGroupID = previousRetryID, previousRetryGroupID
+				charged = found && selected.meta.ID == ref.ID
 			}
 		}
 	}
@@ -38,8 +48,12 @@ func (iterator *Iterator) ChargeReplay(selection Selection, ref state.Credential
 }
 
 // selectCredential 只操作内存；真实 Registry 调用方同时持有凭据读锁。
-func (iterator *Iterator) selectCredential(candidates []weightedCredential, preferred uint) (state.CredentialMeta, bool) {
-	var selected state.CredentialMeta
+func (iterator *Iterator) selectCredential(
+	candidates []weightedCredential,
+	preferred uint,
+	now time.Time,
+) (weightedCredential, bool) {
+	var selected weightedCredential
 	var found bool
 	iterator.progress.WithLock(func(ledger *state.SchedulingLedger) {
 		eligible := candidates[:0]
@@ -59,6 +73,32 @@ func (iterator *Iterator) selectCredential(candidates []weightedCredential, pref
 		if len(eligible) == 0 || ledger.Sequence == ^uint64(0) {
 			return
 		}
+
+		selectionPool := make([]weightedCredential, 0, len(eligible))
+		serialGroups := make(map[uint]struct{})
+		for _, candidate := range eligible {
+			group, ok := iterator.snapshot.Groups[candidate.meta.GroupID]
+			if !ok || group.AccountSelection != state.AccountSelectionSerial {
+				selectionPool = append(selectionPool, candidate)
+				continue
+			}
+			if _, visited := serialGroups[group.ID]; visited {
+				continue
+			}
+			serialGroups[group.ID] = struct{}{}
+			serialCandidate, isProbe, available := selectSerialCandidateLocked(
+				ledger, eligible, group, now, iterator.tried, iterator.retrySameCredentialID,
+			)
+			if available {
+				serialCandidate.serialProbe = isProbe
+				selectionPool = append(selectionPool, serialCandidate)
+			}
+		}
+		eligible = selectionPool
+		if len(eligible) == 0 {
+			return
+		}
+
 		// 同批成员共用已有成员的领先进度，不能继承落后成员的历史欠额。
 		for _, candidate := range eligible {
 			member := ledger.Members[candidate.meta.ID]
@@ -101,9 +141,20 @@ func (iterator *Iterator) selectCredential(candidates []weightedCredential, pref
 				first = alternative
 			}
 		}
+		if first.serialProbe {
+			serial := ledger.SerialGroups[first.meta.GroupID]
+			account := serial.Accounts[first.meta.ID]
+			if account == nil || account.IdentityGeneration != first.meta.IdentityGeneration || account.ProbeInFlight {
+				return
+			}
+			account.ProbeInFlight = true
+		}
 		member := ledger.Members[first.meta.ID]
 		next, ok := member.Progress.Advance(uint64(first.weight))
 		if !ok {
+			if first.serialProbe {
+				ledger.SerialGroups[first.meta.GroupID].Accounts[first.meta.ID].ProbeInFlight = false
+			}
 			return
 		}
 		member.Progress = next
@@ -119,7 +170,7 @@ func (iterator *Iterator) selectCredential(candidates []weightedCredential, pref
 			// 超过所有合法阈值后无需继续增长；亲和和单候选仍可持续分配。
 			ledger.Consecutive++
 		}
-		selected, found = first.meta, true
+		selected, found = first, true
 	})
 	return selected, found
 }

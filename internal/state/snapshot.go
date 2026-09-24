@@ -158,6 +158,8 @@ type GroupView struct {
 	Timeouts                  TimeoutConfig
 	HeaderRules               HeaderRules
 	BlacklistThreshold        int
+	AccountSelection          AccountSelectionMode
+	SerialQuotaReservePercent int
 	AffinityEnabled           bool
 	ResponsesWebsocketEnabled bool
 	WeightManual              *int
@@ -292,6 +294,8 @@ func Compile(input CompileInput) (*ConfigSnapshot, error) {
 			Timeouts:                  resolved.Timeouts,
 			HeaderRules:               resolved.HeaderRules,
 			BlacklistThreshold:        resolved.BlacklistThreshold,
+			AccountSelection:          resolved.AccountSelection,
+			SerialQuotaReservePercent: resolved.SerialQuotaReservePercent,
 			AffinityEnabled:           resolved.AffinityEnabled,
 			ResponsesWebsocketEnabled: resolved.ResponsesWebsocketEnabled,
 			WeightManual:              cloneWeight(group.WeightManual),

@@ -23,6 +23,8 @@ const (
 	SettingResponseHeaderRules       = "response_header_rules"
 	SettingRetryCount                = "retry_count"
 	SettingRouteStrategy             = "route_strategy"
+	SettingAccountSelection          = "account_selection"
+	SettingSerialQuotaReservePercent = "serial_quota_reserve_percent"
 	SettingBlacklistThreshold        = "blacklist_threshold"
 	SettingAffinityEnabled           = "affinity_enabled"
 	SettingResponsesWebsocketEnabled = "responses_websocket_enabled"
@@ -41,6 +43,13 @@ const (
 	RouteStrategyWeightedMix RouteStrategy = "weighted_mix"
 )
 
+type AccountSelectionMode string
+
+const (
+	AccountSelectionWeightedFair AccountSelectionMode = "weighted_fair"
+	AccountSelectionSerial       AccountSelectionMode = "serial"
+)
+
 const (
 	defaultRequestLogRetentionDays = 7
 	minRequestLogRetentionDays     = 1
@@ -49,6 +58,8 @@ const (
 	maxAffinityCapacity            = 1_000_000
 	maxJSONSafeInteger             = int64(1<<53 - 1)
 )
+
+const defaultSerialQuotaReservePercent = 10
 
 type RuntimeSettings struct {
 	FirstByteTimeout          time.Duration
@@ -73,6 +84,8 @@ type ResolvedGroupSettings struct {
 	Timeouts                  TimeoutConfig
 	HeaderRules               HeaderRules
 	BlacklistThreshold        int
+	AccountSelection          AccountSelectionMode
+	SerialQuotaReservePercent int
 	AffinityEnabled           bool
 	ResponsesWebsocketEnabled bool
 	ParameterOverrides        parameteroverride.Rules
@@ -247,6 +260,8 @@ func ResolveGroupRuntimeSettings(
 		},
 		HeaderRules:               cloneHeaderRules(base.HeaderRules),
 		BlacklistThreshold:        base.BlacklistThreshold,
+		AccountSelection:          AccountSelectionWeightedFair,
+		SerialQuotaReservePercent: defaultSerialQuotaReservePercent,
 		AffinityEnabled:           base.AffinityEnabled,
 		ResponsesWebsocketEnabled: base.ResponsesWebsocketEnabled,
 	}
@@ -278,6 +293,18 @@ func ResolveGroupRuntimeSettings(
 			resolved.HeaderRules = parsed
 		case SettingRetryCount:
 			// 兼容读取历史分组配置；重试预算仅由系统设置决定。
+		case SettingAccountSelection:
+			mode, err := parseAccountSelectionMode(value)
+			if err != nil {
+				return ResolvedGroupSettings{}, err
+			}
+			resolved.AccountSelection = mode
+		case SettingSerialQuotaReservePercent:
+			percent, err := wholeNumberInRange(key, value, 0, 100)
+			if err != nil {
+				return ResolvedGroupSettings{}, err
+			}
+			resolved.SerialQuotaReservePercent = percent
 			continue
 		case SettingBlacklistThreshold:
 			parsed, err := nonNegativeWholeNumber(key, value)
@@ -367,6 +394,19 @@ func parseRouteStrategy(value any) (RouteStrategy, error) {
 		}
 	}
 	return "", fmt.Errorf("%s must be native_first or weighted_mix", SettingRouteStrategy)
+}
+func parseAccountSelectionMode(value any) (AccountSelectionMode, error) {
+	mode, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("%s must be serial or weighted_fair", SettingAccountSelection)
+	}
+	parsed := AccountSelectionMode(mode)
+	switch parsed {
+	case AccountSelectionSerial, AccountSelectionWeightedFair:
+		return parsed, nil
+	default:
+		return "", fmt.Errorf("%s must be serial or weighted_fair", SettingAccountSelection)
+	}
 }
 
 func strictBoolean(path string, value any) (bool, error) {
