@@ -32,6 +32,7 @@ type CredentialImportResult struct {
 
 type CredentialUpdateRequest struct {
 	Status       optionalField[state.CredentialStatus] `json:"status"`
+	Label        optionalField[string]                 `json:"label"`
 	WeightManual optionalField[int]                    `json:"weight_manual"`
 	Proxy        optionalField[outboundproxy.Config]   `json:"proxy"`
 }
@@ -79,6 +80,7 @@ type CredentialItemResponse struct {
 	ConnectionType          string                         `json:"connection_type"`
 	SecretVersion           uint64                         `json:"secret_version"`
 	Mask                    string                         `json:"mask"`
+	Label                   string                         `json:"label"`
 	Account                 CredentialAccountResponse      `json:"account"`
 	AuthState               string                         `json:"auth_state"`
 	AuthErrorCode           string                         `json:"auth_error_code,omitempty"`
@@ -434,6 +436,7 @@ func (s *Service) mapCredentialCollection(
 		}
 		item.ConnectionType = string(normalizeGroupConnectionType(observation.group.ConnectionType))
 		item.SecretVersion = row.SecretVersion
+		item.Label = row.Label
 		item.AuthState = string(row.AuthState)
 		item.AuthErrorCode = safeInternalErrorCode(row.AuthErrorCode)
 		item.Account = account
@@ -505,7 +508,8 @@ func credentialCollectionMatches(record credentialCollectionRecord, query Creden
 		return true
 	}
 	queryValue := strings.ToLower(query.Query)
-	return strings.Contains(strings.ToLower(record.item.Mask), queryValue) ||
+	return strings.Contains(strings.ToLower(record.item.Label), queryValue) ||
+		strings.Contains(strings.ToLower(record.item.Mask), queryValue) ||
 		strings.Contains(strings.ToLower(record.item.Account.Email), queryValue)
 }
 

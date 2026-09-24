@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
+	"unicode"
 
 	"gorm.io/gorm"
 
@@ -23,7 +25,7 @@ func normalizeCredentialUpdate(
 	request CredentialUpdateRequest,
 	encryptionService encryption.Service,
 ) (status *state.CredentialStatus, weight *int, weightSet bool, proxy *string, proxySet bool, err error) {
-	if !request.Status.Set && !request.WeightManual.Set && !request.Proxy.Set {
+	if !request.Status.Set && !request.Label.Set && !request.WeightManual.Set && !request.Proxy.Set {
 		return nil, nil, false, nil, false, app_errors.ErrBadRequest
 	}
 	if request.Status.Set {
@@ -49,6 +51,18 @@ func normalizeCredentialUpdate(
 		return nil, nil, false, nil, false, err
 	}
 	return status, weight, weightSet, proxy, proxySet, nil
+}
+
+func normalizeCredentialLabel(field optionalField[string]) (string, bool, error) {
+	if !field.Set {
+		return "", false, nil
+	}
+	if field.Null || len(field.Value) > 255 ||
+		field.Value != strings.TrimSpace(field.Value) ||
+		strings.IndexFunc(field.Value, unicode.IsControl) >= 0 {
+		return "", false, app_errors.ErrValidation
+	}
+	return field.Value, true, nil
 }
 
 func nextCredentialUpdatedAtMS(now time.Time, previous int64) (int64, error) {
@@ -137,6 +151,10 @@ func (s *Service) UpdateGroupCredential(
 	if groupID == 0 || credentialID == 0 {
 		return CredentialItemResponse{}, app_errors.ErrBadRequest
 	}
+	label, labelSet, err := normalizeCredentialLabel(request.Label)
+	if err != nil {
+		return CredentialItemResponse{}, err
+	}
 	status, weight, weightSet, proxy, proxySet, err := normalizeCredentialUpdate(request, s.encryption)
 	if err != nil {
 		return CredentialItemResponse{}, err
@@ -173,6 +191,10 @@ func (s *Service) UpdateGroupCredential(
 			return app_errors.ErrInternalServer
 		}
 		updates := map[string]any{"updated_at_ms": updatedAtMS}
+		if labelSet {
+			committed.Label = label
+			updates["label"] = label
+		}
 		if status != nil {
 			committed.Status = models.CredentialStatus(*status)
 			updates["status"] = committed.Status
@@ -474,6 +496,7 @@ func (s *Service) mapCredentialItem(
 	}
 	item.ConnectionType = string(normalizeGroupConnectionType(group.ConnectionType))
 	item.SecretVersion = row.SecretVersion
+	item.Label = row.Label
 	item.AuthState = string(row.AuthState)
 	item.Account = account
 	proxyViews, err := s.credentialProxyViews(ctx, s.db, group, []models.Credential{row})
