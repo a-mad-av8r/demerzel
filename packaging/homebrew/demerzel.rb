@@ -32,11 +32,18 @@ class Demerzel < Formula
     artifacts = if (path = ENV["HOMEBREW_DEMERZEL_ARTIFACT_DIR"])
       Pathname.new(path).realpath
     else
-      odie "authenticate with gh auth login --hostname github.com before installing this private formula" unless system "gh", "auth", "status", "--hostname", "github.com"
+      token = ENV["HOMEBREW_GITHUB_API_TOKEN"] || ENV["GH_TOKEN"]
+      odie "set HOMEBREW_GITHUB_API_TOKEN for the private Demerzel release" if token.to_s.empty?
 
       directory = buildpath/"demerzel-release"
       directory.mkpath
-      system "gh", "release", "download", "v#{version}", "--repo", "a-mad-av8r/demerzel", "--pattern", "manifest.json", "--pattern", "manifest.sigstore.json", "--pattern", asset, "--dir", directory.to_s
+      previous_gh_token = ENV["GH_TOKEN"]
+      begin
+        ENV["GH_TOKEN"] = token
+        system "gh", "release", "download", "v#{version}", "--repo", "a-mad-av8r/demerzel", "--pattern", "manifest.json", "--pattern", "manifest.sigstore.json", "--pattern", asset, "--dir", directory.to_s
+      ensure
+        ENV["GH_TOKEN"] = previous_gh_token
+      end
       directory
     end
 

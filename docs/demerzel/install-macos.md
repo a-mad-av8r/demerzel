@@ -22,13 +22,14 @@ GitHub Release exists, installation is one command:
 HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
 ```
 
-The token is supplied through the environment and is not printed, stored in the
-formula, or written to the release. The formula requires authenticated `gh`
-access to the private release, verifies `manifest.sigstore.json` against the
-expected identity
-`https://github.com/a-mad-av8r/demerzel/.github/workflows/release.yml@refs/tags/v2.*`,
-then checks the selected macOS binary against the signed manifest. It does not
-use the donor project's releases. No `curl | sh` bootstrap is used.
+If several GitHub accounts are logged in, select an account with access in the
+same command using `gh auth token --user ACCOUNT` instead of the active-account
+form above. The token is not printed or stored in the formula: Homebrew uses it
+to access the private tap; the formula passes it to the `gh release download`
+subprocess and then clears that override. The formula verifies the
+Sigstore bundle against the exact versioned Demerzel release-workflow identity,
+then compares the selected binary with the signed manifest. No donor release
+or unverified `curl | sh` bootstrap is used.
 
 The installed binary is in the Homebrew prefix. The formula provisions explicit
 age custody on first install and registers a launchd service definition; start

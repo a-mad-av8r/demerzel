@@ -87,7 +87,7 @@ validate_prefix() {
   esac
 }
 
-restorePinnedPaths() {
+restore_pinned_paths() {
   local pin="${config_dir}/data-dir" config_pin="${prefix}/config-dir" pinned_data pinned_config
   if [[ -e "${config_pin}" || -L "${config_pin}" ]]; then
     [[ -f "${config_pin}" && ! -L "${config_pin}" && -O "${config_pin}" ]] ||
@@ -120,7 +120,7 @@ restorePinnedPaths() {
   data_dir="${pinned_data}"
 }
 
-writePinnedPaths() {
+write_pinned_paths() {
   local pin="${config_dir}/data-dir" config_pin="${prefix}/config-dir"
   [[ "${data_dir}" != *$'\n'* && "${config_dir}" != *$'\n'* ]] ||
     fail "installation paths must not contain line breaks"
@@ -205,7 +205,7 @@ install_artifact() {
   bash "${trusted_verifier}" "${artifact_dir}" verify-release.sh >/dev/null
   [[ "${version}" =~ ^2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || fail "unsupported signed release version: ${version}"
   validate_prefix
-  restorePinnedPaths
+  restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
   [[ "${data_dir}" == /* && "${config_dir}" == /* ]] || fail "DATA_DIR and age identity directory must be absolute paths"
   [[ ! -L "${data_dir}" ]] || fail "DATA_DIR must not be a symlink"
@@ -247,7 +247,7 @@ install_artifact() {
     chmod 0755 "${prefix}/${tool}.tmp.$$"
     mv -f "${prefix}/${tool}.tmp.$$" "${prefix}/${tool}"
   done
-  writePinnedPaths
+  write_pinned_paths
   recipient="$(provision_age_identity)"
   if [[ -n "${old_version}" && "${old_version}" != "${version}" ]]; then
     ln -sfn "versions/${old_version}" "${prefix}/previous.next"
@@ -262,7 +262,7 @@ install_artifact() {
 rollback_install() {
   local current previous
   validate_prefix
-  restorePinnedPaths
+  restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
   current="$(current_target)" || fail "no installed Demerzel version to roll back"
@@ -278,7 +278,7 @@ rollback_install() {
 
 uninstall_install() {
   validate_prefix
-  restorePinnedPaths
+  restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
   if [[ "${purge}" == true ]]; then
