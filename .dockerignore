@@ -1,10 +1,12 @@
 .git
+.worktrees/
 .github
 .env*
 !.env.example
 
 # Binary, build, coverage, temporary, and profiling output
 gpt-load
+demerzel
 build/
 dist/
 node_modules/

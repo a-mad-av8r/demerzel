@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -45,6 +46,9 @@ func loadOrCreateKeyMaterial(explicitKey, dataDir string, newStore keyStoreFacto
 	if dataDir == "" {
 		return "", errors.New("DATA_DIR is required when ENCRYPTION_KEY is empty")
 	}
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		return "", fmt.Errorf("native and age-file custody are unsupported on %s; set ENCRYPTION_KEY explicitly", runtime.GOOS)
+	}
 
 	canonicalDir, err := canonicalDataDir(dataDir)
 	if err != nil {
@@ -52,7 +56,7 @@ func loadOrCreateKeyMaterial(explicitKey, dataDir string, newStore keyStoreFacto
 	}
 	unlock, err := lockKeyCustody(canonicalDir)
 	if err != nil {
-		return "", errors.New("cannot lock master-key custody; verify DATA_DIR permissions and retry")
+		return "", fmt.Errorf("cannot lock master-key custody; verify DATA_DIR permissions: %w", err)
 	}
 	defer unlock()
 
@@ -208,6 +212,19 @@ func canonicalDataDir(dataDir string) (string, error) {
 func installationIdentifier(dataDir string) string {
 	identity := sha256.Sum256([]byte("demerzel/master-key/v1\x00" + filepath.Clean(dataDir)))
 	return hex.EncodeToString(identity[:])
+}
+
+// InstallationIdentifier is the non-secret account locator for the native
+// Keychain or Secret Service item associated with this canonical DATA_DIR.
+func InstallationIdentifier(dataDir string) (string, error) {
+	if dataDir == "" {
+		return "", errors.New("DATA_DIR is required for the key locator")
+	}
+	canonicalDir, err := canonicalDataDir(dataDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve DATA_DIR key locator: %w", err)
+	}
+	return installationIdentifier(canonicalDir), nil
 }
 
 func readLegacyKey(dataDir string) (string, bool, error) {

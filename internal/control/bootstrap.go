@@ -26,6 +26,9 @@ func (s *Service) EnsureInitialState(ctx context.Context) error {
 
 	var priceTable *pricing.Table
 	err := s.withControlTransaction(ctx, func(tx *gorm.DB) error {
+		if err := s.verifyMasterKeyIdentity(tx); err != nil {
+			return err
+		}
 		nowMS := s.now().UnixMilli()
 		if err := tx.Model(&models.Credential{}).
 			Where("auth_state = ?", models.CredentialAuthStateRefreshing).
