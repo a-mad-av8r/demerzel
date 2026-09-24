@@ -99,11 +99,12 @@ real credential decrypt before cutting traffic over. Native-vault recovery
 also needs the original OS vault item: a copied `DATA_DIR` at a new canonical
 path will not find it. Never generate a replacement key against an existing DB.
 
-M1 local restore drill (2026-09-24): a stopped SQLite database, auth key, age
-ciphertext and runtime checkpoint were copied to a **different** DATA_DIR; the
-separately retained age identity decrypted the persisted provider credential,
-and the original access key completed a request against a local fake provider.
-This tests the file/identity pairing, not an off-device scheduled backup lane.
+M1 local restore drill (2026-09-24): a stopped SQLite database, auth key, and
+age ciphertext were copied to a **different** DATA_DIR; the separately retained
+age identity decrypted the persisted provider credential, and the original
+access key completed a request against a local fake provider. The runtime
+checkpoint was **not** copied or restore-proven in that drill. This tests the
+file/identity pairing, not an off-device scheduled backup lane.
 
 No scheduled off-device producer, restore-proof, retention policy, or monitoring
 is configured by this M1 code. **It is not a backup system or a production

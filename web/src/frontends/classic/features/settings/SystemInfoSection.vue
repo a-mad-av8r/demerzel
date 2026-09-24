@@ -240,7 +240,7 @@ function databaseLabel(database: DatabaseDriver): string {
   font-family: var(--font-mono);
 }
 
-@media (max-width: 800px) {
+@media (max-width: 760px) {
   .settings-system__row {
     grid-template-columns: 115px minmax(0, 1fr);
   }
