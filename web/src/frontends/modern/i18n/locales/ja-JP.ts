@@ -55,7 +55,6 @@ export default {
     expandSidebar: 'サイドバーを展開',
     close: '閉じる',
     documentation: '利用ガイド',
-    sponsor: 'スポンサー',
     mobileNavigationDescription: '管理ワークスペースや運用状況のページへ移動します。',
     navigationFailed: 'ページを読み込めません。再読み込みしてください。',
     reload: '再読み込み',

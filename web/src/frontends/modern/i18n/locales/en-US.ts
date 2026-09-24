@@ -55,7 +55,6 @@ export default {
     expandSidebar: 'Expand sidebar',
     close: 'Close',
     documentation: 'User guide',
-    sponsor: 'Sponsor',
     mobileNavigationDescription: 'Open a management workspace or observability page.',
     navigationFailed: 'Unable to load this page. Please reload.',
     reload: 'Reload',
