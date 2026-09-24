@@ -58,6 +58,13 @@ unset it; subsequent restarts load the existing key. An existing managed
 if the custody item is missing. `ENCRYPTION_KEY` and guarded legacy import are
 explicit recovery options, not automatic fallback behavior.
 
+At startup, Demerzel records a non-secret, domain-separated master-key identity
+HMAC in the database. Subsequent boots verify the marker before accepting
+traffic; on an older database without the marker, existing encrypted access
+keys, credentials and proxy state must authenticate under the selected master
+before the marker is written. A mismatch fails closed instead of rotating
+ciphertext or overwriting the runtime checkpoint.
+
 ## Import donor plaintext key without rotating it
 
 1. Stop the old process. Record a consistent database snapshot **and a separate

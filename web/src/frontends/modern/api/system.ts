@@ -49,11 +49,6 @@ export async function getSystemInfo(client: ApiClient, signal: AbortSignal): Pro
   }
 }
 
-export interface ReleaseUpdate {
-  version: string
-  releaseURL: string
-}
-
 function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new InvalidResponseError()
@@ -91,36 +86,4 @@ export async function getCurrentVersion(signal: AbortSignal): Promise<string> {
   const record = asRecord(data)
   if (record.status !== 'ok') throw new InvalidResponseError()
   return asNonBlankString(record.version)
-}
-
-export async function getReleaseUpdate(
-  client: ApiClient,
-  force: boolean,
-  signal: AbortSignal,
-): Promise<ReleaseUpdate | null> {
-  const path = force ? '/api/system/update?force=true' : '/api/system/update'
-  const data = asRecord(await client.request<unknown>(path, { signal }))
-  if (data.update === null) return null
-  const update = asRecord(data.update)
-  const version = asNonBlankString(update.version)
-  const releaseURL = asNonBlankString(update.release_url)
-  let url: URL
-  try {
-    url = new URL(releaseURL)
-  } catch {
-    throw new InvalidResponseError()
-  }
-  if (
-    url.protocol !== 'https:' ||
-    url.hostname !== 'github.com' ||
-    url.port ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    url.pathname !== `/tbphp/gpt-load/releases/tag/${version}`
-  ) {
-    throw new InvalidResponseError()
-  }
-  return { version, releaseURL }
 }

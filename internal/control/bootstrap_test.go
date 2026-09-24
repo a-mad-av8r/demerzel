@@ -160,6 +160,26 @@ func TestEnsureInitialStateRejectsMissingAccessKeyTableBeforeRecordingIdentity(t
 	assertBootstrapMarkerCount(t, fixture, 1)
 }
 
+func TestEnsureInitialStateIsIdempotentWhenMarkerExists(t *testing.T) {
+	t.Parallel()
+	fixture := newServiceFixture(t)
+	for _, setting := range []models.SystemSetting{
+		{Key: bootstrapMarkerForTest, Value: "true"},
+		{Key: masterKeyIdentitySetting, Value: fixture.encryption.Hash(masterKeyIdentityDomain)},
+	} {
+		if err := fixture.db.Create(&setting).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := fixture.db.Exec("DROP TABLE access_keys").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.service.EnsureInitialState(context.Background()); err != nil {
+		t.Fatalf("verified identity and existing bootstrap marker must remain idempotent: %v", err)
+	}
+	assertBootstrapMarkerCount(t, fixture, 1)
+}
+
 func TestEnsureInitialStateDoesNotRecreateDeletedFinalKey(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
