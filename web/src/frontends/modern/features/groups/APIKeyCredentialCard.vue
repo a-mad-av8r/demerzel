@@ -11,7 +11,11 @@ import {
   AppSwitch,
   AppTooltip,
 } from '@modern/components/ui'
-import { credentialStatus, credentialTime } from './credential-presentation'
+import {
+  credentialDisplayName,
+  credentialStatus,
+  credentialTime,
+} from './credential-presentation'
 import CredentialCardActions from './CredentialCardActions.vue'
 import CredentialCardFrame from './CredentialCardFrame.vue'
 import CredentialOutcomeSummary from './CredentialOutcomeSummary.vue'
@@ -47,14 +51,19 @@ const issues = computed(() =>
 <template>
   <CredentialCardFrame :selected="selected" :pending="pending" compact>
     <template #heading>
-      <AppTooltip :label="t('groupDetail.selectCredential', { name: row.mask })"
+      <AppTooltip :label="t('groupDetail.selectCredential', { name: credentialDisplayName(row) })"
         ><AppCheckbox
           :model-value="selected"
-          :label="t('groupDetail.selectCredential', { name: row.mask })"
+          :label="t('groupDetail.selectCredential', { name: credentialDisplayName(row) })"
           label-hidden
           :disabled="disabled"
           @update:model-value="$emit('select', $event)"
       /></AppTooltip>
+      <AppOverflowText
+        v-if="row.label"
+        class="modern-api-card-label"
+        :text="row.label"
+      />
       <div class="modern-api-card-secret">
         <AppCopyValue
           :key="row.secretVersion"
@@ -109,6 +118,12 @@ const issues = computed(() =>
   flex: 1;
   min-width: 0;
   font-family: var(--modern-font-mono);
+  font-size: var(--modern-font-size-secondary);
+}
+.modern-api-card-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--modern-text);
   font-size: var(--modern-font-size-secondary);
 }
 .modern-api-card-metadata {

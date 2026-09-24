@@ -93,7 +93,7 @@ export default {
       urlDescription: '请按上游服务要求填写 Base URL',
       compatibleUrlDescription: '填写完整 API 前缀，例如 https://api.example.com/v1',
       gptLoadUrlDescription:
-        '填写 GPT-Load 网关根地址或部署前缀，例如 https://gpt-load.example.com；不要填写 /v1 或 /v1beta 等标准协议路径',
+        '填写 Demerzel 网关根地址或部署前缀，例如 https://demerzel.example.com；不要填写 /v1 或 /v1beta 等标准协议路径。',
       newApiUrlDescription:
         '填写 New API 网关根地址或部署前缀，例如 https://new-api.example.com；不要填写 /v1 或 /v1beta 等标准协议路径',
       cpaUrlDescription:
@@ -250,7 +250,7 @@ export default {
         empty: '空行',
         duplicates: '重复项',
       },
-      accessKeyWarning: '{count} 行看起来像 GPT-Load 访问密钥，请确认后继续',
+      accessKeyWarning: '{count} 行看起来像 Demerzel 访问密钥，请确认后继续',
       tooMany: '最多可提交 5,000 个非空密钥',
       required: '请先填写至少一条凭据',
       channelCredentialNotice: '这里导入的是渠道 API 密钥；客户端凭证请在“访问密钥”页面创建',

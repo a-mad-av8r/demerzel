@@ -198,7 +198,7 @@ export default {
       expirationRequired: '有効期限日時を選択してください',
       expirationFuture: '有効期限は現在時刻より後にしてください',
       sourceIP: '接続元 IP',
-      sourceIPDescription: 'GPT-Load に直接接続する送信元アドレスを制限します。',
+      sourceIPDescription: 'Demerzel に直接接続する送信元アドレスを制限します。',
       sourceAll: '制限なし',
       sourceRestricted: 'IP/CIDR を指定',
       allowedCIDRs: '許可する IP/CIDR',

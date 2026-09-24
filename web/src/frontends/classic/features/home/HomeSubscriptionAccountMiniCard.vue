@@ -15,6 +15,7 @@ import OverflowTooltip from '@/components/ui/OverflowTooltip.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { formatLocalInstant } from '@/lib/format'
 import { quotaProgressTone, type QuotaProgressTone } from '@/lib/quota-progress'
+import { credentialDisplayName } from '@/features/groups/credentials/credential-identity'
 
 const props = defineProps<{ account: HomeSubscriptionAccountDto }>()
 
@@ -48,7 +49,7 @@ onBeforeUnmount(() => {
 
 const credential = computed<CredentialItemDto>(() => props.account.credential)
 const snapshot = computed(() => credential.value.observation?.snapshot)
-const accountName = computed(() => credential.value.account.email ?? credential.value.mask)
+const accountName = computed(() => credentialDisplayName(credential.value))
 const planLabel = computed(() => snapshot.value?.plan_summary.name?.trim() ?? '')
 const planLevel = computed(() => snapshot.value?.plan_summary.level ?? 'unknown')
 const channelTooltip = computed(() =>

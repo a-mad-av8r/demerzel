@@ -1,12 +1,11 @@
 # 新版品牌资源
 
-来自用户确认的 GPT-Load Coral Anchor 资源包，保留原始图形、文字路径和比例，配色与新版界面保持一致：
+来自用户确认的 GPT-Load Coral Anchor 资源包，保留原始吉祥物轮廓和配色。Demerzel 字样由界面普通文本显示，不新增或重绘矢量 Logo：
 
-- `logo-light.svg`：原 `svg/logo-horizontal-color.svg`，浅色背景使用。
-- `logo-dark.svg`：原 `svg/logo-horizontal-dark.svg`，深色背景使用。
-- `icon.svg`：原 `web/icon.svg`，用于收起侧栏。
+- `icon.svg`：原 `web/icon.svg`，保留为方形吉祥物图标。
+- `components/BrandLogo.vue`：复用原有吉祥物轮廓；收起时显示方形图标，展开时旁边以普通文本显示 Demerzel。
 
-图形使用品牌橘红 `#FF4F1F`；浅色背景的文字使用中性深灰 `#1C1C1B`，深色背景的文字使用近白色 `#F5F5F2`。横版 Logo 保持 4:1 比例，窄位置使用橘红底、近白图形的方形图标。界面配色仍由 `styles/tokens.css` 独立维护。
+图形使用品牌橘红 `#FF4F1F`；文字颜色由现代主题 token 控制。浅/深色横版 Logo SVG 未被引用并已移除；界面配色仍由 `styles/tokens.css` 独立维护。
 
 这些资源仅由 modern 引用。classic 的 `BrandMark.vue` 使用相同吉祥物路径，保持无文字、透明背景和原有方形尺寸，通过 `currentColor` 沿用旧版的 `--color-action`，适配浅色和深色主题。
 

@@ -270,7 +270,7 @@ export function clientConfiguration(
   key: string,
   ccSwitchTarget: CCSwitchTargetID = 'claude',
   model = '',
-  ccSwitchProviderName = 'GPT-Load',
+  ccSwitchProviderName = 'Demerzel',
 ): string {
   switch (clientID) {
     case 'cc-switch': {
@@ -299,7 +299,7 @@ export function clientConfiguration(
         'model_provider = "gpt-load"',
         '',
         '[model_providers.gpt-load]',
-        'name = "GPT-Load"',
+        'name = "Demerzel"',
         `base_url = "${openAIBaseURL(origin)}"`,
         'env_key = "GPT_LOAD_API_KEY"',
         'wire_api = "responses"',
@@ -310,7 +310,7 @@ export function clientConfiguration(
       return JSON.stringify(
         {
           id: 'gpt-load',
-          name: 'GPT-Load',
+          name: 'Demerzel',
           type: 'openai',
           baseUrl: openAIBaseURL(origin),
           apiKey: key,
@@ -367,7 +367,7 @@ export function clientQuickImportURL(
   key: string,
   ccSwitchTarget: CCSwitchTargetID = 'claude',
   model = '',
-  ccSwitchProviderName = 'GPT-Load',
+  ccSwitchProviderName = 'Demerzel',
 ): string | null {
   switch (clientID) {
     case 'cc-switch': {
@@ -387,7 +387,7 @@ export function clientQuickImportURL(
       const payload = encodeURLSafeBase64(
         JSON.stringify({
           id: 'gpt-load',
-          name: 'GPT-Load',
+          name: 'Demerzel',
           type: 'openai',
           baseUrl: openAIBaseURL(origin),
           apiKey: key,

@@ -14,7 +14,7 @@ import AuthGate from './features/auth/AuthGate.vue'
 import AppLayout from './layouts/AppLayout.vue'
 import PublicLayout from './layouts/PublicLayout.vue'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const messages = provideMessages()
 useScrollbarActivity()
 const route = useRoute()
@@ -29,7 +29,7 @@ const { title } = usePageTitle()
 watch(
   [title, locale],
   () => {
-    document.title = `${title.value} · GPT-Load`
+    document.title = `${title.value} · ${t('shell.appName')}`
   },
   { immediate: true },
 )

@@ -200,7 +200,7 @@ export default {
       expirationRequired: 'Choose an expiration time',
       expirationFuture: 'Expiration must be later than the current time',
       sourceIP: 'Connection source IP',
-      sourceIPDescription: 'Restrict the address that connects directly to GPT-Load.',
+      sourceIPDescription: 'Restrict the address that connects directly to Demerzel.',
       sourceAll: 'Any source',
       sourceRestricted: 'Specified IP/CIDR',
       allowedCIDRs: 'Allowed IP/CIDR',

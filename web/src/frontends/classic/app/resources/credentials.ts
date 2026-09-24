@@ -72,6 +72,7 @@ export interface CredentialPatch {
   status?: CredentialConfiguredStatus
   weight_manual?: number | null
   proxy?: ProxyMutation
+  label?: string
 }
 
 export interface CredentialBatchRequest {
@@ -100,6 +101,7 @@ const credentialItemFields = [
   'connection_type',
   'secret_version',
   'mask',
+  'label',
   'account',
   'auth_state',
   'auth_error_code',
@@ -570,6 +572,7 @@ export function projectCredentialItem(value: unknown): CredentialItemDto {
     model_cooldowns: projectArray(record.model_cooldowns, projectModelCooldown),
     secret_version: projectSafeInteger(record.secret_version, { minimum: 1 }),
     mask: projectMask(record.mask),
+    label: projectString(record.label, { allowEmpty: true }),
     account: projectAccount(record.account, connectionType),
     auth_state: projectEnum(record.auth_state, authStates),
     ...(record.auth_error_code === undefined
@@ -672,11 +675,20 @@ function normalizePatch(patch: CredentialPatch): CredentialPatch {
   const keys = Object.keys(patch)
   if (
     keys.length === 0 ||
-    keys.some((key) => key !== 'status' && key !== 'weight_manual' && key !== 'proxy')
+    keys.some(
+      (key) =>
+        key !== 'status' &&
+        key !== 'weight_manual' &&
+        key !== 'proxy' &&
+        key !== 'label',
+    )
   ) {
     throw new Error('INVALID_CREDENTIAL_PATCH')
   }
   const body: CredentialPatch = {}
+  if (Object.prototype.hasOwnProperty.call(patch, 'label')) {
+    body.label = projectString(patch.label, { allowEmpty: true })
+  }
   if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
     body.status = projectEnum(patch.status, configuredStatuses)
   }
@@ -1092,6 +1104,7 @@ function matchesFilters(item: CredentialItemDto, filters: CredentialCollectionFi
   if (filters.q === undefined) return true
   const query = filters.q.toLowerCase()
   return (
+    item.label.toLowerCase().includes(query) ||
     item.mask.toLowerCase().includes(query) ||
     item.account.email?.toLowerCase().includes(query) === true
   )

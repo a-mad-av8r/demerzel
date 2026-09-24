@@ -171,17 +171,11 @@ export default {
     },
     system: {
       title: 'システム情報',
-      description: 'デプロイとシークレット取得元を表示し、手動で更新を確認できます。',
+      description: 'デプロイとシークレットの取得元を表示します。',
       loading: 'システム情報を読み込み中…',
       loadFailed: 'システム情報を読み込めません。',
       stale: 'バックグラウンド更新に失敗したため、システム情報が古い可能性があります。',
       version: 'バージョン',
-      checkUpdate: '更新を確認',
-      checkingUpdate: '更新を確認中…',
-      latestVersion: '現在のバージョンは最新です',
-      updateAvailable: '新しいバージョン {version} があります。',
-      viewRelease: 'リリースを表示',
-      checkUpdateFailed: '更新を確認できません。後でもう一度お試しください。',
       deployment: 'デプロイ',
       single: '単一インスタンス',
       databases: {

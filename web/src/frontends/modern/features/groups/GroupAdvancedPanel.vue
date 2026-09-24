@@ -9,11 +9,13 @@ import {
   ChannelSwitchConflictError,
   getGroupSettings,
   groupSettingsKey,
+  accountSelectionModes,
   runtimeNumbers,
   runtimeSwitches,
   saveGroupSettings,
   switchGroupChannel,
   type AdvancedSettingsPatch,
+  type AccountSelectionMode,
   type GroupModel,
   type GroupSettings,
   type ParameterRule,
@@ -57,6 +59,8 @@ const saved = ref<GroupSettings>()
 const params = ref<Record<string, string>>({})
 const validationModel = ref('')
 const validationProtocol = ref('')
+const accountSelection = ref<AccountSelectionMode>('weighted_fair')
+const serialQuotaReservePercent = ref('10')
 const numbers = ref<Partial<Record<RuntimeNumber, string>>>({})
 const switches = ref<Record<string, string>>({})
 const proxyMode = ref('inherit')
@@ -86,6 +90,8 @@ function snapshot(): string {
     headers.value,
     removeHeaders.value,
     rules.value,
+    accountSelection.value,
+    serialQuotaReservePercent.value,
   ])
 }
 const dirty = computed(
@@ -110,6 +116,10 @@ watch(
         key,
         data.overrides[key] === undefined ? '' : String(data.overrides[key]),
       ]),
+    )
+    accountSelection.value = data.overrides.account_selection ?? data.effective.account_selection
+    serialQuotaReservePercent.value = String(
+      data.overrides.serial_quota_reserve_percent ?? data.effective.serial_quota_reserve_percent,
     )
     proxyMode.value = data.proxy.mode
     // display_url 可能脱敏；未编辑时不能把它作为代理凭据重新写回。
@@ -137,6 +147,15 @@ const switchOptions = computed(() => [
   { value: 'true', label: t('groupDetail.on') },
   { value: 'false', label: t('groupDetail.off') },
 ])
+const accountSelectionOptions = computed(() =>
+  accountSelectionModes.map((value) => ({
+    value,
+    label: t('groupDetail.accountSelectionModes.' + value),
+  })),
+)
+function setAccountSelection(value: string): void {
+  if (value === 'serial' || value === 'weighted_fair') accountSelection.value = value
+}
 const proxyOptions = computed(() =>
   ['inherit', 'direct', 'custom'].map((value) => ({
     value,
@@ -176,6 +195,11 @@ function numberInvalid(key: RuntimeNumber): boolean {
       Number(value) < (key === 'blacklist_threshold' ? 0 : 1))
   )
 }
+const serialQuotaReserveInvalid = computed(() => {
+  if (!/^\d+$/u.test(serialQuotaReservePercent.value)) return true
+  const value = Number(serialQuotaReservePercent.value)
+  return !Number.isSafeInteger(value) || value < 0 || value > 100
+})
 const proxyChanged = computed(
   () => proxyMode.value !== saved.value?.proxy.mode || Boolean(proxyURL.value),
 )
@@ -204,7 +228,8 @@ async function save(): Promise<void> {
     Object.keys(paramErrors.value).length ||
     runtimeNumbers.some(numberInvalid) ||
     proxyInvalid.value ||
-    headerInvalid.value
+    headerInvalid.value ||
+    (accountSelection.value === 'serial' && serialQuotaReserveInvalid.value)
   )
     return
   const base = saved.value
@@ -216,6 +241,16 @@ async function save(): Promise<void> {
   for (const key of runtimeSwitches) {
     if (switches.value[key]) overrides[key] = switches.value[key] === 'true'
     else delete overrides[key]
+  }
+  const currentAccountSelection = base.effective.account_selection
+  if (accountSelection.value !== currentAccountSelection) {
+    overrides.account_selection = accountSelection.value
+  }
+  if (
+    base.overrides.serial_quota_reserve_percent !== undefined ||
+    accountSelection.value === 'serial'
+  ) {
+    overrides.serial_quota_reserve_percent = Number(serialQuotaReservePercent.value)
   }
   if (headersMode.value === 'inherit') delete overrides.header_rules
   else
@@ -432,6 +467,39 @@ useMessageSource(() => (error.value ? { text: error.value, tone: 'danger' } : un
             />
           </div>
         </template>
+      </AppFormSection>
+      <AppFormSection
+        :title="t('groupDetail.accountSelection')"
+        :description="t('groupDetail.accountSelectionHelp')"
+      >
+        <div class="modern-advanced-columns">
+          <AppSegmentedField
+            :model-value="accountSelection"
+            :label="t('groupDetail.accountSelection')"
+            :options="accountSelectionOptions"
+            @update:model-value="setAccountSelection"
+            size="sm"
+            :disabled="busy"
+          />
+          <AppTextField
+            v-if="accountSelection === 'serial'"
+            v-model="serialQuotaReservePercent"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            inputmode="numeric"
+            :label="t('groupDetail.serialQuotaReservePercent')"
+            :description="t('groupDetail.serialQuotaReserveHelp')"
+            :error="
+              attempted && serialQuotaReserveInvalid
+                ? t('groupDetail.serialQuotaReserveError')
+                : undefined
+            "
+            size="sm"
+            :disabled="busy"
+          />
+        </div>
       </AppFormSection>
       <AppFormSection :title="t('groupDetail.runtime')" :description="t('groupDetail.runtimeHelp')">
         <div class="modern-advanced-columns">

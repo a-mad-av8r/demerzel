@@ -217,15 +217,15 @@ defineExpose({ nudge })
     <svg
       :key="sequence"
       class="modern-brand-mascot-scene"
-      :viewBox="compact ? '0 0 512 512' : '0 0 1200 300'"
-      :width="compact ? 32 : 192"
-      :height="compact ? 32 : 48"
+      viewBox="0 0 512 512"
+      :width="compact ? 32 : 40"
+      :height="compact ? 32 : 40"
       role="img"
-      aria-label="GPT-Load"
+      aria-label="Demerzel"
       focusable="false"
     >
       <defs>
-        <!-- 沿用原 Logo 的轮廓和字标路径；裁切只用于分离尾巴。 -->
+        <!-- Reuse the original mascot silhouette; clipping only separates its tail. -->
         <path
           :id="silhouette"
           fill-rule="evenodd"
@@ -241,9 +241,7 @@ defineExpose({ nudge })
       <rect v-if="compact" class="modern-brand-mascot-tile" width="512" height="512" rx="128" />
       <g
         class="modern-brand-mascot-figure"
-        :transform="
-          compact ? 'translate(51.2 145.7518) scale(0.7474)' : 'translate(56 75.7117) scale(0.5036)'
-        "
+        :transform="'translate(51.2 145.7518) scale(0.7474)'"
       >
         <g ref="body" class="modern-brand-mascot-body">
           <g class="modern-brand-mascot-tail">
@@ -270,15 +268,8 @@ defineExpose({ nudge })
           <path d="M460 -48V-32M452 -40H468" />
         </g>
       </g>
-      <g v-if="!compact" transform="translate(388 88.0957) scale(1.0957)">
-        <g class="modern-brand-mascot-wordmark">
-          <path
-            fill-rule="evenodd"
-            d="M 48.44 0.44 C 61.32 -1.17 78 -0.55 89.33 6.67 C 93.24 9.15 99.55 12.04 101.33 16.67 C 103.77 23.01 94.58 31.54 89.67 34.67 C 83.87 38.35 76.15 29.29 70.78 27.22 C 56.52 21.74 37.67 28.67 32.11 43.11 C 24.34 63.31 36.97 85.7 59 87 C 63.65 87.27 68.75 85.63 73 84 C 74.93 83.26 76.84 81.73 78.44 80.44 C 79.73 79.42 80.9 78.15 81.78 76.78 C 82.77 75.21 84.86 73.19 84.44 71.11 C 83.92 68.48 79.86 69 78 69 C 73.47 69 64.46 70.68 60.89 67.11 C 58.77 64.99 59 61.76 59 59 C 59 55.98 58.28 51.7 60 49 C 63.3 43.81 74.82 46 80 46 C 87.67 46 95.33 46 103 46 C 105.86 46 109.97 45.52 112.22 47.78 C 115.24 50.79 115 55.05 115 59 C 115 67.73 112.55 76.9 108.67 84.67 C 95.32 111.36 59.35 119.11 33.33 107.67 C -0.7 92.69 -11.97 44.41 15.22 17.22 C 19.76 12.68 25.29 8.86 31 6 C 36.32 3.34 42.52 1.19 48.44 0.44 Z M 128.67 2.67 C 135.15 0.17 145.1 2 152 2 C 169.36 2 189.34 -0.21 202.78 13.22 C 204.98 15.43 206.64 18.04 208.44 20.56 C 212.46 26.17 214 34.24 214 41 C 214 61.7 201.39 78.07 180.44 81.44 C 174.38 82.42 168.12 82 162 82 C 159.55 82 155.84 81.29 153.67 82.67 C 151.34 84.15 152 87.68 152 90 C 152 95.65 154.17 105.99 148.56 109.56 C 143.94 112.49 136.93 110.74 131.89 110.11 C 129.74 109.84 127.51 109.74 125.89 108.11 C 123.49 105.71 124 101.05 124 98 C 124 74 124 50 124 26 C 124 19.74 121.12 5.57 128.67 2.67 Z M 666.67 2.67 C 671.17 0.69 679.16 1.72 684 2 C 685.71 2.1 687.89 2.54 688.89 4.11 C 690.27 6.28 690 9.55 690 12 C 690 17 690 22 690 27 C 690 46 690 65 690 84 C 690 89.67 690 95.33 690 101 C 690 103.23 690.17 106.72 688.44 108.44 C 685.17 111.72 673.52 110.56 669.11 110.22 C 665.64 109.96 665.07 105 662.33 105 C 659.67 105 655.63 108.99 653 110 C 645.18 113.01 635.79 112.74 627.89 110.11 C 600.18 100.87 594.91 59.98 614.44 40.44 C 623.04 31.85 634.74 28.84 646.67 30.33 C 650.65 30.83 655.03 32.38 658.44 34.56 C 659.24 35.06 661.25 37.53 662.33 36.44 C 663.78 34.99 663 30.84 663 29 C 663 22.5 662.31 15.55 663.11 9.11 C 663.44 6.5 664.02 3.83 666.67 2.67 Z M 467.44 30.44 C 489.36 26.91 514.76 38.89 518.56 62.44 C 522.34 85.91 508.52 107.69 484.56 111.56 C 462.45 115.12 438.08 102.74 433.44 79.56 C 428.78 56.22 444.13 34.21 467.44 30.44 Z M 550.44 30.44 C 555.7 29.79 561.62 29.45 566.89 30.11 C 570.73 30.59 574.49 31.5 578.11 32.89 C 601.1 41.73 597 69.19 597 89 C 597 94.7 599.48 107.8 592.22 110.22 C 589.63 111.09 586.63 110 584 110 C 581.77 110 579.42 110.22 577.22 109.78 C 574.6 109.25 573.6 105.22 571.56 105.22 C 569.22 105.22 565.24 108.98 562.89 109.89 C 553.21 113.61 541.04 112.5 532.56 106.44 C 521.25 98.37 519.29 79.16 529.22 69.22 C 534.23 64.21 542.02 61.41 549 61 C 553.8 60.72 559.56 60.45 564.22 61.78 C 565.67 62.19 568.92 63.86 570.22 62.56 C 574.43 58.35 565.1 51.89 562 51 C 556.91 49.55 551.04 50.22 546.11 52.11 C 543.14 53.25 540 55.62 536.67 54.33 C 531.99 52.53 526.81 41.96 530.89 37.89 C 535.24 33.54 544.58 31.18 550.44 30.44 Z M 221.67 2.67 C 227.15 0.56 235.19 2 241 2 C 254.67 2 268.33 2 282 2 C 288.28 2 297.53 0.28 303.44 2.56 C 308.33 4.44 308 10.71 308 15 C 308 17.39 308.1 19.95 307.22 22.22 C 304.51 29.28 292.84 27 287 27 C 284.34 27 279.37 25.98 277.67 28.67 C 275.48 32.11 277 40.01 277 44 C 277 57.67 277 71.33 277 85 C 277 91.29 279.07 102.03 275.56 107.56 C 274.4 109.36 271.98 109.88 270 110 C 265.37 110.27 253.46 112.59 250.33 107.67 C 248.1 104.16 249 98.95 249 95 C 249 85.67 249 76.33 249 67 C 249 57.33 249 47.67 249 38 C 249 35.18 250.17 29.47 247.33 27.67 C 245.57 26.54 242.98 27 241 27 C 236.33 27 231.67 27 227 27 C 224.77 27 221.28 27.17 219.56 25.44 C 215.17 21.06 214.94 5.25 221.67 2.67 Z M 360.67 2.67 C 365.88 0.66 380.2 0.16 383.56 5.44 C 386.59 10.21 385 18.62 385 24 C 385 39.33 385 54.67 385 70 C 385 73.56 383.7 80.25 385.67 83.33 C 387.56 86.3 394.03 85 397 85 C 404 85 411 85 418 85 C 421.4 85 425.53 84.52 428.56 86.44 C 434.98 90.54 433.56 107.78 426.22 110.22 C 420.64 112.08 414.36 110.71 408.67 110.33 C 403.56 109.99 398.16 111 393 111 C 388.16 111 383.12 110.01 378.33 110.33 C 372.46 110.73 363.41 113.07 358.67 108.33 C 355.34 105.01 357 96.25 357 92 C 357 69.33 357 46.67 357 24 C 357 18.75 354.41 5.07 360.67 2.67 Z M 492.33 75.33 C 494.36 66.94 489.81 56.16 480.67 54.33 C 471.73 52.55 461.4 56.68 459.44 66.44 C 457.69 75.22 461.72 85.74 471.33 87.67 C 480.95 89.59 489.96 85.15 492.33 75.33 Z M 185.44 44.44 C 187.19 35.71 180.34 27.88 171.89 27.11 C 167.32 26.7 162.59 27 158 27 C 156.11 27 153.83 26.83 152.67 28.67 C 151.05 31.21 152 36.1 152 39 C 152 42.79 150.06 54.04 153.67 56.33 C 156.58 58.18 162.66 57 166 57 C 175.59 57 183.35 54.93 185.44 44.44 Z M 662.33 76.33 C 664.91 67.33 660.37 57.53 651.44 54.56 C 643.16 51.79 633.71 56.42 630.89 64.89 C 628.04 73.44 631.36 84.67 640.67 87.33 C 649.68 89.91 659.65 85.71 662.33 76.33 Z M 301.67 59.67 C 304.69 58.34 308.79 59 312 59 C 319.33 59 326.67 59 334 59 C 336.41 59 340.17 58.98 341.67 61.33 C 344.34 65.53 344.6 77.66 338.44 79 C 334.29 79.9 329.26 79 325 79 C 319.53 79 313.86 79.92 308.44 79.56 C 305.9 79.39 301.58 79.25 299.67 77.33 C 296.25 73.91 296.9 61.77 301.67 59.67 Z M 571.33 86.33 C 572.69 80.01 567.54 76.62 561.89 76.11 C 556.01 75.58 549.11 77.57 548.22 84.22 C 547.4 90.41 552.25 94.46 558.11 94.67 C 563.7 94.86 570.06 92.26 571.33 86.33 Z"
-          />
-        </g>
-      </g>
     </svg>
+    <span v-if="!compact" class="modern-brand-mascot-name" aria-hidden="true">Demerzel</span>
   </span>
 </template>
 
@@ -287,25 +278,40 @@ defineExpose({ nudge })
   --modern-mascot-look-x: 0px;
   --modern-mascot-look-y: 0px;
   --modern-mascot-eye-color: var(--modern-mascot-backdrop);
-  display: block;
-  flex: none;
-  width: var(--modern-logo-width);
+  display: flex;
+  min-width: 0;
   max-width: 100%;
-  aspect-ratio: 4;
+  flex: none;
+  align-items: center;
+  gap: var(--modern-space-2);
   color: var(--modern-action);
   user-select: none;
   -webkit-touch-callout: none;
 }
 .modern-brand-mascot.is-compact {
   --modern-mascot-eye-color: var(--modern-action);
+  display: block;
   width: var(--modern-control-sm);
   aspect-ratio: 1;
 }
 .modern-brand-mascot-scene {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  flex: none;
   overflow: visible;
+}
+.is-compact .modern-brand-mascot-scene {
+  width: var(--modern-control-sm);
+  height: var(--modern-control-sm);
+}
+.modern-brand-mascot-name {
+  min-width: 0;
+  color: var(--modern-text);
+  font-size: var(--modern-font-size-section);
+  font-weight: var(--modern-weight-semibold);
+  line-height: var(--modern-leading-compact);
+  white-space: nowrap;
 }
 .modern-brand-mascot-figure {
   fill: currentColor;
@@ -332,10 +338,6 @@ defineExpose({ nudge })
   stroke: var(--modern-mascot-eye-color);
   stroke-width: var(--modern-mascot-stroke);
   opacity: 0;
-}
-.modern-brand-mascot-wordmark {
-  fill: var(--modern-text);
-  transform-origin: 0 82px;
 }
 .modern-brand-mascot-scent,
 .modern-brand-mascot-impact,
@@ -373,10 +375,6 @@ defineExpose({ nudge })
 .is-nudge .modern-brand-mascot-body {
   animation: modern-mascot-nudge var(--modern-mascot-nudge-duration) var(--modern-mascot-ease) both;
 }
-.is-nudge .modern-brand-mascot-wordmark {
-  animation: modern-mascot-wordmark var(--modern-mascot-nudge-duration) var(--modern-mascot-ease)
-    both;
-}
 .is-nudge .modern-brand-mascot-impact {
   animation: modern-mascot-impact var(--modern-mascot-nudge-duration) linear both;
 }
@@ -394,9 +392,6 @@ defineExpose({ nudge })
 }
 .is-unfold .modern-brand-mascot-body {
   animation: modern-mascot-unfold var(--modern-mascot-sniff-duration) var(--modern-mascot-ease) both;
-}
-.is-unfold .modern-brand-mascot-wordmark {
-  animation: modern-mascot-reveal var(--modern-mascot-sniff-duration) var(--modern-mascot-ease) both;
 }
 .is-theme .modern-brand-mascot-body {
   animation: modern-mascot-wake var(--modern-mascot-theme-duration) var(--modern-mascot-ease) both;
@@ -516,24 +511,6 @@ defineExpose({ nudge })
     transform: none;
   }
 }
-@keyframes modern-mascot-wordmark {
-  0%,
-  33% {
-    transform: none;
-  }
-  39% {
-    transform: translate(24px, -8px) rotate(-1.5deg);
-  }
-  52% {
-    transform: translate(-5px, 2px) rotate(0.6deg);
-  }
-  70% {
-    transform: translate(2px, -1px) rotate(-0.2deg);
-  }
-  100% {
-    transform: none;
-  }
-}
 @keyframes modern-mascot-impact {
   0%,
   33%,
@@ -591,22 +568,6 @@ defineExpose({ nudge })
     transform: translateY(-4px) scale(0.99, 1.025);
   }
   100% {
-    transform: none;
-  }
-}
-@keyframes modern-mascot-reveal {
-  0%,
-  9% {
-    opacity: 0;
-    transform: translateX(-25px);
-  }
-  42% {
-    opacity: 1;
-    transform: translateX(4px);
-  }
-  65%,
-  100% {
-    opacity: 1;
     transform: none;
   }
 }

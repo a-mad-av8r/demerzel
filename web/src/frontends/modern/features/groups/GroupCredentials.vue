@@ -243,7 +243,8 @@ const filterSummary = computed(() => [
           key: 'credential',
           label: t('groups.board.credentialFilter'),
           value: filteredCredential.value
-            ? filteredCredential.value.account ||
+            ? filteredCredential.value.label ||
+              filteredCredential.value.account ||
               (props.group.connectionType === 'api_key'
                 ? filteredCredential.value.mask
                 : props.group.channelName)
@@ -409,7 +410,7 @@ async function runAccountBatch(
     if (controller.signal.aborted) return
     if (exports.length)
       downloadFile({
-        filename: `gpt-load-accounts-${Date.now()}.json`,
+        filename: `demerzel-accounts-${Date.now()}.json`,
         content: JSON.stringify(exports, null, 2),
       })
     if (action === 'sync') {
@@ -1023,7 +1024,7 @@ defineExpose({ refresh })
     :open="Boolean(resetTarget)"
     :icon="RotateCcw"
     :title="t('credentialCards.useReset')"
-    :subject="resetTarget?.account || resetTarget?.mask"
+    :subject="resetTarget?.label || resetTarget?.account || resetTarget?.mask"
     :description="t('credentialCards.confirmReset')"
     :confirm-label="t('credentialCards.useReset')"
     :pending="mutating !== undefined"

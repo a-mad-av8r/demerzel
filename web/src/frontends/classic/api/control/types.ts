@@ -111,6 +111,8 @@ export interface ParameterOverrideRuleDto {
 }
 
 export interface GroupRuntimeConfigDto {
+  account_selection?: 'serial' | 'weighted_fair'
+  serial_quota_reserve_percent?: number
   first_byte_timeout?: number
   request_timeout?: number
   stream_idle_timeout?: number
@@ -129,6 +131,8 @@ export interface GroupEffectiveConfigDto {
   header_rules: HeaderRulesDto
   affinity_enabled: boolean
   responses_websocket_enabled: boolean
+  account_selection: 'serial' | 'weighted_fair'
+  serial_quota_reserve_percent: number
 }
 
 export interface GroupSettingsDto {
@@ -278,6 +282,7 @@ export interface CredentialItemDto {
   connection_type: ConnectionType
   secret_version: number
   mask: string
+  label: string
   account: CredentialAccountDto
   auth_state: CredentialAuthState
   auth_error_code?: string

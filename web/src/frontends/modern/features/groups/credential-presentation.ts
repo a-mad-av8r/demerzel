@@ -18,6 +18,9 @@ export function credentialStatus(row: CredentialRow): { key: string; tone: Seman
   }
   return { key: 'groups.credentials.' + row.state, tone: tones[row.state] }
 }
+export function credentialDisplayName(row: CredentialRow): string {
+  return row.label || row.account || row.mask
+}
 export function credentialTime(value: number | null | undefined, locale: string): string {
   return value
     ? dateFormatter(locale, {

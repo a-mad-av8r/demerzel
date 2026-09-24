@@ -16,6 +16,7 @@ import { getGroupWorkspace, groupQueryKey } from '@modern/api/groups'
 import { getGroupChannels } from '@modern/api/group-create'
 import { getLogAccessKeys } from '@modern/api/logs'
 import { getGroupCredentials } from '@modern/api/group-detail'
+import { credentialDisplayName } from '@modern/features/groups/credential-presentation'
 import { useAuthSession } from '@modern/features/auth/auth-session'
 import { useApiClient } from '@shared/http/client-context'
 import { usePageRefresh } from '@modern/app/page-refresh'
@@ -174,7 +175,7 @@ const loadCredentials = computed(() => {
     )
     const values = page.items.map((row) => ({
       value: String(row.id),
-      label: row.account || row.mask,
+      label: credentialDisplayName(row),
     }))
     credentialLabels.value = new Map([
       ...credentialLabels.value,

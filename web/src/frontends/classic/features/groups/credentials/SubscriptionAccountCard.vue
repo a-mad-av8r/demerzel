@@ -33,12 +33,14 @@ import AppTooltip from '@/components/ui/AppTooltip.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import OverflowTooltip from '@/components/ui/OverflowTooltip.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
+import AppTextInput from '@/components/ui/AppTextInput.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import ModelCooldownDetails from '@/components/ui/ModelCooldownDetails.vue'
 import { formatEstimatedCost, formatLocalInstant, formatTokens } from '@/lib/format'
 import { quotaProgressTone } from '@/lib/quota-progress'
 
 import { presentCredentialFailureCategory } from './credential-failure-presenter'
+import { credentialDisplayName } from './credential-identity'
 
 const props = withDefaults(
   defineProps<{
@@ -71,6 +73,7 @@ const emit = defineEmits<{
   'refresh-credential': [item: CredentialItemDto]
   remove: [item: CredentialItemDto]
   weight: [payload: { item: CredentialItemDto; value: string }]
+  label: [payload: { item: CredentialItemDto; value: string }]
 }>()
 const { locale, n, t, te } = useI18n()
 const menuOpen = ref(false)
@@ -78,6 +81,8 @@ const detailsExpanded = ref(false)
 const proxyEditor = ref<{ beginEdit: () => void } | null>(null)
 const weightEditing = ref(false)
 const draftWeight = ref('50')
+const labelDraft = ref(props.item.label)
+const labelInputId = computed(() => `subscription-account-label-${props.item.credential_id}`)
 const weightInputId = computed(() => `subscription-account-weight-${props.item.credential_id}`)
 
 // 默认权重保持简洁，非默认值显示快捷编辑入口。
@@ -116,6 +121,10 @@ function saveWeight(): void {
   })
   weightEditing.value = false
 }
+function saveLabel(): void {
+  if (props.busy || labelDraft.value === props.item.label) return
+  emit('label', { item: props.item, value: labelDraft.value })
+}
 
 // 收起卡片时退出编辑，避免下次展开停在旧草稿。
 watch(
@@ -124,6 +133,12 @@ watch(
     if (!weightEditing.value) resetWeightDraft()
   },
   { immediate: true },
+)
+watch(
+  () => props.item.label,
+  (value) => {
+    labelDraft.value = value
+  },
 )
 watch(detailsExpanded, (expanded) => {
   if (!expanded) weightEditing.value = false
@@ -247,7 +262,7 @@ const quotaSubjectKeys: Readonly<Record<string, CredentialQuotaLabelKey>> = {
   'pay as you go': 'pay_as_you_go',
   'oauth apps': 'oauth_apps',
 }
-const accountName = computed(() => props.item.account.email ?? props.item.mask)
+const accountName = computed(() => credentialDisplayName(props.item))
 const planLabel = computed(() => {
   const plan = snapshot.value?.plan_summary.name?.trim()
   return plan ?? ''
@@ -1306,6 +1321,31 @@ function runMenuAction(
       </div>
       <div class="subscription-account__panels">
         <div class="setting-panel">
+          <span class="setting-panel__title">{{ t('group.credentials.label') }}</span>
+          <form
+            class="setting-panel__body subscription-account__label-editor"
+            @submit.prevent="saveLabel"
+          >
+            <AppTextInput
+              :id="labelInputId"
+              :model-value="labelDraft"
+              :label="t('group.credentials.label')"
+              :placeholder="t('group.credentials.labelPlaceholder')"
+              size="compact"
+              :disabled="busy"
+              autocomplete="off"
+              @update:model-value="labelDraft = $event"
+            />
+            <AppButton
+              type="submit"
+              size="compact"
+              :disabled="busy || labelDraft === item.label"
+            >
+              {{ t('group.credentials.saveLabel') }}
+            </AppButton>
+          </form>
+        </div>
+        <div class="setting-panel">
           <span class="setting-panel__title">{{ t('group.credentials.columns.weight') }}</span>
           <div class="setting-panel__body">
             <template v-if="!weightEditing">
@@ -2195,6 +2235,16 @@ function runMenuAction(
   .subscription-account__sync-icon--spinning {
     animation: none;
   }
+}
+.subscription-account__label-editor {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+.subscription-account__label-editor > :first-child {
+  flex: 1;
+  min-width: 0;
 }
 </style>
 

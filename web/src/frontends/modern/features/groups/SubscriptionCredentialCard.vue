@@ -20,7 +20,11 @@ import CredentialCardActions from './CredentialCardActions.vue'
 import CredentialOutcomeSummary from './CredentialOutcomeSummary.vue'
 import CredentialQuotaRows from './CredentialQuotaRows.vue'
 import CredentialPlanBadge from './CredentialPlanBadge.vue'
-import { credentialStatus, credentialTime } from './credential-presentation'
+import {
+  credentialDisplayName,
+  credentialStatus,
+  credentialTime,
+} from './credential-presentation'
 
 const props = defineProps<{
   row: CredentialRow
@@ -71,18 +75,21 @@ useLoadingActivity(() => Boolean(props.pending))
     :aria-busy="pending || undefined"
   >
     <header class="modern-subscription-card-heading">
-      <AppTooltip :label="t('groupDetail.selectCredential', { name: row.account || row.mask })">
+      <AppTooltip :label="t('groupDetail.selectCredential', { name: credentialDisplayName(row) })">
         <AppCheckbox
           class="modern-subscription-card-select"
           :model-value="selected"
-          :label="t('groupDetail.selectCredential', { name: row.account || row.mask })"
+          :label="t('groupDetail.selectCredential', { name: credentialDisplayName(row) })"
           label-hidden
           :disabled="disabled"
           @update:model-value="$emit('select', $event)"
         />
       </AppTooltip>
       <div class="modern-subscription-card-identity">
-        <AppOverflowText class="modern-subscription-card-name" :text="row.account || row.mask" />
+        <AppOverflowText
+          class="modern-subscription-card-name"
+          :text="credentialDisplayName(row)"
+        />
         <div class="modern-subscription-card-subtitle">
           <div class="modern-subscription-card-plan">
             <CredentialPlanBadge v-if="plan" :name="plan" :level="observation?.planLevel" />

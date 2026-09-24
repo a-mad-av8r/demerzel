@@ -77,7 +77,7 @@ const config = computed<GatewayConfig>(() => ({
   target: target.value,
   origin: window.location.origin,
   model: model.value,
-  name: 'GPT-Load' + (key.value ? ' · ' + key.value.name : ''),
+  name: 'Demerzel' + (key.value ? ' · ' + key.value.name : ''),
 }))
 const signature = computed(() => JSON.stringify([config.value, key.value?.id]))
 const mask = computed(() => key.value?.mask ?? 'YOUR_API_KEY')

@@ -79,6 +79,7 @@ import CredentialBatchBar from './GroupCredentialBatchBar.vue'
 import CredentialRecord from './GroupCredentialRecord.vue'
 import CredentialTestDialog from './CredentialTestDialog.vue'
 import SubscriptionAccountCard from './SubscriptionAccountCard.vue'
+import { credentialDisplayName } from './credential-identity'
 import {
   constrainCredentialSearch,
   isCanonicalCredentialRouteQuery,
@@ -1255,7 +1256,7 @@ function clearDeletedRouteState(ids: readonly number[]): void {
 
 async function mutateItem(
   item: CredentialItemDto,
-  action: 'weight' | 'toggle' | 'restore',
+  action: 'weight' | 'toggle' | 'restore' | 'label',
   value?: string,
 ): Promise<void> {
   if (batchBusy.value || pending(item.credential_id)) return
@@ -1272,7 +1273,9 @@ async function mutateItem(
             item.credential_id,
             action === 'weight'
               ? { weight_manual: Number(value) }
-              : { status: item.configured_status === 'active' ? 'disabled' : 'active' },
+              : action === 'label'
+                ? { label: value ?? '' }
+                : { status: item.configured_status === 'active' ? 'disabled' : 'active' },
           )
   } catch {
     feedback.value = t(
@@ -1283,6 +1286,12 @@ async function mutateItem(
   }
   try {
     await reconcileItem(result, action !== 'weight')
+    if (action === 'label') {
+      void queryClient.invalidateQueries({
+        queryKey: controlQueryKeys.home.subscriptionAccounts(),
+        exact: true,
+      })
+    }
   } finally {
     setPending(item.credential_id, action, false)
   }
@@ -1838,6 +1847,7 @@ async function runBatch(
               @toggle="mutateItem($event, 'toggle')"
               @restore="mutateItem($event, 'restore')"
               @weight="mutateItem($event.item, 'weight', $event.value)"
+              @label="mutateItem($event.item, 'label', $event.value)"
               @refresh="refreshObservation"
               @load-details="loadCredentialUsage"
               @reset="openResetCreditDialog"
@@ -1846,7 +1856,7 @@ async function runBatch(
               @remove="
                 deleteTarget = {
                   ids: [$event.credential_id],
-                  mask: $event.account.email ?? $event.mask,
+                  mask: credentialDisplayName($event),
                 }
               "
             />
@@ -1886,10 +1896,11 @@ async function runBatch(
             @update:weight-editor-open="setWeightEditor(item.credential_id, $event)"
             @open-weight="openWeightEditor($event.credential_id)"
             @weight="mutateItem($event.item, 'weight', $event.value)"
+            @label="mutateItem($event.item, 'label', $event.value)"
             @test="openCredentialTest"
             @toggle="mutateItem($event, 'toggle')"
             @restore="mutateItem($event, 'restore')"
-            @remove="deleteTarget = { ids: [$event.credential_id], mask: $event.mask }"
+            @remove="deleteTarget = { ids: [$event.credential_id], mask: credentialDisplayName($event) }"
           />
         </LedgerRecordList>
         <PaginationBar
@@ -1908,7 +1919,7 @@ async function runBatch(
     </template>
     <CredentialTestDialog
       :open="credentialTestTarget !== undefined"
-      :mask="credentialTestTarget?.mask ?? ''"
+      :mask="credentialTestTarget ? credentialDisplayName(credentialTestTarget) : ''"
       :model="credentialTestModel"
       :models="credentialTestModels"
       :protocol="credentialTestProtocol"

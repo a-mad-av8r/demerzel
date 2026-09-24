@@ -278,8 +278,8 @@ async function submit(): Promise<void> {
                 <strong>{{ t('auth.help.dockerTitle') }}</strong>
                 <i18n-t keypath="auth.help.dockerDescription" tag="p">
                   <template #command>
-                    <OverflowTooltip as="code" content="docker exec -it gpt-load sh">
-                      docker exec -it gpt-load sh
+                    <OverflowTooltip as="code" content="docker exec -it demerzel sh">
+                      docker exec -it demerzel sh
                     </OverflowTooltip>
                   </template>
                 </i18n-t>

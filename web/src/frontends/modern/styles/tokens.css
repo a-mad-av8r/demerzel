@@ -233,7 +233,6 @@
   --modern-credential-card-gap: var(--modern-space-3);
   --modern-credential-grid-gap: var(--modern-space-3);
   --modern-progress-bar-sm: 6px;
-  --modern-logo-width: 192px;
   --modern-dialog-width: 540px;
   --modern-dialog-wide-width: 900px;
   --modern-dialog-sheet-width: 660px;
@@ -298,6 +297,5 @@
     --modern-content-inset: 16px;
     --modern-content-bottom: 28px;
     --modern-panel-inset: 16px;
-    --modern-logo-width: 176px;
   }
 }

@@ -135,7 +135,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
             'model_provider = "gpt-load"',
             '',
             '[model_providers.gpt-load]',
-            'name = "GPT-Load"',
+            'name = "Demerzel"',
             `base_url = ${tomlQuote(endpoint)}`,
             'env_key = "GPT_LOAD_API_KEY"',
             'wire_api = "responses"',

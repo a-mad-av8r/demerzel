@@ -307,7 +307,7 @@ export default {
         upstreamUrlError: '有効な HTTP または HTTPS の Base URL を入力してください。',
         urlWarning: 'Base URL を変更すると、今後のグループリクエストの送信先が変わります。',
         gptLoadUrlDescription:
-          'GPT-Load ゲートウェイのルートまたはデプロイ接頭辞を入力してください。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
+          'Demerzel ゲートウェイのルートまたはデプロイ接頭辞を入力してください。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
         newApiUrlDescription:
           'New API ゲートウェイのルートまたはデプロイ接頭辞を入力してください。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
         cpaUrlDescription:
@@ -333,7 +333,19 @@ export default {
       },
       runtime: {
         title: 'ランタイム上書き',
-        description: '継承値はグローバル設定に従い、グループ上書きは疎なまま保持されます。',
+        description:
+          'ランタイム値はグローバル設定を継承します。アカウント選択はグループ単位で、グローバルルート戦略とは独立しています。',
+        accountSelection: '認証情報のアカウント選択',
+        accountSelectionHelp:
+          'このグループ内で使用するアカウントを選択します。グローバルルート戦略とは独立し、既存グループの既定値は加重公平です。',
+        accountSelectionModes: {
+          serial: '順次フォールバック',
+          weighted_fair: '加重公平',
+        },
+        serialQuotaReservePercent: 'クォータ予約率（%）',
+        serialQuotaReserveHelp:
+          '順次フォールバックの予約しきい値です。既定値は 10%、0～100 の整数を入力してください。',
+        serialQuotaReserveError: '0～100 の整数を入力してください。',
         first_byte_timeout: 'ネイティブ応答 / ストリーム初回イベントのタイムアウト',
         request_timeout: '上流リクエスト1回あたりのタイムアウト',
         stream_idle_timeout: 'ストリームアイドルタイムアウト',
@@ -407,7 +419,7 @@ export default {
       filters: {
         region: '認証情報を絞り込む',
         search: '検索',
-        placeholder: 'マスク',
+        placeholder: 'ラベル、アカウント、またはマスク',
         clear: '検索をクリア',
         reset: '条件をリセット',
       },
@@ -429,6 +441,9 @@ export default {
       notScheduledHelp: 'この認証情報は現在スケジューリングに参加していません',
       selectCredential: 'キー {mask} を選択',
       copy: 'キーをコピー',
+      label: '表示ラベル',
+      labelPlaceholder: '任意。空欄の場合はアカウントまたはキーのマスクを表示します',
+      saveLabel: 'ラベルを保存',
       cardLabel: 'チャネル認証情報 {mask}',
       weightFor: '{mask} のウェイト',
       weight: '{weight}',
@@ -568,7 +583,7 @@ export default {
           '{added} 件を接続し、次の既存アカウントをスキップしました：{accounts}',
         sync: '同期',
         syncingQuota: 'クォータ情報を同期中',
-        searchPlaceholder: 'アカウント、メール、またはマスク',
+        searchPlaceholder: 'ラベル、アカウント、メール、またはマスク',
         selectAccount: 'アカウント {account} を選択',
         download: '認証情報をダウンロード',
         downloadSucceeded: '認証情報ファイルをダウンロードしました',

@@ -124,6 +124,8 @@ const runtimeSettingFields = [
   'header_rules',
   'affinity_enabled',
   'responses_websocket_enabled',
+  'account_selection',
+  'serial_quota_reserve_percent',
 ] as const
 const groupRuntimeSettingFields = [...runtimeSettingFields, 'parameter_overrides'] as const
 
@@ -141,6 +143,8 @@ export interface GroupRuntimeConfigDto {
   affinity_enabled?: boolean
   responses_websocket_enabled?: boolean
   parameter_overrides?: ParameterOverrideRuleDto[]
+  account_selection?: 'serial' | 'weighted_fair'
+  serial_quota_reserve_percent?: number
 }
 
 export interface GroupEffectiveConfigDto {
@@ -151,6 +155,8 @@ export interface GroupEffectiveConfigDto {
   header_rules: HeaderRulesDto
   affinity_enabled: boolean
   responses_websocket_enabled: boolean
+  account_selection: 'serial' | 'weighted_fair'
+  serial_quota_reserve_percent: number
 }
 
 export type {
@@ -378,6 +384,15 @@ function projectRuntimeConfig(
   }
   if (complete || Object.prototype.hasOwnProperty.call(record, 'responses_websocket_enabled')) {
     result.responses_websocket_enabled = projectBoolean(record.responses_websocket_enabled)
+  }
+  if (complete || Object.prototype.hasOwnProperty.call(record, 'account_selection')) {
+    result.account_selection = projectEnum(record.account_selection, ['serial', 'weighted_fair'])
+  }
+  if (complete || Object.prototype.hasOwnProperty.call(record, 'serial_quota_reserve_percent')) {
+    result.serial_quota_reserve_percent = projectSafeInteger(record.serial_quota_reserve_percent, {
+      minimum: 0,
+      maximum: 100,
+    })
   }
   if (!complete && Object.prototype.hasOwnProperty.call(record, 'parameter_overrides')) {
     result.parameter_overrides = projectParameterOverrides(record.parameter_overrides)

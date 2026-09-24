@@ -307,7 +307,7 @@ export default {
         upstreamUrlError: 'Enter a valid HTTP or HTTPS Base URL.',
         urlWarning: 'Changing the Base URL changes where future Group requests are sent.',
         gptLoadUrlDescription:
-          'Enter the GPT-Load gateway root or deployment prefix. Do not include standard protocol paths such as /v1 or /v1beta.',
+          'Enter the Demerzel gateway root or deployment prefix. Do not include standard protocol paths such as /v1 or /v1beta.',
         newApiUrlDescription:
           'Enter the New API gateway root or deployment prefix. Do not include standard protocol paths such as /v1 or /v1beta.',
         cpaUrlDescription:
@@ -333,7 +333,19 @@ export default {
       },
       runtime: {
         title: 'Runtime overrides',
-        description: 'Inherited values follow global settings. Group overrides remain sparse.',
+        description:
+          'Runtime values inherit from global settings; account selection is group-specific and independent of the global route strategy.',
+        accountSelection: 'Credential account selection',
+        accountSelectionHelp:
+          'Selects the account within this Group; it is independent of the global route strategy. Legacy Groups default to Weighted fair.',
+        accountSelectionModes: {
+          serial: 'Serial failover',
+          weighted_fair: 'Weighted fair',
+        },
+        serialQuotaReservePercent: 'Quota reserve (%)',
+        serialQuotaReserveHelp:
+          'Reserve threshold for serial failover. Default: 10%; enter a whole percentage from 0 to 100.',
+        serialQuotaReserveError: 'Enter a whole number from 0 to 100.',
         first_byte_timeout: 'Native response / stream first-event timeout',
         request_timeout: 'Upstream request timeout per attempt',
         stream_idle_timeout: 'Stream-idle timeout',
@@ -406,7 +418,7 @@ export default {
       filters: {
         region: 'Filter credentials',
         search: 'Search',
-        placeholder: 'Mask',
+        placeholder: 'Label, account, or key mask',
         clear: 'Clear search',
         reset: 'Reset filters',
       },
@@ -428,6 +440,9 @@ export default {
       notScheduledHelp: 'This credential is not participating in scheduling',
       selectCredential: 'Select key {mask}',
       copy: 'Copy key',
+      label: 'Display label',
+      labelPlaceholder: 'Optional; blank uses the account or key mask',
+      saveLabel: 'Save label',
       cardLabel: 'Channel credential {mask}',
       weightFor: 'Weight for {mask}',
       weight: '{weight}',
@@ -563,7 +578,7 @@ export default {
         connectDuplicatedAccounts: 'Connected {added} account(s); skipped: {accounts}',
         sync: 'Sync',
         syncingQuota: 'Syncing quota information',
-        searchPlaceholder: 'Account, email, or mask',
+        searchPlaceholder: 'Label, account, email, or mask',
         selectAccount: 'Select account {account}',
         download: 'Download credential',
         downloadSucceeded: 'Credential file downloaded',

@@ -73,6 +73,10 @@ function cloneOverrides(value: GroupRuntimeConfigDto): GroupRuntimeConfigDto {
   const next: GroupRuntimeConfigDto = {}
   for (const key of groupTimeoutKeys) if (value[key] !== undefined) next[key] = value[key]
   for (const key of groupPolicyCountKeys) if (value[key] !== undefined) next[key] = value[key]
+  if (value.account_selection !== undefined) next.account_selection = value.account_selection
+  if (value.serial_quota_reserve_percent !== undefined) {
+    next.serial_quota_reserve_percent = value.serial_quota_reserve_percent
+  }
   if (value.header_rules) next.header_rules = cloneHeaders(value.header_rules)
   if (value.affinity_enabled !== undefined) next.affinity_enabled = value.affinity_enabled
   if (value.responses_websocket_enabled !== undefined)

@@ -99,7 +99,7 @@ export default {
       compatibleUrlDescription:
         'Enter the complete API prefix, for example https://api.example.com/v1',
       gptLoadUrlDescription:
-        'Enter the GPT-Load gateway root or deployment prefix, for example https://gpt-load.example.com. Do not include standard protocol paths such as /v1 or /v1beta.',
+        'Enter the Demerzel gateway root or deployment prefix, for example https://demerzel.example.com. Do not include standard protocol paths such as /v1 or /v1beta.',
       newApiUrlDescription:
         'Enter the New API gateway root or deployment prefix, for example https://new-api.example.com. Do not include standard protocol paths such as /v1 or /v1beta.',
       cpaUrlDescription:
@@ -276,7 +276,7 @@ export default {
         empty: 'Empty lines',
         duplicates: 'Duplicates',
       },
-      accessKeyWarning: '{count} lines look like GPT-Load access keys; verify before continuing',
+      accessKeyWarning: '{count} lines look like Demerzel access keys; verify before continuing',
       tooMany: 'At most 5,000 non-empty keys can be submitted',
       required: 'Enter at least one credential first',
       channelCredentialNotice:

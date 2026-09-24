@@ -97,7 +97,7 @@ export default {
       compatibleUrlDescription:
         'https://api.example.com/v1 のように完全な API プレフィックスを入力してください',
       gptLoadUrlDescription:
-        'GPT-Load ゲートウェイのルートまたはデプロイ接頭辞を入力します（例: https://gpt-load.example.com）。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
+        'Demerzel ゲートウェイのルートまたはデプロイ接頭辞を入力します（例: https://demerzel.example.com）。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
       newApiUrlDescription:
         'New API ゲートウェイのルートまたはデプロイ接頭辞を入力します（例: https://new-api.example.com）。/v1 や /v1beta などの標準プロトコルパスは含めないでください。',
       cpaUrlDescription:
@@ -275,7 +275,7 @@ export default {
         empty: '空行',
         duplicates: '重複',
       },
-      accessKeyWarning: '{count} 行が GPT-Load アクセスキーのようです — 続行前に確認してください',
+      accessKeyWarning: '{count} 行が Demerzel アクセスキーのようです — 続行前に確認してください',
       tooMany: '空でないキーは最大 5,000 件です',
       required: '先に認証情報を 1 件以上入力してください',
       channelCredentialNotice:

@@ -15,7 +15,10 @@ import {
   AppOverflowText,
   AppPagination,
 } from '@modern/components/ui'
-import { credentialTime } from '@modern/features/groups/credential-presentation'
+import {
+  credentialDisplayName,
+  credentialTime,
+} from '@modern/features/groups/credential-presentation'
 import { groupWeight, reasonLabel } from './inspection-display'
 
 const props = defineProps<{ group: InspectionGroup; observedAt: number }>()
@@ -72,7 +75,7 @@ const identities = useQuery(
         rows.push(...next.items)
         next.items.forEach((row) => missing.delete(row.id))
       }
-      return new Map(rows.map((row) => [row.id, row.account || row.mask]))
+      return new Map(rows.map((row) => [row.id, credentialDisplayName(row)]))
     },
     enabled: props.group.credentials.length > 0,
   })),

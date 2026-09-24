@@ -1,5 +1,4 @@
 import {
-  computed,
   inject,
   onMounted,
   onScopeDispose,
@@ -7,34 +6,21 @@ import {
   readonly,
   ref,
   type InjectionKey,
+  type Ref,
 } from 'vue'
 
-import { getCurrentVersion, getReleaseUpdate, type ReleaseUpdate } from '@modern/api/system'
-import { useAuthSession } from '@modern/features/auth/auth-session'
-import { useApiClient } from '@shared/http/client-context'
-import { ApiError, RequestCancelledError } from '@shared/http/errors'
+import { getCurrentVersion } from '@modern/api/system'
+import { RequestCancelledError } from '@shared/http/errors'
 
-type CheckState = 'idle' | 'checking' | 'latest' | 'available' | 'failed' | 'authRequired'
-
-function isDevelopmentVersion(value: string): boolean {
-  return /^v?\d+\.\d+\.\d+-dev(?:\.|$)/.test(value)
+interface SystemStatusState {
+  version: Readonly<Ref<string | null>>
+  versionLoading: Readonly<Ref<boolean>>
 }
 
-function createSystemStatus() {
-  const session = useAuthSession()
-  const client = useApiClient()
+function createSystemStatus(): SystemStatusState {
   const version = ref<string | null>(null)
   const versionLoading = ref(false)
-  const checkState = ref<CheckState>('idle')
-  const update = ref<ReleaseUpdate | null>(null)
   const controller = new AbortController()
-  const canCheckUpdate = computed(
-    () =>
-      session.state.phase === 'validated' &&
-      session.state.principalType === 'admin' &&
-      version.value !== null &&
-      !isDevelopmentVersion(version.value),
-  )
 
   async function loadVersion(): Promise<void> {
     if (versionLoading.value) return
@@ -49,49 +35,18 @@ function createSystemStatus() {
     }
   }
 
-  async function loadUpdate(force: boolean): Promise<void> {
-    if (checkState.value === 'checking') return
-    if (!canCheckUpdate.value) {
-      update.value = null
-      checkState.value = 'authRequired'
-      return
-    }
-    checkState.value = 'checking'
-    try {
-      update.value = await getReleaseUpdate(client, force, controller.signal)
-      checkState.value = update.value ? 'available' : 'latest'
-    } catch (error) {
-      if (error instanceof RequestCancelledError || controller.signal.aborted) return
-      checkState.value =
-        error instanceof ApiError && (error.status === 401 || error.status === 403)
-          ? 'authRequired'
-          : 'failed'
-    }
-  }
-
-  function checkForUpdate(): void {
-    void loadUpdate(true)
-  }
-
   onMounted(() => {
-    void loadVersion().then(() => {
-      if (canCheckUpdate.value) void loadUpdate(false)
-    })
+    void loadVersion()
   })
   onScopeDispose(() => controller.abort())
 
   return {
-    canCheckUpdate,
     version: readonly(version),
     versionLoading: readonly(versionLoading),
-    checkState: readonly(checkState),
-    update: readonly(update),
-    checkForUpdate,
   }
 }
 
-const systemStatusKey: InjectionKey<ReturnType<typeof createSystemStatus>> =
-  Symbol('modern-system-status')
+const systemStatusKey: InjectionKey<SystemStatusState> = Symbol('modern-system-status')
 
 export function provideSystemStatus(): void {
   provide(systemStatusKey, createSystemStatus())

@@ -36,6 +36,7 @@ import SettingRow from '@/components/config/SettingRow.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppConfirmDialog from '@/components/ui/AppConfirmDialog.vue'
 import AppSwitch from '@/components/ui/AppSwitch.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
 import AppTextInput from '@/components/ui/AppTextInput.vue'
 import AsyncRefreshIndicator from '@/components/ui/AsyncRefreshIndicator.vue'
 import CompactFieldError from '@/components/ui/CompactFieldError.vue'
@@ -86,6 +87,7 @@ const initialLoading = useStableLoading(
 const queryRefreshing = computed(() => query.data.value !== undefined && query.isFetching.value)
 const saved = ref<GroupSettingsDto>()
 const draft = ref<GroupSettingsDraft>()
+const serialQuotaReserveDraft = ref('10')
 const pending = ref(false)
 const deletePending = ref(false)
 const channelSwitchPending = ref(false)
@@ -112,6 +114,36 @@ const policyRows = [
     helpKey: 'blacklistThresholdHelp',
   },
 ] as const
+const accountSelectionOptions = computed(() => [
+  { value: 'serial', label: t('group.settings.runtime.accountSelectionModes.serial') },
+  {
+    value: 'weighted_fair',
+    label: t('group.settings.runtime.accountSelectionModes.weighted_fair'),
+  },
+])
+const accountSelection = computed(
+  () =>
+    draft.value?.overrides.account_selection ??
+    saved.value?.effective.account_selection ??
+    'weighted_fair',
+)
+const serialQuotaReserveBaseline = computed(() =>
+  String(saved.value?.effective.serial_quota_reserve_percent ?? 10),
+)
+const serialQuotaReserveChanged = computed(
+  () =>
+    accountSelection.value === 'serial' &&
+    serialQuotaReserveDraft.value !== serialQuotaReserveBaseline.value,
+)
+const serialQuotaReserveInvalid = computed(() => {
+  if (accountSelection.value !== 'serial') return false
+  if (!/^\d+$/u.test(serialQuotaReserveDraft.value)) return true
+  const value = Number(serialQuotaReserveDraft.value)
+  return !Number.isSafeInteger(value) || value < 0 || value > 100
+})
+const serialQuotaReserveError = computed(() =>
+  serialQuotaReserveInvalid.value ? t('group.settings.runtime.serialQuotaReserveError') : '',
+)
 const selectedChannel = computed(() =>
   channelsQuery.data.value?.items.find(({ channel_id }) => channel_id === draft.value?.channel_id),
 )
@@ -183,6 +215,7 @@ const dirty = computed(
     (Object.keys(patch.value).length > 0 ||
       headerRulesInvalidEdits.value ||
       parameterOverridesInvalidEdits.value ||
+      serialQuotaReserveChanged.value ||
       proxyState.value.dirty),
 )
 const mutationPending = computed(
@@ -243,6 +276,7 @@ const valid = computed(
     policyCountsValid.value &&
     headerRulesValid.value &&
     parameterOverridesValid.value &&
+    !serialQuotaReserveInvalid.value &&
     !proxyState.value.invalid,
 )
 function isPendingRestore(key: GroupTimeoutKey | GroupPolicyCountKey): boolean {
@@ -288,6 +322,7 @@ function resetSavedDraft(settings: GroupSettingsDto): void {
   parameterOverridesInvalidEdits.value = false
   parameterOverridesEditorRevision.value += 1
   proxyMode.value = settings.proxy.configured_mode
+  serialQuotaReserveDraft.value = String(settings.effective.serial_quota_reserve_percent)
   proxyEndpoint.value = ''
 }
 
@@ -397,6 +432,27 @@ function policyCountError(key: GroupPolicyCountKey): string | undefined {
   return value !== undefined && (!Number.isSafeInteger(value) || value < 0)
     ? t('group.settings.runtime.nonNegativeIntegerError')
     : undefined
+}
+
+function setAccountSelection(value: string): void {
+  if (!draft.value || (value !== 'serial' && value !== 'weighted_fair')) return
+  const overrides = { ...draft.value.overrides, account_selection: value }
+  if (value === 'serial' && overrides.serial_quota_reserve_percent === undefined) {
+    overrides.serial_quota_reserve_percent =
+      saved.value?.effective.serial_quota_reserve_percent ?? 10
+  }
+  draft.value = { ...draft.value, overrides }
+}
+
+function setSerialQuotaReserve(value: string): void {
+  serialQuotaReserveDraft.value = value
+  if (!draft.value || !/^\d+$/u.test(value)) return
+  const percent = Number(value)
+  if (!Number.isSafeInteger(percent) || percent < 0 || percent > 100) return
+  draft.value = {
+    ...draft.value,
+    overrides: { ...draft.value.overrides, serial_quota_reserve_percent: percent },
+  }
 }
 
 function updateHeaderRules(value: HeaderRulesDto): void {
@@ -711,6 +767,54 @@ onBeforeUnmount(() => {
               <h3>{{ t('group.settings.sections.runtime') }}</h3>
               <p>{{ t('group.settings.runtime.description') }}</p>
             </header>
+            <div class="group-settings__account-policy">
+              <div class="group-settings__account-policy-text">
+                <strong>{{ t('group.settings.runtime.accountSelection') }}</strong>
+                <p>{{ t('group.settings.runtime.accountSelectionHelp') }}</p>
+              </div>
+              <AppSelect
+                :model-value="accountSelection"
+                :label="t('group.settings.runtime.accountSelection')"
+                :options="accountSelectionOptions"
+                size="compact"
+                :disabled="mutationPending"
+                @update:model-value="setAccountSelection"
+              />
+            </div>
+            <div
+              v-if="accountSelection === 'serial'"
+              class="group-settings__account-policy"
+            >
+              <div class="group-settings__account-policy-text">
+                <strong>{{ t('group.settings.runtime.serialQuotaReservePercent') }}</strong>
+                <p>{{ t('group.settings.runtime.serialQuotaReserveHelp') }}</p>
+              </div>
+              <div class="group-settings__runtime-input">
+                <CompactFieldError
+                  :error="serialQuotaReserveError || undefined"
+                >
+                  <template #default="{ invalid, describedBy }">
+                    <AppTextInput
+                      id="group-settings-serial-quota-reserve-percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      inputmode="numeric"
+                      :model-value="serialQuotaReserveDraft"
+                      :label="t('group.settings.runtime.serialQuotaReservePercent')"
+                      size="compact"
+                      monospace
+                      :disabled="mutationPending"
+                      :invalid="invalid"
+                      :described-by="describedBy"
+                      @update:model-value="setSerialQuotaReserve"
+                    />
+                  </template>
+                </CompactFieldError>
+                <span aria-hidden="true">%</span>
+              </div>
+            </div>
             <div class="group-settings__runtime">
               <SettingRow
                 :label="t('group.settings.runtime.responses_websocket_enabled')"
@@ -1164,6 +1268,27 @@ small {
   color: var(--color-text-faint);
   font-size: 11px;
 }
+.group-settings__account-policy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 190px);
+  align-items: center;
+  gap: var(--space-4);
+  border-bottom: 1px dashed var(--color-border-subtle);
+  padding: 8px 12px;
+}
+.group-settings__account-policy-text {
+  min-width: 0;
+}
+.group-settings__account-policy-text strong {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--text-meta);
+}
+.group-settings__account-policy-text p {
+  margin: 3px 0 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
 @media (max-width: 860px) {
   .group-settings {
     padding-top: var(--detail-panel-padding-top-compact);
@@ -1180,6 +1305,11 @@ small {
   .group-settings__danger-zone {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+@media (max-width: 640px) {
+  .group-settings__account-policy {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

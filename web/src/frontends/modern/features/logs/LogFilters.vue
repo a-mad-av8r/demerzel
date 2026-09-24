@@ -6,6 +6,7 @@ import type { LogAccessKeyOption, LogFilterName, LogQuery } from '@modern/api/lo
 import type { GroupRow } from '@modern/api/groups'
 import type { GroupChannel } from '@modern/api/group-create'
 import { getGroupCredentials } from '@modern/api/group-detail'
+import { credentialDisplayName } from '@modern/features/groups/credential-presentation'
 import { channelSearchOption } from '@modern/components/channel-options'
 import {
   AppAdvancedFilters,
@@ -242,7 +243,7 @@ const loadCredentials = computed(() => {
     )
     const values = page.items.map((row) => ({
       value: String(row.id),
-      label: row.account || row.mask,
+      label: credentialDisplayName(row),
     }))
     credentialLabels.value = new Map([
       ...credentialLabels.value,

@@ -189,7 +189,7 @@ export default {
       expirationRequired: '请选择过期时间',
       expirationFuture: '过期时间必须晚于当前时间',
       sourceIP: '连接来源 IP',
-      sourceIPDescription: '按与 GPT-Load 建立连接的来源地址限制访问。',
+      sourceIPDescription: '按与 Demerzel 建立连接的来源地址限制访问。',
       sourceAll: '不限来源',
       sourceRestricted: '指定 IP/CIDR',
       allowedCIDRs: '允许的 IP/CIDR',

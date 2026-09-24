@@ -17,6 +17,7 @@ import ProxyConfigEditor from '@/components/config/ProxyConfigEditor.vue'
 import ProxyScopeIndicator from '@/components/config/ProxyScopeIndicator.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppPopover from '@/components/ui/AppPopover.vue'
+import AppTextInput from '@/components/ui/AppTextInput.vue'
 import AppTooltip from '@/components/ui/AppTooltip.vue'
 import CopyChip from '@/components/ui/CopyChip.vue'
 import IconButton from '@/components/ui/IconButton.vue'
@@ -24,6 +25,7 @@ import StatusBadge from '@/components/ui/StatusBadge.vue'
 import ModelCooldownDetails from '@/components/ui/ModelCooldownDetails.vue'
 import { formatLocalInstant } from '@/lib/format'
 
+import { credentialDisplayName } from './credential-identity'
 import { presentCredentialFailureCategory } from './credential-failure-presenter'
 
 const props = defineProps<{
@@ -41,6 +43,7 @@ const emit = defineEmits<{
   'update:selected': [selected: boolean]
   'update:expanded': [expanded: boolean]
   'update:weightEditorOpen': [open: boolean]
+  label: [payload: { item: CredentialItemDto; value: string }]
   'open-weight': [item: CredentialItemDto]
   weight: [payload: { item: CredentialItemDto; value: string }]
   toggle: [item: CredentialItemDto]
@@ -51,6 +54,11 @@ const emit = defineEmits<{
 const { locale, n, t } = useI18n()
 const menuOpen = ref(false)
 const draftWeight = ref('50')
+const labelDraft = ref(props.item.label)
+const identityLabel = computed(() => {
+  const name = credentialDisplayName(props.item)
+  return name === props.item.mask ? '' : name
+})
 const detailId = computed(() => `group-credential-details-${props.item.credential_id}`)
 const weightInputId = computed(() => `group-credential-weight-${props.item.credential_id}`)
 const isProblem = computed(
@@ -58,6 +66,12 @@ const isProblem = computed(
     props.item.effective_status === 'cooldown' ||
     props.item.effective_status === 'blacklisted' ||
     props.item.model_cooldowns.length > 0,
+)
+watch(
+  () => props.item.label,
+  (value) => {
+    labelDraft.value = value
+  },
 )
 const weightLabel = computed(() => t('group.credentials.weight', { weight: n(props.item.weight) }))
 const recentLabel = computed(() =>
@@ -104,6 +118,10 @@ function saveWeight(): void {
   })
   emit('update:weightEditorOpen', false)
 }
+function saveLabel(): void {
+  if (props.busy || labelDraft.value === props.item.label) return
+  emit('label', { item: props.item, value: labelDraft.value })
+}
 
 // 权重列的值可点：展开该行并直接进入权重编辑，作为折叠区设置的发现入口。
 function openWeightFromColumn(): void {
@@ -131,7 +149,7 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
       <div class="ledger-record-list__cell group-credential-record__select" role="cell">
         <label>
           <span class="sr-only">{{
-            t('group.credentials.selectCredential', { mask: item.mask })
+            t('group.credentials.selectCredential', { mask: credentialDisplayName(item) })
           }}</span>
           <input
             type="checkbox"
@@ -147,6 +165,9 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
           t('group.credentials.columns.credential')
         }}</span>
         <span class="group-credential-record__credential">
+          <span v-if="identityLabel" class="group-credential-record__label">{{
+            identityLabel
+          }}</span>
           <CopyChip
             :key="item.secret_version"
             :value="item.mask"
@@ -272,6 +293,30 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
           :inert="!expanded || undefined"
         >
           <div class="group-credential-record__settings">
+            <div class="setting-panel">
+              <span class="setting-panel__title">{{ t('group.credentials.label') }}</span>
+              <form
+                class="setting-panel__body group-credential-record__label-editor"
+                @submit.prevent="saveLabel"
+              >
+                <AppTextInput
+                  :model-value="labelDraft"
+                  :label="t('group.credentials.label')"
+                  :placeholder="t('group.credentials.labelPlaceholder')"
+                  size="compact"
+                  :disabled="busy"
+                  autocomplete="off"
+                  @update:model-value="labelDraft = $event"
+                />
+                <AppButton
+                  type="submit"
+                  size="compact"
+                  :disabled="busy || labelDraft === item.label"
+                >
+                  {{ t('group.credentials.saveLabel') }}
+                </AppButton>
+              </form>
+            </div>
             <div class="setting-panel">
               <span class="setting-panel__title">
                 {{ t('group.credentials.columns.weight') }}
@@ -412,6 +457,19 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
   min-width: 0;
   align-items: center;
   gap: 6px;
+}
+.group-credential-record__label {
+  min-width: 0;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.group-credential-record__label-editor {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .group-credential-record__status-badges {

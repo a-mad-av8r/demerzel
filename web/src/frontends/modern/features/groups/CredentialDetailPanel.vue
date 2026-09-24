@@ -23,7 +23,11 @@ import {
   AppTooltip,
 } from '@modern/components/ui'
 import { useApiClient } from '@shared/http/client-context'
-import { credentialStatus, credentialTime } from './credential-presentation'
+import {
+  credentialDisplayName,
+  credentialStatus,
+  credentialTime,
+} from './credential-presentation'
 import { validProxyURL } from '@modern/app/proxy'
 import GroupWorkspacePanel from './GroupWorkspacePanel.vue'
 import CredentialAccountInfo from './CredentialAccountInfo.vue'
@@ -43,6 +47,7 @@ const item = computed(() => query.data.value ?? props.row)
 const state = computed(() => credentialStatus(item.value))
 const saved = ref<CredentialRow>()
 const weight = ref('')
+const label = ref('')
 const proxyMode = ref('inherit')
 const proxyURL = ref('')
 const saving = ref(false)
@@ -55,6 +60,7 @@ const dirty = computed(
     !completed.value &&
     Boolean(saved.value) &&
     (weight.value !== String(saved.value!.weightManual ?? '') ||
+      label.value !== saved.value!.label ||
       proxyMode.value !== saved.value!.proxy.mode ||
       Boolean(proxyURL.value)),
 )
@@ -64,6 +70,7 @@ watch(
     if (!value || dirty.value || saving.value) return
     saved.value = value
     weight.value = String(value.weightManual ?? '')
+    label.value = value.label
     proxyMode.value = value.proxy.mode
     proxyURL.value = ''
   },
@@ -99,6 +106,7 @@ async function save(): Promise<void> {
   attempted.value = true
   if (weightInvalid.value || proxyInvalid.value) return
   const patch: Parameters<typeof updateCredential>[3] = {}
+  if (label.value !== saved.value.label) patch.label = label.value
   if (weight.value !== String(saved.value.weightManual ?? ''))
     patch.weight_manual = weight.value ? Number(weight.value) : null
   if (proxyChanged.value)
@@ -144,7 +152,7 @@ useMessageSource(() =>
 <template>
   <GroupWorkspacePanel
     :title="t('groupDetail.credentialDetails')"
-    :description="row.account || row.mask"
+    :description="credentialDisplayName(item)"
     :dirty="dirty"
     :pending="saving"
     :loading="query.isFetching.value"
@@ -256,6 +264,15 @@ useMessageSource(() =>
             </span>
           </AppTooltip>
         </div>
+        <AppTextField
+          v-model="label"
+          :label="t('credentialCards.label')"
+          :placeholder="t('credentialCards.labelPlaceholder')"
+          :description="t('credentialCards.labelHelp')"
+          size="sm"
+          :disabled="saving"
+          autocomplete="off"
+        />
         <div class="modern-credential-detail-routing">
           <AppTextField
             v-model="weight"

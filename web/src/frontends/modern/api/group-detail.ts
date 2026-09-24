@@ -38,6 +38,8 @@ export const runtimeNumbers = [
   'blacklist_threshold',
 ] as const
 export const runtimeSwitches = ['affinity_enabled', 'responses_websocket_enabled'] as const
+export const accountSelectionModes = ['serial', 'weighted_fair'] as const
+export type AccountSelectionMode = (typeof accountSelectionModes)[number]
 export type RuntimeNumber = (typeof runtimeNumbers)[number]
 export type RuntimeSwitch = (typeof runtimeSwitches)[number]
 export interface HeaderRules {
@@ -52,9 +54,17 @@ export interface ParameterRule {
 export type RuntimeSettings = Partial<
   Record<RuntimeNumber, number> & Record<RuntimeSwitch, boolean>
 > & {
+  account_selection?: AccountSelectionMode
+  serial_quota_reserve_percent?: number
   header_rules?: HeaderRules
   parameter_overrides?: ParameterRule[]
 }
+export type EffectiveRuntimeSettings = Record<RuntimeNumber, number> &
+  Record<RuntimeSwitch, boolean> & {
+    header_rules: HeaderRules
+    account_selection: AccountSelectionMode
+    serial_quota_reserve_percent: number
+  }
 export interface GroupSettings extends GroupBasics {
   channelID: string
   params: Record<string, string>
@@ -62,7 +72,7 @@ export interface GroupSettings extends GroupBasics {
   validationProtocol: string | null
   validationProtocols: string[]
   overrides: RuntimeSettings
-  effective: Required<Omit<RuntimeSettings, 'parameter_overrides'>>
+  effective: EffectiveRuntimeSettings
   proxy: { mode: 'inherit' | 'direct' | 'custom'; display: string; hasAuth: boolean }
 }
 export interface AdvancedSettingsPatch {
@@ -80,6 +90,14 @@ function readRuntime(value: unknown): RuntimeSettings {
   const result: RuntimeSettings = {}
   for (const key of runtimeNumbers) if (raw[key] !== undefined) result[key] = integer(raw[key])
   for (const key of runtimeSwitches) if (raw[key] !== undefined) result[key] = boolean(raw[key])
+  if (raw.account_selection !== undefined) {
+    result.account_selection = oneOf(raw.account_selection, accountSelectionModes)
+  }
+  if (raw.serial_quota_reserve_percent !== undefined) {
+    const reserve = integer(raw.serial_quota_reserve_percent)
+    if (reserve > 100) throw new InvalidResponseError()
+    result.serial_quota_reserve_percent = reserve
+  }
   if (raw.header_rules !== undefined) {
     const headers = record(raw.header_rules)
     result.header_rules = { set: stringMap(headers.set), remove: list(headers.remove).map(text) }
@@ -105,7 +123,7 @@ function readSettings(value: unknown): GroupSettings {
   const proxy = record(data.proxy)
   const effective = readRuntime(data.effective)
   if (
-    [...runtimeNumbers, ...runtimeSwitches, 'header_rules'].some(
+    [...runtimeNumbers, ...runtimeSwitches, 'header_rules', 'account_selection', 'serial_quota_reserve_percent'].some(
       (key) => effective[key as keyof RuntimeSettings] === undefined,
     )
   )
@@ -236,6 +254,7 @@ export interface CredentialRow {
   mask: string
   account: string
   state: CredentialState
+  label: string
   enabled: boolean
   weight: number
   weightManual?: number | null
@@ -277,6 +296,7 @@ export function readCredential(value: unknown): CredentialRow {
   return {
     id: integer(row.credential_id, 1),
     mask: text(row.mask),
+    label: text(row.label),
     account: account ? text(account.email ?? account.email_mask ?? '') : '',
     state: oneOf(row.effective_status, credentialStates),
     enabled: oneOf(row.configured_status, ['active', 'disabled']) === 'active',

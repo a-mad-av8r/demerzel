@@ -30,6 +30,7 @@ import {
 import { useApiClient } from '@shared/http/client-context'
 import AppDraftGuard from '@modern/components/AppDraftGuard.vue'
 import { groupValidationModelOptions } from './group-model-options'
+import { credentialDisplayName } from './credential-presentation'
 const props = defineProps<{ groupId: number; row: CredentialRow }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
@@ -141,10 +142,13 @@ useMessageSource(() => (error.value ? { text: error.value, tone: 'danger' } : un
       }
     "
   >
-    <AppDialogContent :title="t('credentialCards.test')" :description="row.mask">
+    <AppDialogContent
+      :title="t('credentialCards.test')"
+      :description="credentialDisplayName(row)"
+    >
       <AppDialogHeader
         :title="t('credentialCards.test')"
-        :description="row.mask"
+        :description="credentialDisplayName(row)"
         :close-label="t('shell.close')"
         :close-disabled="pending"
         @close="close"

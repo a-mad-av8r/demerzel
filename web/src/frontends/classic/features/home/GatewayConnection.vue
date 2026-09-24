@@ -129,7 +129,7 @@ const maskedSnippet = computed(() => {
     key.masked_key,
     ccSwitchTargetID.value,
     ccSwitchModel.value,
-    `GPT-Load · ${key.name}`,
+    `Demerzel · ${key.name}`,
   )
 })
 const clientFieldList = computed(() => {
@@ -445,7 +445,7 @@ async function copyClientConfiguration(): Promise<void> {
         key,
         ccSwitchTargetID.value,
         ccSwitchModel.value,
-        `GPT-Load · ${selectedKey.value?.name ?? ''}`,
+        `Demerzel · ${selectedKey.value?.name ?? ''}`,
       )
       if (!isCurrent()) return
       return await copy(configuration)
@@ -483,7 +483,7 @@ async function openQuickImport(): Promise<void> {
         key,
         ccSwitchTargetID.value,
         ccSwitchModel.value,
-        `GPT-Load · ${selectedKey.value?.name ?? ''}`,
+        `Demerzel · ${selectedKey.value?.name ?? ''}`,
       ) ?? undefined
     if (!target) throw new Error('QUICK_IMPORT_UNAVAILABLE')
     if (!isCurrent()) return

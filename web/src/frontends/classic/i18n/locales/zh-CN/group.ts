@@ -298,7 +298,7 @@ export default {
         upstreamUrlError: '请输入有效的 HTTP 或 HTTPS Base URL。',
         urlWarning: '修改 Base URL 会影响此分组后续请求的发送位置。',
         gptLoadUrlDescription:
-          '填写 GPT-Load 网关根地址或部署前缀；不要填写 /v1 或 /v1beta 等标准协议路径。',
+          '填写 Demerzel 网关根地址或部署前缀；不要填写 /v1 或 /v1beta 等标准协议路径。',
         newApiUrlDescription:
           '填写 New API 网关根地址或部署前缀；不要填写 /v1 或 /v1beta 等标准协议路径。',
         cpaUrlDescription:
@@ -322,7 +322,17 @@ export default {
       },
       runtime: {
         title: '运行时覆盖',
-        description: '每行只表达来源、当前值与一个切换动作。',
+        description: '运行时数值继承全局设置；账号选择仅作用于本分组，且独立于全局路由策略。',
+        accountSelection: '凭据账号选择',
+        accountSelectionHelp:
+          '选择本分组内使用的账号；此设置独立于全局路由策略。旧分组默认采用加权公平。',
+        accountSelectionModes: {
+          serial: '串行故障转移',
+          weighted_fair: '加权公平',
+        },
+        serialQuotaReservePercent: '额度预留阈值（%）',
+        serialQuotaReserveHelp: '串行故障转移的预留阈值。默认 10%；请输入 0–100 的整数百分比。',
+        serialQuotaReserveError: '请输入 0–100 之间的整数。',
         first_byte_timeout: '原生响应 / 流式首事件超时',
         request_timeout: '单次上游请求超时',
         stream_idle_timeout: '流空闲超时',
@@ -391,7 +401,7 @@ export default {
       filters: {
         region: '筛选凭据',
         search: '搜索',
-        placeholder: '掩码',
+        placeholder: '标签、账号或掩码',
         clear: '清空搜索',
         reset: '重置筛选',
       },
@@ -412,6 +422,9 @@ export default {
       notScheduledHelp: '此凭据当前不参与调度',
       selectCredential: '选择密钥 {mask}',
       copy: '复制密钥',
+      label: '显示标签',
+      labelPlaceholder: '可选；留空时显示账号或密钥掩码',
+      saveLabel: '保存标签',
       cardLabel: '渠道凭据 {mask}',
       weightFor: '{mask} 的权重',
       weight: '{weight}',
@@ -543,7 +556,7 @@ export default {
         connectDuplicatedAccounts: '已连接 {added} 个账号，已跳过：{accounts}',
         sync: '同步',
         syncingQuota: '正在同步额度信息',
-        searchPlaceholder: '账号、邮箱或掩码',
+        searchPlaceholder: '标签、账号、邮箱或掩码',
         selectAccount: '选择账号 {account}',
         download: '下载凭据',
         downloadSucceeded: '凭据文件已下载',
