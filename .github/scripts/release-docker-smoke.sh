@@ -56,7 +56,8 @@ cleanup_temp() {
 trap cleanup_temp EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-printf 'ENCRYPTION_KEY=%s\n' "$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')" >"${task_tmp}/smoke-secrets.env"
+smoke_master="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+printf 'ENCRYPTION_KEY=%s\n' "${smoke_master}" >"${task_tmp}/smoke-secrets.env"
 
 for target in "${container}" "${probe}" "${fake_container}"; do
   if docker container inspect "${target}" >/dev/null 2>&1; then
@@ -490,6 +491,42 @@ docker stop --time 15 "${container}" >/dev/null
 docker logs "${container}" >"${task_tmp}/container-second.log" 2>&1
 test "$(docker inspect -f '{{.State.ExitCode}}' "${container}")" = "0"
 
+smoke_stage="reject-mismatched-master-key"
+wrong_master="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+test "${wrong_master}" != "${smoke_master}"
+printf 'ENCRYPTION_KEY=%s\n' "${wrong_master}" >"${task_tmp}/wrong-master.env"
+docker rm "${container}" >/dev/null
+docker run -d \
+  --name "${container}" \
+  --network "${network}" \
+  --volume "${volume}:/app/data" \
+  --env-file "${task_tmp}/wrong-master.env" \
+  "${image}" >/dev/null
+wrong_exit="$(docker wait "${container}")"
+docker logs "${container}" >"${task_tmp}/container-wrong-key.log" 2>&1
+test "${wrong_exit}" != "0"
+docker rm "${container}" >/dev/null
+rm -- "${task_tmp}/wrong-master.env"
+
+smoke_stage="recover-after-rejected-master"
+start_container
+wait_for_health
+curl -fsS \
+  -H "Authorization: Bearer ${access_key}" \
+  -H "Content-Type: application/json" \
+  --data-binary '{"model":"task13-release-model","messages":[{"role":"user","content":"recovery canary"}]}' \
+  "${base_url}/v1/chat/completions" >"${task_tmp}/recovered-response.json"
+node -e '
+  const fs=require("fs");
+  const response=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+  if(response.choices?.[0]?.finish_reason!=="stop" ||
+     response.usage?.prompt_tokens!==7 || response.usage?.completion_tokens!==5) process.exit(1);
+' "${task_tmp}/recovered-response.json"
+docker stop --time 15 "${container}" >/dev/null
+docker logs "${container}" >"${task_tmp}/container-recovered.log" 2>&1
+test "$(docker inspect -f '{{.State.ExitCode}}' "${container}")" = "0"
+
+rm -- "${task_tmp}/smoke-secrets.env"
 smoke_stage="verify-secret-free-artifacts"
 summary_file="${task_tmp}/summary.txt"
 {
@@ -505,13 +542,15 @@ summary_file="${task_tmp}/summary.txt"
   printf 'unauthenticated_management_and_data_plane=401\n'
   printf 'complete_usage_tokens=7,5,12\n'
   printf 'same_volume_restart=true\n'
+  printf 'wrong_key_restart_refused=true\n'
+  printf 'same_key_recovered_after_rejection=true\n'
   printf 'first_container_id=%s\n' "${first_container_id:0:12}"
   printf 'second_container_id=%s\n' "${second_container_id:0:12}"
   printf 'graceful_stop_exit=0\n'
 } >"${summary_file}"
 
-secret_labels=(auth_key encryption_key access_key credential_secret)
-secret_values=("${auth_key}" "${encryption_key}" "${access_key}" "${credential_secret}")
+secret_labels=(auth_key encryption_key wrong_master access_key credential_secret)
+secret_values=("${auth_key}" "${smoke_master}" "${wrong_master}" "${access_key}" "${credential_secret}")
 for index in "${!secret_labels[@]}"; do
   secret_label="${secret_labels[${index}]}"
   secret_value="${secret_values[${index}]}"

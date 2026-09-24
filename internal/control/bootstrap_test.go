@@ -142,7 +142,7 @@ func TestEnsureInitialStateDoesNotLogExpectedMarkerMissAsError(t *testing.T) {
 	}
 }
 
-func TestEnsureInitialStateIsIdempotentWhenMarkerExists(t *testing.T) {
+func TestEnsureInitialStateRejectsMissingAccessKeyTableBeforeRecordingIdentity(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
 	if err := fixture.db.Create(&models.SystemSetting{
@@ -154,8 +154,8 @@ func TestEnsureInitialStateIsIdempotentWhenMarkerExists(t *testing.T) {
 		t.Fatalf("drop AccessKey table: %v", err)
 	}
 
-	if err := fixture.service.EnsureInitialState(context.Background()); err != nil {
-		t.Fatalf("EnsureInitialState() with marker error = %v", err)
+	if err := fixture.service.EnsureInitialState(context.Background()); err == nil {
+		t.Fatal("missing access-key table was accepted without key identity proof")
 	}
 	assertBootstrapMarkerCount(t, fixture, 1)
 }
@@ -247,6 +247,14 @@ func TestEnsureInitialStateRecoversInterruptedSubscriptionAuth(t *testing.T) {
 	fixture := newServiceFixture(t)
 	now := time.UnixMilli(1_800_000_000_000)
 	fixture.service.now = func() time.Time { return now }
+	credentialCipher, err := fixture.encryption.Encrypt("interrupted credential fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stageCipher, err := fixture.encryption.Encrypt("interrupted authorization fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
 	group := validControlGroup("subscription-recovery")
 	group.ChannelID = string(channel.Codex)
 	group.ConnectionType = models.ConnectionTypeSubscription
@@ -254,7 +262,7 @@ func TestEnsureInitialStateRecoversInterruptedSubscriptionAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 	credential := models.Credential{
-		GroupID: group.ID, Data: "cipher", Fingerprint: "secret", IdentityFingerprint: "identity",
+		GroupID: group.ID, Data: credentialCipher, Fingerprint: "secret", IdentityFingerprint: "identity",
 		SecretVersion: 2, AuthState: models.CredentialAuthStateRefreshing,
 		Status: models.CredentialStatusActive, CreatedAtMS: now.Add(-time.Hour).UnixMilli(), UpdatedAtMS: now.Add(-time.Hour).UnixMilli(),
 	}
@@ -264,7 +272,7 @@ func TestEnsureInitialStateRecoversInterruptedSubscriptionAuth(t *testing.T) {
 	stage := models.CredentialStage{
 		ID: "00000000-0000-4000-8000-000000000901", ChannelID: "codex",
 		ConnectionType: models.ConnectionTypeSubscription, AuthorizationMethod: "browser_oauth",
-		Status: models.CredentialStageExchanging, EncryptedPayload: "encrypted-stage", PayloadSchemaVersion: 1,
+		Status: models.CredentialStageExchanging, EncryptedPayload: stageCipher, PayloadSchemaVersion: 1,
 		SafeSummaryJSON: models.JSON(`{}`), ExpiresAtMS: now.Add(time.Minute).UnixMilli(),
 		CreatedAtMS: now.Add(-time.Minute).UnixMilli(), UpdatedAtMS: now.Add(-time.Minute).UnixMilli(),
 	}
