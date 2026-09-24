@@ -658,6 +658,40 @@ func TestInstallerUninstallPreservesDataUnlessExactPurgeConfirmation(t *testing.
 		t.Fatalf("write identity sentinel: %v", err)
 	}
 
+	configDir, err := filepath.EvalSymlinks(filepath.Dir(identity))
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedInstalledPrefix := func() {
+		t.Helper()
+		versionDir := filepath.Join(prefix, "versions", "2.0.1", "bin")
+		binDir := filepath.Join(prefix, "bin")
+		for _, dir := range []string{versionDir, binDir} {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for _, path := range []string{
+			filepath.Join(prefix, "install.sh"),
+			filepath.Join(binDir, "demerzel"),
+			filepath.Join(versionDir, "gpt-load"),
+		} {
+			if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(prefix, "config-dir"), []byte(configDir+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(configDir, "data-dir"), []byte(canonicalDataDir+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("versions/2.0.1", filepath.Join(prefix, "current")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedInstalledPrefix()
+
 	run := func(input string, args ...string) error {
 		t.Helper()
 		command := exec.Command("bash", append([]string{installer, "uninstall"}, args...)...)
@@ -683,9 +717,7 @@ func TestInstallerUninstallPreservesDataUnlessExactPurgeConfirmation(t *testing.
 		t.Fatalf("default uninstall removed the external identity: %v", err)
 	}
 
-	if err := os.MkdirAll(prefix, 0o700); err != nil {
-		t.Fatalf("recreate binary prefix for purge test: %v", err)
-	}
+	seedInstalledPrefix()
 	if err := run("PURGE /wrong/path\n", "--prefix", prefix, "--data-dir", dataDir, "--purge"); err == nil {
 		t.Fatal("purge accepted a confirmation for another path")
 	}
@@ -739,13 +771,16 @@ esac
 		command.Stdin = strings.NewReader(input)
 		return command.Run()
 	}
-	ownedLabels := `{"com.docker.compose.project":"review","com.docker.compose.volume":"demerzel-data"}`
+	ownedLabels := `{"com.docker.compose.project":"review","io.demerzel.data":"true"}`
 
 	if err := run(ownedLabels, "PURGE review_demerzel-data\n", "--project", "review"); err == nil {
 		t.Fatal("volume purge ran without the explicit --purge gate")
 	}
-	if err := run(`{"com.docker.compose.project":"other","com.docker.compose.volume":"demerzel-data"}`, "PURGE review_demerzel-data\n", "--project", "review", "--purge"); err == nil {
+	if err := run(`{"com.docker.compose.project":"other","io.demerzel.data":"true"}`, "PURGE review_demerzel-data\n", "--project", "review", "--purge"); err == nil {
 		t.Fatal("volume purge accepted a volume owned by another Compose project")
+	}
+	if err := run(`{"com.docker.compose.project":"review","com.docker.compose.volume":"demerzel-data"}`, "PURGE review_demerzel-data\n", "--project", "review", "--purge"); err == nil {
+		t.Fatal("volume purge accepted a project volume without the Demerzel data marker")
 	}
 	if err := run(ownedLabels, "PURGE wrong-volume\n", "--project", "review", "--purge"); err == nil {
 		t.Fatal("volume purge accepted a mismatched typed confirmation")

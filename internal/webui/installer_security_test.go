@@ -51,6 +51,30 @@ func TestInstallerCannotUninstallDataOrIdentityInsideBinaryPrefix(t *testing.T) 
 	}
 }
 
+func TestInstallerRefusesToUninstallAnUnownedPrefix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX installer")
+	}
+	home := t.TempDir()
+	prefix := filepath.Join(home, ".local", "share")
+	if err := os.MkdirAll(prefix, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	otherApp := filepath.Join(prefix, "other-application-data")
+	if err := os.WriteFile(otherApp, []byte("preserve"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("bash", filepath.Join("..", "..", "packaging", "install.sh"),
+		"uninstall", "--prefix", prefix)
+	command.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}
+	if output, err := command.CombinedOutput(); err == nil {
+		t.Fatalf("uninstall accepted an unrelated prefix: %s", output)
+	}
+	if contents, err := os.ReadFile(otherApp); err != nil || string(contents) != "preserve" {
+		t.Fatalf("uninstall deleted unrelated app data: %v", err)
+	}
+}
+
 func TestTrustedInstallerNeverExecutesUnverifiedArtifactVerifier(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX installer")

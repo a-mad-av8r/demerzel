@@ -52,7 +52,6 @@ Verify the signed manifest and the hashes of the executable installer tools
 before running either downloaded script:
 
 ```sh
-[[ "$tag" =~ ^v2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
 escaped_tag="${tag//./\\.}"
 identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
@@ -66,7 +65,7 @@ for tool in install.sh verify-release.sh local-smoke.sh; do
   actual="$(sha256sum "$release_dir/$tool" | cut -d ' ' -f 1)"
   test "$actual" = "$expected"
 done
-(cd "$release_dir" && sha256sum --check SHA256SUMS)
+(cd "$release_dir" && sha256sum --check --ignore-missing SHA256SUMS)
 ```
 
 
@@ -197,6 +196,10 @@ runtime data, the owner-only path pin and the external age identity:
 ```sh
 bash "$HOME/.local/opt/demerzel/install.sh" uninstall
 ```
+
+Uninstall refuses a prefix without its Demerzel version pointer, installer,
+launcher and versioned binary; it does not recursively remove an arbitrary
+`--prefix` directory.
 
 Alternatively, while the trusted binary prefix still exists, explicit data
 removal is a separate gated operation:

@@ -278,8 +278,8 @@ async function submit(): Promise<void> {
                 <strong>{{ t('auth.help.containerTitle') }}</strong>
                 <i18n-t keypath="auth.help.containerDescription" tag="p">
                   <template #command>
-                    <OverflowTooltip as="code" content="podman-compose exec -T demerzel sh">
-                      podman-compose exec -T demerzel sh
+                    <OverflowTooltip as="code" content="podman-compose exec demerzel sh">
+                      podman-compose exec demerzel sh
                     </OverflowTooltip>
                   </template>
                 </i18n-t>

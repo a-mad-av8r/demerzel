@@ -96,8 +96,9 @@ make container-purge
 
 The default project volume name is `demerzel_demerzel-data`. The external age
 identity remains untouched after purge. `COMPOSE_PROJECT_NAME` changes the
-project-scoped volume name; the purge helper validates the matching Compose
-labels before removal.
+project-scoped volume name; the purge helper requires both that project label
+and the explicit `io.demerzel.data=true` marker before removal. Older volumes
+without the marker fail closed and require a separately approved recovery plan.
 
 ## Local Podman smoke safety
 

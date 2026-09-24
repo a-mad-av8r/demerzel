@@ -64,12 +64,13 @@ HOMEBREW_DEMERZEL_DATA_DIR="/absolute/old/data/path" \
   HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
 ```
 
-The browser and data-plane HTTP listener remains on loopback port 3001. Account
-CLI commands use only the owner's Unix socket, never a plain HTTP endpoint; run
-the CLI as the same user with the same `DATA_DIR` as launchd:
+The browser and data-plane HTTP listener remains on loopback port 3001.
+The Homebrew `bin/demerzel` launcher reads the owner-only `data-dir` pin and
+exports the same absolute `DATA_DIR` used by launchd. Run the secret-bearing
+account CLI as that user; it connects only to the Unix admin socket:
 
 ```sh
-DATA_DIR="$(cat "$HOME/.config/demerzel/data-dir")" "$(brew --prefix)/bin/demerzel" accounts list
+demerzel accounts list
 ```
 
 Do not move or replace the pinned `DATA_DIR`, change its canonical absolute path,
@@ -99,17 +100,17 @@ service is stopped and verify a restore before relying on it.
 Use the [credential accounts guide](accounts.md) for account operations and
 the [key-custody runbook](key-custody.md) for restore procedures.
 
-## Local formula install from generated artifacts
+## Local installation from generated signed artifacts
 
 A generated release-asset directory contains the tap-ready formula, signed
 manifest and bundle, `SHA256SUMS`, both macOS binaries, and executable
-installer/smoke tools. Before Homebrew evaluates a generated formula, verify its
-manifest signature and hashes:
+installer/smoke tools. Homebrew 7 accepts formulas only from a tap, so the
+standalone signed-artifact installer is the supported tap-free path. Verify the
+manifest identity and tool hashes **before** executing downloaded shell code:
 
 ```sh
 release_dir="/path/to/generated/release-assets"
 release_tag=v2.0.0  # Replace with the exact approved tag for this directory.
-[[ "$release_tag" =~ ^v2\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
 escaped_tag="${release_tag//./\\.}"
 identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
@@ -126,12 +127,15 @@ done
 (cd "$release_dir" && shasum -a 256 -c SHA256SUMS)
 ```
 
-Install directly from these generated artifacts with one Homebrew command and
-no Git checkout:
+Install the verified native binary without a Git checkout or Homebrew tap:
 
 ```sh
-HOMEBREW_DEMERZEL_ARTIFACT_DIR="$release_dir" brew install --formula "$release_dir/demerzel.rb"
+bash "$release_dir/install.sh" install --artifacts "$release_dir"
 ```
+
+This path installs under `~/.local/opt/demerzel`, pins the data root and
+provisions the external age identity. It does not register a Homebrew service;
+start the verified launcher explicitly or configure a supervised user service.
 
 For an artifact-only upgrade/rollback smoke, verify the signed manifest
 **and** `install.sh`, `verify-release.sh`, and `local-smoke.sh` digests with the
@@ -150,13 +154,12 @@ runtime upgrade/rollback path has not been exercised.
 
 ## Upgrade, rollback, and uninstall
 
-`brew upgrade demerzel` changes the Homebrew-managed binary; it never migrates or
-removes `~/.demerzel` or the external age identity. Rollback to a prior signed
-version uses that version's generated formula/artifact directory, for example:
-
-```sh
-HOMEBREW_DEMERZEL_ARTIFACT_DIR="/path/to/previous/release-assets" brew reinstall --formula "/path/to/previous/release-assets/demerzel.rb"
-```
+`brew upgrade demerzel` replaces only the Homebrew-managed binary; it never
+migrates the pinned `DATA_DIR` or removes the external age identity. Rollback
+requires a previously approved signed version published as a versioned formula
+in the private tap, or a separately verified standalone installer against a
+restore-proven backup. Homebrew 7 rejects `brew reinstall --formula` from a
+loose release-asset path; do not treat that command as a rollback mechanism.
 
 Rollback changes code only. It does not rewind database migrations or restore
 secrets; keep a consistent state backup and verify compatibility before

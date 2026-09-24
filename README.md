@@ -89,6 +89,25 @@ demerzel key-locator --data-dir "${DATA_DIR:-$(cat "$HOME/.config/demerzel/data-
 The locator is not key material and does not replace a tested database-plus-key
 restore. See the [custody runbook](docs/demerzel/key-custody.md).
 
+## Account routing
+
+New groups persist `overrides.account_selection=serial`; existing groups that
+omit the setting retain `weighted_fair`. This per-group choice does not change
+global `route_strategy`. Serial selection uses a 10% quota reserve by default
+only when an account-level quota observation supplies a remaining ratio and
+reset time; configure `serial_quota_reserve_percent` from 0 through 100.
+
+A credential-scoped quota rejection blocks the primary; the next eligible
+selection advances and persists the account cursor.
+Model/request-scoped limits do not move that cursor, although a replay-safe
+`next_candidate` decision can use another account for the current request.
+Failback waits 60 seconds after the blocked window resets and retries with
+backoff from 5 seconds up to 5 minutes. An idempotent list-models GET is a
+preflight only when that provider declares the route; otherwise a single
+caller-initiated inference serves as the recovery probe. Only a successful
+caller inference promotes the primary account. The scheduling checkpoint
+retains cursor and backoff state across clean restarts.
+
 ## Origin and scope
 
 The fork keeps upstream history and attribution (`LICENSE`,

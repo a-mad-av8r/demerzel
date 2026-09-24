@@ -23,7 +23,7 @@ labels="$(podman volume inspect "${volume}" --format '{{json .Labels}}')" || {
 command -v jq >/dev/null 2>&1 || { printf 'jq is required to verify volume ownership\n' >&2; exit 127; }
 printf '%s\n' "${labels}" | jq -e \
   --arg project "${project}" \
-  '."com.docker.compose.project" == $project and ."com.docker.compose.volume" == "demerzel-data"' \
+  '."com.docker.compose.project" == $project and ."io.demerzel.data" == "true"' \
   >/dev/null || { printf 'volume labels do not identify this Compose-owned Demerzel data volume\n' >&2; exit 1; }
 
 printf 'Type exactly PURGE %s to permanently delete this Demerzel data volume: ' "${volume}" >&2

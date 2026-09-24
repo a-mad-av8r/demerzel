@@ -47,3 +47,5 @@ services:
 
 volumes:
   demerzel-data:
+    labels:
+      io.demerzel.data: "true"

@@ -6,22 +6,12 @@ class Demerzel < Formula
   desc "Private local-first LLM gateway"
   homepage "https://github.com/a-mad-av8r/demerzel"
   license "MIT"
-  repo = "a-mad-av8r/demerzel"
-  local_artifacts = ENV["HOMEBREW_DEMERZEL_ARTIFACT_DIR"]
-  local_manifest = if local_artifacts && File.file?(File.join(local_artifacts, "manifest.json"))
-    JSON.parse(File.read(File.join(local_artifacts, "manifest.json")))
-  end
-  version local_manifest ? local_manifest.fetch("version") : "2.0.0"
+  version "2.0.0"
 
-  if local_artifacts
-    asset = Hardware::CPU.arm? ? "demerzel-macos-arm64" : "demerzel-macos-amd64"
-    url "file://#{File.expand_path(File.join(local_artifacts, asset))}"
-  elsif Hardware::CPU.arm?
-    url "https://github.com/#{repo}/releases/download/v#{version}/demerzel-macos-arm64"
-  else
-    url "https://github.com/#{repo}/releases/download/v#{version}/demerzel-macos-amd64"
-  end
-  sha256 :no_check
+  # Stage this private tap formula locally; the authenticated install step obtains
+  # and verifies the actual release binary, without a pre-verification web download.
+  url "file://#{File.expand_path(__FILE__)}"
+  sha256 Digest::SHA256.file(__FILE__).hexdigest
 
   depends_on "age"
   depends_on "cosign" => :build
@@ -29,22 +19,17 @@ class Demerzel < Formula
 
   def install
     asset = Hardware::CPU.arm? ? "demerzel-macos-arm64" : "demerzel-macos-amd64"
-    artifacts = if (path = ENV["HOMEBREW_DEMERZEL_ARTIFACT_DIR"])
-      Pathname.new(path).realpath
-    else
-      token = ENV["HOMEBREW_GITHUB_API_TOKEN"] || ENV["GH_TOKEN"]
-      odie "set HOMEBREW_GITHUB_API_TOKEN for the private Demerzel release" if token.to_s.empty?
+    token = ENV["HOMEBREW_GITHUB_API_TOKEN"] || ENV["GH_TOKEN"]
+    odie "set HOMEBREW_GITHUB_API_TOKEN for the private Demerzel release" if token.to_s.empty?
 
-      directory = buildpath/"demerzel-release"
-      directory.mkpath
-      previous_gh_token = ENV["GH_TOKEN"]
-      begin
-        ENV["GH_TOKEN"] = token
-        system "gh", "release", "download", "v#{version}", "--repo", "a-mad-av8r/demerzel", "--pattern", "manifest.json", "--pattern", "manifest.sigstore.json", "--pattern", asset, "--dir", directory.to_s
-      ensure
-        ENV["GH_TOKEN"] = previous_gh_token
-      end
-      directory
+    artifacts = buildpath/"demerzel-release"
+    artifacts.mkpath
+    previous_gh_token = ENV["GH_TOKEN"]
+    begin
+      ENV["GH_TOKEN"] = token
+      system "gh", "release", "download", "v#{version}", "--repo", "a-mad-av8r/demerzel", "--pattern", "manifest.json", "--pattern", "manifest.sigstore.json", "--pattern", asset, "--dir", artifacts.to_s
+    ensure
+      ENV["GH_TOKEN"] = previous_gh_token
     end
 
     expected_tag = "v#{version}"
@@ -63,7 +48,29 @@ class Demerzel < Formula
     actual_digest = Digest::SHA256.file(binary).hexdigest
     odie "selected binary digest does not match the signed manifest" unless actual_digest == expected_digest
 
-    bin.install binary => "demerzel"
+    libexec.install binary => "demerzel"
+    bin.mkpath
+    (bin/"demerzel").write <<~SH
+      #!/bin/sh
+      set -eu
+      pin="${HOME}/.config/demerzel/data-dir"
+      if [ ! -f "$pin" ] || [ -L "$pin" ]; then
+        printf 'restore the owner-only Demerzel data-root pin before starting\\n' >&2
+        exit 1
+      fi
+      IFS= read -r data_dir < "$pin"
+      case "$data_dir" in
+        /*) ;;
+        *) printf 'invalid pinned DATA_DIR\\n' >&2; exit 1 ;;
+      esac
+      if [ -n "${DATA_DIR:-}" ] && [ "$DATA_DIR" != "$data_dir" ]; then
+        printf 'DATA_DIR differs from the pinned Homebrew installation\\n' >&2
+        exit 1
+      fi
+      export DATA_DIR="$data_dir"
+      exec "#{libexec}/demerzel" "$@"
+    SH
+    chmod 0755, bin/"demerzel"
   end
 
   def post_install
@@ -124,8 +131,9 @@ class Demerzel < Formula
   service do
     config_dir = File.join(Dir.home, ".config", "demerzel")
     identity = File.join(config_dir, "identity.txt")
-    data_dir = File.read(File.join(config_dir, "data-dir")).strip
-    recipient = Utils.safe_popen_read("age-keygen", "-y", identity).strip
+    pin = File.join(config_dir, "data-dir")
+    data_dir = File.file?(pin) ? File.read(pin).strip : File.join(Dir.home, ".demerzel")
+    recipient = File.file?(identity) ? Utils.safe_popen_read("age-keygen", "-y", identity).strip : ""
     run [opt_bin/"demerzel"]
     run_at_load true
     keep_alive true

@@ -223,7 +223,7 @@ async function submit(): Promise<void> {
               })
             }}
           </p>
-          <p>{{ t('auth.help.container') }}<code>podman-compose exec -T demerzel sh</code></p>
+          <p>{{ t('auth.help.container') }}<code>podman-compose exec demerzel sh</code></p>
           <AppExternalLink href="https://github.com/a-mad-av8r/demerzel/tree/main/docs/demerzel">
             {{ t('shell.documentation') }}
           </AppExternalLink>

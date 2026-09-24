@@ -144,6 +144,14 @@ current_target() {
   printf '%s' "${target#versions/}"
 }
 
+assert_installed_prefix() {
+  local version
+  version="$(current_target)" || fail "not an installed Demerzel binary prefix: ${prefix}"
+  [[ -f "${prefix}/install.sh" && ! -L "${prefix}/install.sh" &&
+     -x "${prefix}/bin/demerzel" && -x "${prefix}/versions/${version}/bin/gpt-load" ]] ||
+    fail "binary prefix is missing its Demerzel installation files: ${prefix}"
+}
+
 write_launcher() {
   local recipient="$1"
   local launcher="${prefix}/bin/demerzel"
@@ -281,6 +289,7 @@ uninstall_install() {
   restore_pinned_paths
   data_dir="${data_dir:-$(default_data_dir)}"
   validate_prefix
+  assert_installed_prefix
   if [[ "${purge}" == true ]]; then
     [[ "${data_dir}" == /* ]] || fail "DATA_DIR must be an absolute path"
     [[ ! -L "${data_dir}" ]] || fail "refusing to purge a symlinked DATA_DIR"
