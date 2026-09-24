@@ -23,15 +23,9 @@ import (
 	"gpt-load/internal/platform/i18n"
 	"gpt-load/internal/platform/response"
 	"gpt-load/internal/platform/utils"
-	"gpt-load/internal/releasecheck"
 	"gpt-load/internal/subscription/providers/importfile"
 	subscriptionruntime "gpt-load/internal/subscription/runtime"
 )
-
-// ReleaseUpdateChecker is the control-plane on-demand view of the public release checker.
-type ReleaseUpdateChecker interface {
-	Check(context.Context, bool) (*releasecheck.Update, error)
-}
 
 type Server struct {
 	authDigest        [sha256.Size]byte
@@ -43,7 +37,6 @@ type Server struct {
 	authFailureEvents *utils.RateLimitedEventCounter
 	startedAt         time.Time
 	now               func() time.Time
-	releaseChecker    ReleaseUpdateChecker
 }
 
 const maxControlJSONBodyBytes int64 = 32 << 20
@@ -71,17 +64,6 @@ func NewServer(cfg *config.Config, service *Service) *Server {
 			time.Now,
 		),
 	}
-}
-
-// NewServerWithReleaseUpdateChecker wires the on-demand public update checker.
-func NewServerWithReleaseUpdateChecker(
-	cfg *config.Config,
-	service *Service,
-	releaseChecker ReleaseUpdateChecker,
-) *Server {
-	server := NewServer(cfg, service)
-	server.releaseChecker = releaseChecker
-	return server
 }
 
 func (s *Server) handleGetSettings(c *gin.Context) {

@@ -187,7 +187,6 @@ func (s *Server) HTTPModule() httproute.Module {
 				s.handleUpdateSettings,
 			),
 			controlRoute("control.system.info", http.MethodGet, "/system/info", s.handleSystemInfo),
-			controlRoute("control.system.update", http.MethodGet, "/system/update", s.handleSystemUpdate),
 			controlRoute("control.modern.groups", http.MethodGet, "/modern/groups", s.handleListModernGroups),
 			controlRoute("control.modern.groups.usage", http.MethodGet, "/modern/groups/usage", s.handleModernGroupUsage),
 			controlRoute("control.modern.credentials.options", http.MethodGet, "/modern/credentials/options", s.handleModernCredentialOptions),
