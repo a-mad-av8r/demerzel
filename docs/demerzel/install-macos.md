@@ -43,7 +43,26 @@ The service binds to loopback and uses:
 - `DATA_DIR=$HOME/.demerzel` (mode `0700`),
 - `$HOME/.config/demerzel/identity.txt` (mode `0600`, outside `DATA_DIR`),
 - the recipient derived from that identity at service start.
+- `$HOME/.config/demerzel/data-dir` pins the canonical absolute `DATA_DIR`
+  across upgrades.
 - owner-only `DATA_DIR/control.sock` for the secret-bearing account CLI.
+
+The new Homebrew default does not discover or move an old source-development
+`./data` directory. Fresh installs use `~/.demerzel`; old development data stays
+untouched at its previous canonical path. Before changing roots, either keep
+that exact absolute path explicitly on first formula install or complete the
+supervised database-plus-custody restore/import runbook. `HOMEBREW_DEMERZEL_DATA_DIR`
+pins an absolute path at first install; later attempts to change the pin fail
+closed. An existing database without its matching age identity also fails
+closed. Never copy or rotate age ciphertext by itself.
+
+To deliberately retain an existing absolute `DATA_DIR` on first formula install,
+pass it explicitly; the formula pins the path for later upgrades:
+
+```sh
+HOMEBREW_DEMERZEL_DATA_DIR="/absolute/old/data/path" \
+  HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
+```
 
 The browser and data-plane HTTP listener remains on loopback port 3001. Account
 CLI commands use only the owner's Unix socket, never a plain HTTP endpoint; run
