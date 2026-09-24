@@ -109,43 +109,88 @@ func TestSerialFailbackUsesSerializedBackoffProbes(t *testing.T) {
 		Category: health.FailureCategoryRateLimited,
 		Scope: execution.ErrorScopeCredential,
 		Retry: health.RetryNextCandidate,
-		CooldownUntil: now.Add(-2 * time.Minute),
+		CooldownUntil: now.Add(time.Minute),
 	}, now, true)
 	fallback, _, err := serialPickAt(snapshot, registry, now)
 	if err != nil || fallback.CredentialID != 12 {
 		t.Fatalf("fallback selection = %#v, %v", fallback, err)
 	}
 
-	probe, _, err := serialPickAt(snapshot, registry, now)
+	probeNow := now.Add(2 * time.Minute)
+	probe, _, err := serialPickAt(snapshot, registry, probeNow)
 	if err != nil || probe.CredentialID != 11 || !probe.SerialProbe {
 		t.Fatalf("first failback probe = %#v, %v", probe, err)
 	}
-	concurrent, _, err := serialPickAt(snapshot, registry, now)
+	concurrent, _, err := serialPickAt(snapshot, registry, probeNow)
 	if err != nil || concurrent.CredentialID != 12 || concurrent.SerialProbe {
 		t.Fatalf("parallel request bypassed the serialized probe: %#v, %v", concurrent, err)
 	}
-	probeIterator := newWithClock(snapshot, registry, serialSchedulerQuery(), func() time.Time { return now })
-	probeIterator.RecordSerialProbe(probe, SerialProbeFailed, now)
-	beforeBackoff, _, err := serialPickAt(snapshot, registry, now.Add(4*time.Second))
+	probeIterator := newWithClock(snapshot, registry, serialSchedulerQuery(), func() time.Time { return probeNow })
+	probeIterator.RecordSerialProbe(probe, SerialProbeFailed, probeNow)
+	beforeBackoff, _, err := serialPickAt(snapshot, registry, probeNow.Add(4*time.Second))
 	if err != nil || beforeBackoff.CredentialID != 12 || beforeBackoff.SerialProbe {
 		t.Fatalf("probe retried before its backoff: %#v, %v", beforeBackoff, err)
 	}
-	secondProbe, _, err := serialPickAt(snapshot, registry, now.Add(5*time.Second))
+	secondProbe, _, err := serialPickAt(snapshot, registry, probeNow.Add(5*time.Second))
 	if err != nil || secondProbe.CredentialID != 11 || !secondProbe.SerialProbe {
 		t.Fatalf("second failback probe = %#v, %v", secondProbe, err)
 	}
-	secondProbeIterator := newWithClock(snapshot, registry, serialSchedulerQuery(), func() time.Time { return now.Add(5 * time.Second) })
-	secondProbeIterator.RecordSerialProbe(secondProbe, SerialProbeSucceeded, now.Add(5*time.Second))
-	duringInference, _, err := serialPickAt(snapshot, registry, now.Add(5*time.Second))
+	secondProbeIterator := newWithClock(
+		snapshot, registry, serialSchedulerQuery(), func() time.Time { return probeNow.Add(5 * time.Second) },
+	)
+	secondProbeIterator.RecordSerialProbe(secondProbe, SerialProbeSucceeded, probeNow.Add(5*time.Second))
+	duringInference, _, err := serialPickAt(snapshot, registry, probeNow.Add(5*time.Second))
 	if err != nil || duringInference.CredentialID != 12 || duringInference.SerialProbe {
 		t.Fatalf("safe GET promoted the primary before inference success: %#v, %v", duringInference, err)
 	}
 	inference := secondProbe
 	inference.SerialProbe, inference.SerialProbePending = false, true
-	secondProbeIterator.RecordAttempt(inference, health.Decision{Category: health.FailureCategoryOK}, now.Add(5*time.Second), false)
-	active, _, err := serialPickAt(snapshot, registry, now.Add(5*time.Second))
+	secondProbeIterator.RecordAttempt(
+		inference, health.Decision{Category: health.FailureCategoryOK}, probeNow.Add(5*time.Second), false,
+	)
+	active, _, err := serialPickAt(snapshot, registry, probeNow.Add(5*time.Second))
 	if err != nil || active.CredentialID != 11 || active.SerialProbe {
 		t.Fatalf("successful caller inference did not fail back: %#v, %v", active, err)
+	}
+}
+
+func TestSerialFailbackWithNoAlternateStaysClosedAndSerializesProbe(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	if !registry.RemoveCredential(12) {
+		t.Fatal("RemoveCredential(12) = false")
+	}
+	first, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil || first.CredentialID != 11 {
+		t.Fatalf("initial selection = %#v, %v", first, err)
+	}
+	iterator.RecordAttempt(first, health.Decision{
+		Category: health.FailureCategoryRateLimited,
+		Scope: execution.ErrorScopeCredential,
+		CooldownUntil: now.Add(time.Minute),
+	}, now, false)
+	if _, _, err := serialPickAt(snapshot, registry, now); err != ErrExhausted {
+		t.Fatalf("blocked single account selection error = %v, want ErrExhausted", err)
+	}
+
+	probeNow := now.Add(2 * time.Minute)
+	probe, _, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || probe.CredentialID != 11 || !probe.SerialProbe {
+		t.Fatalf("single-account failback probe = %#v, %v", probe, err)
+	}
+	probeIterator := newWithClock(snapshot, registry, serialSchedulerQuery(), func() time.Time { return probeNow })
+	probeIterator.RecordSerialProbe(probe, SerialProbeSucceeded, probeNow)
+	if _, _, err := serialPickAt(snapshot, registry, probeNow); err != ErrExhausted {
+		t.Fatalf("inference was admitted while the serialized probe was pending: %v", err)
+	}
+	inference := probe
+	inference.SerialProbe, inference.SerialProbePending = false, true
+	probeIterator.RecordAttempt(inference, health.Decision{
+		Category: health.FailureCategoryRateLimited,
+		Scope: execution.ErrorScopeCredential,
+		CooldownUntil: probeNow.Add(time.Hour),
+	}, probeNow, true)
+	if _, _, err := serialPickAt(snapshot, registry, probeNow); err != ErrExhausted {
+		t.Fatalf("single-account pool opened after a failed inference: %v", err)
 	}
 }
 
