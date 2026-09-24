@@ -24,7 +24,7 @@ For actual routing quality/cost/latency, use the pinned OpenThoughts-TBLite task
 
 ## Reproducible live evaluation protocol
 
-Run only in the already provisioned rootless Podman VM. The pinned Switchyard runner documents Docker Compose; it may be used only through that VM's verified Docker-compatible Podman endpoint/Compose adapter. Do not start a rootful or host-local Docker daemon as a workaround. If the existing VM cannot satisfy the runner's Docker-compatible preflight, stop and record that as an infrastructure blocker rather than moving the workload elsewhere.
+Do not run the workload on shared `kos-e020-uat`. Runtime capacity is blocked as of 2026-09-24: UAT is 97% full with 3.2 GiB free, and `podman machine start demerzel-dev-smoke` failed because AppleHV permits only one active VM while UAT is running. Do not direct the benchmark to UAT or stop it unilaterally. Execution requires either a separately provisioned, capacity-checked Podman-capable host/provider or a CTO-approved maintenance window that explicitly authorizes using the existing VM. Until then, the commands below are an acquisition protocol, not authorization to execute. Use the approved runtime's verified Docker-compatible Podman endpoint/Compose adapter; do not start a rootful or host-local Docker daemon as a workaround.
 
 1. In an isolated evaluation checkout, clone Switchyard and detach at the pin:
 
@@ -111,7 +111,7 @@ Run only in the already provisioned rootless Podman VM. The pinned Switchyard ru
 
    The pinned [stage-router guide](https://raw.githubusercontent.com/NVIDIA-NeMo/Switchyard/9cf6fadfc60bfdf59ee61bf8a14226807c2540bc/docs/routing_algorithms/stage_router_routing.md) documents this TOML shape. Keep this separate from the classifier arm: it is the deterministic simple-rule baseline, not a second classifier result.
 
-5. Measure selector overhead separately from task quality with the pinned [`benchmark_routing_algorithms.py` soak procedure](https://raw.githubusercontent.com/NVIDIA-NeMo/Switchyard/9cf6fadfc60bfdf59ee61bf8a14226807c2540bc/docs/operations/soak_test.md). Continue in the same shell as step 3 to write `$RUNS/overhead.toml`, then use separate terminals in the same Podman VM. Use an overhead-only config with both completion targets set to Claude Opus 4.7, Gemini 3.5 Flash as classifier, and both stage and classifier routes:
+5. Measure selector overhead separately from task quality with the pinned [`benchmark_routing_algorithms.py` soak procedure](https://raw.githubusercontent.com/NVIDIA-NeMo/Switchyard/9cf6fadfc60bfdf59ee61bf8a14226807c2540bc/docs/operations/soak_test.md). Continue in the same shell as step 3 to write `$RUNS/overhead.toml`, then use separate terminals in the **approved isolated Podman runtime**, not shared UAT. Use an overhead-only config with both completion targets set to Claude Opus 4.7, Gemini 3.5 Flash as classifier, and both stage and classifier routes:
 
    ```bash
    cat > "$RUNS/overhead.toml" <<'TOML'
@@ -155,7 +155,7 @@ Run only in the already provisioned rootless Podman VM. The pinned Switchyard ru
    TOML
    ```
 
-   In terminal A, from the pinned Switchyard checkout in the Podman VM, build and start the server; leave it running and wait for `/health` to return 200:
+   In terminal A, from the pinned Switchyard checkout on the approved isolated Podman runtime, build and start the server; leave it running and wait for `/health` to return 200:
 
    ```bash
    RUNS="$HOME/.cache/demerzel-spike/runs"
@@ -186,7 +186,7 @@ Run only in the already provisioned rootless Podman VM. The pinned Switchyard ru
 
    Save each task arm's `run_manifest.json`, Harbor `result.json`, task `trajectory.json` files, `server_metrics_final.prom`, and `routing_stats_final.json`. The pinned [benchmark dataset guide](https://raw.githubusercontent.com/NVIDIA-NeMo/Switchyard/9cf6fadfc60bfdf59ee61bf8a14226807c2540bc/benchmark/DATASETS.md) names these artifacts. Treat traces/logs as potentially sensitive; keep them private, redact secrets, and do not commit run outputs.
 
-   The task runner's Docker Compose calls must reach only the existing rootless Podman VM through its verified compatibility endpoint. The overhead server and AIPerf process also run in that VM; the direct-provider URL is the only model API egress. If the VM cannot satisfy the runner's Docker-compatible preflight, stop and record an infrastructure blocker rather than moving the workload elsewhere.
+   The task runner's Docker Compose calls must reach only the approved isolated Podman runtime through its verified compatibility endpoint. The overhead server and AIPerf process also run there; the direct-provider URL is the only model API egress. The shared `kos-e020-uat` VM is explicitly excluded until the required resource or maintenance prerequisite is met.
 
 
 
@@ -210,7 +210,7 @@ If selector evaluation errors, times out, returns an invalid/unavailable model, 
 
 - **Pinned source/license:** verified from NVIDIA's primary GitHub repository API and the immutable commit's LICENSE. The commit is `9cf6fadfc60bfdf59ee61bf8a14226807c2540bc`, Apache-2.0.
 - **Trace candidate:** the pinned CC-BY-4.0 Open-SWE-Traces snapshot contains actual generated model/tool messages and per-trajectory outcome labels. It cannot supply per-prefix counterfactual responses, provider cost or latency. The pinned Apache-2.0 OpenThoughts-TBLite corpus supplies a reproducible, verifier-backed 100-task live cohort, but no recorded model outputs until the arms run.
-- **Missing prerequisite:** authorized provider credentials/availability for the three pinned model IDs, actual provider responses and usage/billing metadata are not supplied to this research task. The rootless Podman VM's compatibility with the upstream runner's Docker Compose preflight has not been exercised here. No outbound paid requests were attempted.
+- **Missing prerequisites:** authorized provider credentials/availability for the three pinned model IDs, live provider responses and usage/billing metadata were not supplied to this research task. Runtime execution is blocked: shared `kos-e020-uat` is 97% full with 3.2 GiB free, and `podman machine start demerzel-dev-smoke` failed because AppleHV allows only one active VM while UAT is running. Obtain a separate Podman-capable host/provider or CTO-approved maintenance window before running; do not use or stop UAT unilaterally. No outbound paid requests were attempted.
 - **No benchmark results:** fixed-model, stage-rule and classifier arms were not run; there are no observed quality, cost, latency or selector-overhead numbers. The ≤5% p95 gate is therefore unproven. Parent execution of the protocol above is required before M2 acceptance or an M5 decision.
 
 ## Primary sources (retrieved 2026-09-24)
