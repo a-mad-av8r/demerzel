@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"gpt-load/internal/channel"
+	"gpt-load/internal/dialect"
 	"gpt-load/internal/execution"
 	"gpt-load/internal/platform/config"
 	"gpt-load/internal/protocol"
@@ -210,9 +211,9 @@ func (forwarder *quotaMismatchForwarder) Forward(_ context.Context, input Forwar
 		}
 	default:
 		return UpstreamResult{
-			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": {"application/json"}},
-			Body:       []byte(`{"id":"chatcmpl-serial-fallback","object":"chat.completion","created":1,"model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`),
+			StatusCode:     http.StatusOK,
+			Header:         http.Header{"Content-Type": {"application/json"}},
+			Body:           []byte(`{"id":"chatcmpl-serial-fallback","object":"chat.completion","created":1,"model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`),
 			RequestWritten: true, DispatchState: execution.DispatchMaybeSent,
 		}
 	}
@@ -282,9 +283,10 @@ func TestWebsocketSerialProbeUsesCallerInferenceBeforePromotion(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	handler, engine, input := websocketTestHandler(t, upstream.URL+"/v1", channel.OpenAI)
+	handler, engine, input := websocketTestHandler(t, upstream.URL, channel.OpenAI)
+	handler.dialects[protocol.OpenAICompletions] = dialect.NewOpenAI()
 	input.Groups[0].Settings = config.Settings{
-		state.SettingAccountSelection:         string(state.AccountSelectionSerial),
+		state.SettingAccountSelection:          string(state.AccountSelectionSerial),
 		state.SettingSerialQuotaReservePercent: 10,
 	}
 	input.Credentials = append(input.Credentials, testCredentialConfig(2, 1))

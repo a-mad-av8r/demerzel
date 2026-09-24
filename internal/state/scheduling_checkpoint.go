@@ -23,7 +23,7 @@ type SchedulingCheckpoint struct {
 	Consecutive  uint64                       `json:"consecutive"`
 	Members      []SchedulingMemberCheckpoint `json:"members"`
 	ModelCursors []ModelCursorCheckpoint      `json:"model_cursors,omitempty"`
-	SerialGroups []SerialGroupCheckpoint       `json:"serial_groups,omitempty"`
+	SerialGroups []SerialGroupCheckpoint      `json:"serial_groups,omitempty"`
 }
 
 type ModelCursorCheckpoint struct {
@@ -33,21 +33,21 @@ type ModelCursorCheckpoint struct {
 }
 
 type SerialGroupCheckpoint struct {
-	GroupID                   uint                         `json:"group_id"`
-	CursorCredentialID        uint                         `json:"cursor_credential_id,omitempty"`
-	CursorIdentityGeneration  uint64                       `json:"cursor_identity_generation,omitempty"`
-	Accounts                  []SerialAccountCheckpoint    `json:"accounts,omitempty"`
+	GroupID                  uint                      `json:"group_id"`
+	CursorCredentialID       uint                      `json:"cursor_credential_id,omitempty"`
+	CursorIdentityGeneration uint64                    `json:"cursor_identity_generation,omitempty"`
+	Accounts                 []SerialAccountCheckpoint `json:"accounts,omitempty"`
 }
 
 type SerialAccountCheckpoint struct {
-	CredentialID             uint      `json:"credential_id"`
-	IdentityGeneration       uint64    `json:"identity_generation"`
-	ResetAt                  time.Time `json:"reset_at,omitempty"`
-	CooldownUntil            time.Time `json:"cooldown_until,omitempty"`
-	NextProbeAt              time.Time `json:"next_probe_at,omitempty"`
-	ProbeFailures            int       `json:"probe_failures,omitempty"`
-	ProbeUnsupported         bool      `json:"probe_unsupported,omitempty"`
-	SuppressedQuotaResetAt   time.Time `json:"suppressed_quota_reset_at,omitempty"`
+	CredentialID           uint      `json:"credential_id"`
+	IdentityGeneration     uint64    `json:"identity_generation"`
+	ResetAt                time.Time `json:"reset_at,omitempty"`
+	CooldownUntil          time.Time `json:"cooldown_until,omitempty"`
+	NextProbeAt            time.Time `json:"next_probe_at,omitempty"`
+	ProbeFailures          int       `json:"probe_failures,omitempty"`
+	ProbeUnsupported       bool      `json:"probe_unsupported,omitempty"`
+	SuppressedQuotaResetAt time.Time `json:"suppressed_quota_reset_at,omitempty"`
 }
 
 func (s *SchedulingState) CaptureCheckpoint() SchedulingCheckpoint {
@@ -73,7 +73,7 @@ func (s *SchedulingState) CaptureCheckpoint() SchedulingCheckpoint {
 					CredentialID: credentialID, IdentityGeneration: account.IdentityGeneration,
 					ResetAt: account.ResetAt, CooldownUntil: account.CooldownUntil,
 					NextProbeAt: account.NextProbeAt, ProbeFailures: account.ProbeFailures,
-					ProbeUnsupported: account.ProbeUnsupported,
+					ProbeUnsupported:       account.ProbeUnsupported,
 					SuppressedQuotaResetAt: account.SuppressedQuotaResetAt,
 				})
 			}
@@ -166,9 +166,9 @@ func (s *SchedulingState) RestoreCheckpoint(checkpoint SchedulingCheckpoint) int
 				}
 				serial.Accounts[account.CredentialID] = &SerialAccountState{
 					IdentityGeneration: account.IdentityGeneration,
-					ResetAt: account.ResetAt, CooldownUntil: account.CooldownUntil,
+					ResetAt:            account.ResetAt, CooldownUntil: account.CooldownUntil,
 					NextProbeAt: account.NextProbeAt, ProbeFailures: failures,
-					ProbeUnsupported: account.ProbeUnsupported,
+					ProbeUnsupported:       account.ProbeUnsupported,
 					SuppressedQuotaResetAt: account.SuppressedQuotaResetAt,
 				}
 			}

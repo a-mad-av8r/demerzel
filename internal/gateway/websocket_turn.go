@@ -426,8 +426,8 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 					Request: &dialect.ParsedRequest{
 						Method: http.MethodGet, Path: "/v1/models", Header: make(http.Header),
 					},
-					RequestID: id,
-					AttemptID: id + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
+					RequestID:       id,
+					AttemptID:       id + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
 					AttemptSequence: 1, ClientProtocol: probeProtocol,
 					Operation: execution.OperationListModels,
 					ChannelID: string(selection.ChannelID), RouteMode: probeMode,

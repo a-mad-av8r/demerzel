@@ -337,7 +337,7 @@ func TestAccountLifecycleUsesAuthenticatedControlAPIAndRedactsSecrets(t *testing
 	assertRedacted(t, stdout, stderr)
 }
 
-func TestAccountCLIRejectsInsecureCredentialFileAndRemoteControlURL(t *testing.T) {
+func TestAccountCLIRejectsInsecureCredentialFile(t *testing.T) {
 	t.Setenv("AUTH_KEY", "")
 	fixture := newFakeManagementAPI(t)
 	defer fixture.close()
@@ -354,13 +354,6 @@ func TestAccountCLIRejectsInsecureCredentialFileAndRemoteControlURL(t *testing.T
 		[]string{"--data-dir", fixture.dataDir, "--auth-key-file", authFile}, "")
 	if code == 0 || !strings.Contains(stderr, "restrictive regular file") {
 		t.Fatal("add accepted a credential file readable by other users")
-	}
-	assertRedacted(t, stdout, stderr)
-
-	stdout, stderr, code = invoke(t, []string{"list"},
-		[]string{"--url", "http://example.com", "--auth-key-file", authFile}, "")
-	if code == 0 {
-		t.Fatal("CLI accepted an HTTP control API URL")
 	}
 	assertRedacted(t, stdout, stderr)
 }

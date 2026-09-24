@@ -15,7 +15,7 @@ func TestGroupAccountSelectionPersistsAndRoundTrips(t *testing.T) {
 	created, err := fixture.service.CreateGroup(t.Context(), GroupCreateRequest{
 		Name: stringPointer("new serial group"), ChannelID: channel.OpenAI,
 		ConnectionType: models.ConnectionTypeAPIKey, Params: json.RawMessage(`{}`),
-		Models: optionalGroupModels{Set: true, Values: []GroupModel{{ID: "gpt-4o"}}},
+		Models:      optionalGroupModels{Set: true, Values: []GroupModel{{ID: "gpt-4o"}}},
 		Credentials: "sk-serial-default",
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func TestLegacyGroupAccountSelectionDefaultsToWeightedFair(t *testing.T) {
 	created, err := fixture.service.CreateGroup(t.Context(), GroupCreateRequest{
 		Name: stringPointer("legacy group"), ChannelID: channel.OpenAI,
 		ConnectionType: models.ConnectionTypeAPIKey, Params: json.RawMessage(`{}`),
-		Models: optionalGroupModels{Set: true, Values: []GroupModel{{ID: "gpt-4o"}}},
+		Models:      optionalGroupModels{Set: true, Values: []GroupModel{{ID: "gpt-4o"}}},
 		Credentials: "sk-legacy",
 	})
 	if err != nil {

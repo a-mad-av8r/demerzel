@@ -714,10 +714,10 @@ func (r *CredentialRegistry) collectCredentialCandidatesLocked(groupIDs []uint, 
 			meta := CredentialMeta{
 				ID: view.ID, GroupID: view.GroupID,
 				Version: view.Version, IdentityGeneration: view.IdentityGeneration,
-				WeightManual: cloneWeight(view.WeightManual),
+				WeightManual:   cloneWeight(view.WeightManual),
 				ModelCooldowns: view.ModelCooldowns,
 				QuotaRemaining: cloneFloat(view.QuotaRemaining),
-				QuotaResetAt: view.QuotaResetAt,
+				QuotaResetAt:   view.QuotaResetAt,
 			}
 			metas = append(metas, meta)
 		}

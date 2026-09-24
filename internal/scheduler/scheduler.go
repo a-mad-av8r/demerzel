@@ -69,8 +69,8 @@ type candidateTarget struct {
 }
 
 type weightedCredential struct {
-	meta              state.CredentialMeta
-	weight            int64
+	meta               state.CredentialMeta
+	weight             int64
 	serialProbe        bool
 	serialProbePending bool
 }
@@ -90,14 +90,14 @@ type Iterator struct {
 	storeDowngraded       candidatePool
 	routeModeTiers        [][]channel.RouteMode
 	allowedCredentialIDs  map[uint]struct{}
-	preferredCredentialID  uint
-	tried                  map[uint]struct{}
-	skippedGroups          map[uint]struct{}
-	allowedCredentialRefs  map[uint]credentialIdentity
-	staticReason           ReasonCode
-	now                    func() time.Time
-	retrySameCredentialID  uint
-	retrySameGroupID       uint
+	preferredCredentialID uint
+	tried                 map[uint]struct{}
+	skippedGroups         map[uint]struct{}
+	allowedCredentialRefs map[uint]credentialIdentity
+	staticReason          ReasonCode
+	now                   func() time.Time
+	retrySameCredentialID uint
+	retrySameGroupID      uint
 }
 
 type normalizedQuery struct {

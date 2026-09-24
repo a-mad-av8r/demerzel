@@ -24,7 +24,6 @@ type serialProbeAbandoner interface {
 	AbandonSerialProbe(scheduler.Selection, time.Time)
 }
 
-
 func serialListModelsRoute(
 	group state.GroupView,
 	dialects dialect.Set,

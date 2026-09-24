@@ -142,7 +142,8 @@ func selectSerialCandidateLocked(
 			return weightedCredential{}, false, false
 		}
 		if _, alreadyTried := tried[serial.CursorCredentialID]; alreadyTried && retryID != serial.CursorCredentialID {
-			return weightedCredential{}, false, false
+			// A scoped retry may try another account for this request without changing the cursor.
+			return firstAvailableSerialCandidate(candidates, group.ID, serial, tried, retryID)
 		}
 		// The cursor may not serve this route/model or may be temporarily ineligible.
 		// Use another account for this request without persisting a failover.

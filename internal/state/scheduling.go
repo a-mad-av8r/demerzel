@@ -55,15 +55,15 @@ func (m *SchedulingMember) Admit(baseline SchedulingProgress) {
 }
 
 type SerialAccountState struct {
-	IdentityGeneration       uint64
-	ResetAt                  time.Time
-	CooldownUntil            time.Time
-	NextProbeAt              time.Time
-	ProbeFailures            int
-	ProbeInFlight             bool
-	ProbeVerified            bool
-	ProbeUnsupported          bool
-	SuppressedQuotaResetAt   time.Time
+	IdentityGeneration     uint64
+	ResetAt                time.Time
+	CooldownUntil          time.Time
+	NextProbeAt            time.Time
+	ProbeFailures          int
+	ProbeInFlight          bool
+	ProbeVerified          bool
+	ProbeUnsupported       bool
+	SuppressedQuotaResetAt time.Time
 }
 
 type SerialGroupState struct {

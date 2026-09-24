@@ -60,6 +60,9 @@ test ! -e "${data_dir}/encryption.key"
 test -f "${data_dir}/gpt-load.db"
 auth_key="$(cat "${data_dir}/auth.key")"
 test -n "${auth_key}"
+test -S "${data_dir}/control.sock"
+test "$(path_mode "${data_dir}/control.sock")" = "600"
+"${binary}" accounts list --data-dir "${data_dir}" >/dev/null
 grep -F "\"version\":\"${release_version}\"" "${data_dir}/health.json"
 curl -fsS "http://127.0.0.1:${port}/" | grep -F '<div id="app"></div>' >/dev/null
 usage_to_ms="$(python3 -c 'import time; print(time.time_ns() // 1_000_000)')"

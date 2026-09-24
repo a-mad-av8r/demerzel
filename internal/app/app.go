@@ -194,6 +194,12 @@ func (a *App) Start() error {
 	if err != nil {
 		return a.startupFailure("admin_socket", err)
 	}
+	if adminListener != nil {
+		logrus.WithFields(logrus.Fields{
+			"event": "startup.admin_socket_listen",
+			"path":  a.config.AdminSocketPath,
+		}).Info("owner-only admin socket bound")
+	}
 	closeAdminListener := func() error {
 		if adminListener == nil {
 			return nil

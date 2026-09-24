@@ -27,7 +27,7 @@ func TestFileCheckpointRestoresSerialCursorResetAndProbeBackoff(t *testing.T) {
 			Accounts: map[uint]*state.SerialAccountState{
 				1: {
 					IdentityGeneration: 1,
-					ResetAt: now.Add(-time.Minute), CooldownUntil: now.Add(-time.Minute),
+					ResetAt:            now.Add(-time.Minute), CooldownUntil: now.Add(-time.Minute),
 					NextProbeAt: now.Add(5 * time.Second), ProbeFailures: 3,
 					ProbeInFlight: true, ProbeVerified: true,
 				},

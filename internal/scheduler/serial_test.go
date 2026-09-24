@@ -31,8 +31,8 @@ func serialSchedulerFixture(t *testing.T) (*state.ConfigSnapshot, *state.Credent
 func serialSchedulerQuery() Query {
 	return Query{
 		ClientProtocol: protocol.OpenAICompletions,
-		Operation: execution.OperationChatCompletion,
-		ExternalModel: modelPointer("gpt-4o"),
+		Operation:      execution.OperationChatCompletion,
+		ExternalModel:  modelPointer("gpt-4o"),
 	}
 }
 
@@ -49,9 +49,9 @@ func TestSerialFailoverAdvancesOnlyOnAccountRateLimitAndRestoresCursor(t *testin
 		t.Fatalf("initial serial selection = %#v, %v", first, err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
-		Retry: health.RetryNextCandidate,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
+		Retry:         health.RetryNextCandidate,
 		CooldownUntil: now.Add(time.Hour),
 	}, now, true)
 	second, _, err := serialPickAt(snapshot, registry, now)
@@ -87,15 +87,38 @@ func TestSerialTransientReplayKeepsTheSameAccount(t *testing.T) {
 	}
 	iterator.RecordAttempt(first, health.Decision{
 		Category: health.FailureCategoryUpstreamHostError,
-		Origin: execution.ErrorOriginUpstream,
-		Scope: execution.ErrorScopeGroup,
-		Retry: health.RetryNextCandidate,
-		Effect: health.EffectSkipGroup,
+		Origin:   execution.ErrorOriginUpstream,
+		Scope:    execution.ErrorScopeGroup,
+		Retry:    health.RetryNextCandidate,
+		Effect:   health.EffectSkipGroup,
 	}, now, true)
 	iterator.SkipGroup(first.GroupID)
 	second, err := iterator.Next()
 	if err != nil || second.CredentialID != first.CredentialID {
 		t.Fatalf("replay selection = %#v, %v; want the same account", second, err)
+	}
+}
+
+func TestSerialModelScopedRetryUsesFallbackWithoutAdvancingCursor(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	first, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil || first.CredentialID != 11 {
+		t.Fatalf("initial serial account = %d, error=%v", first.CredentialID, err)
+	}
+	iterator.RecordAttempt(first, health.Decision{
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeModel,
+		Retry:         health.RetryNextCandidate,
+		Effect:        health.EffectCooldownModel,
+		CooldownUntil: now.Add(time.Minute),
+	}, now, true)
+	fallback, err := iterator.Next()
+	if err != nil || fallback.CredentialID != 12 {
+		t.Fatalf("model-scoped retry did not use fallback: id=%d, error=%v", fallback.CredentialID, err)
+	}
+	checkpoint := registry.SchedulingState().CaptureCheckpoint()
+	if len(checkpoint.SerialGroups) != 1 || checkpoint.SerialGroups[0].CursorCredentialID != 11 {
+		t.Fatal("request-local fallback changed the durable serial cursor")
 	}
 }
 
@@ -106,9 +129,9 @@ func TestSerialFailbackUsesSerializedBackoffProbes(t *testing.T) {
 		t.Fatal(err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
-		Retry: health.RetryNextCandidate,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
+		Retry:         health.RetryNextCandidate,
 		CooldownUntil: now.Add(time.Minute),
 	}, now, true)
 	fallback, _, err := serialPickAt(snapshot, registry, now)
@@ -164,8 +187,8 @@ func TestSerialFailbackWithNoAlternateStaysClosedAndSerializesProbe(t *testing.T
 		t.Fatalf("initial selection = %#v, %v", first, err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
 		CooldownUntil: now.Add(time.Minute),
 	}, now, false)
 	if _, _, err := serialPickAt(snapshot, registry, now); err != ErrExhausted {
@@ -185,8 +208,8 @@ func TestSerialFailbackWithNoAlternateStaysClosedAndSerializesProbe(t *testing.T
 	inference := probe
 	inference.SerialProbe, inference.SerialProbePending = false, true
 	probeIterator.RecordAttempt(inference, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
 		CooldownUntil: probeNow.Add(time.Hour),
 	}, probeNow, true)
 	if _, _, err := serialPickAt(snapshot, registry, probeNow); err != ErrExhausted {
@@ -221,15 +244,15 @@ func TestSerialRequest429AndPermanentDenialDoNotAdvanceCursor(t *testing.T) {
 			name: "request-scoped 429",
 			decision: health.Decision{
 				Category: health.FailureCategoryRateLimited,
-				Scope: execution.ErrorScopeRequest,
+				Scope:    execution.ErrorScopeRequest,
 			},
 		},
 		{
 			name: "permanent credential denial",
 			decision: health.Decision{
 				Category: health.FailureCategoryInvalidKey,
-				Scope: execution.ErrorScopeCredential,
-				Retry: health.RetryNextCandidate,
+				Scope:    execution.ErrorScopeCredential,
+				Retry:    health.RetryNextCandidate,
 			},
 		},
 	} {
@@ -255,8 +278,8 @@ func TestSerialNewHealthyQuotaObservationMakesBlockedAccountProbeEligible(t *tes
 		t.Fatal(err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
 		CooldownUntil: now.Add(time.Hour),
 	}, now, false)
 	fallback, _, err := serialPickAt(snapshot, registry, now)
@@ -315,8 +338,8 @@ func TestAbandonedSerialProbeReleasesLeaseWithoutPromotingPrimary(t *testing.T) 
 		t.Fatal(err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
 		CooldownUntil: now.Add(time.Minute),
 	}, now, false)
 	fallback, _, err := serialPickAt(snapshot, registry, now)
@@ -352,8 +375,8 @@ func TestSerialUnsupportedSafeProbeUsesSerializedCallerInference(t *testing.T) {
 		t.Fatal(err)
 	}
 	iterator.RecordAttempt(first, health.Decision{
-		Category: health.FailureCategoryRateLimited,
-		Scope: execution.ErrorScopeCredential,
+		Category:      health.FailureCategoryRateLimited,
+		Scope:         execution.ErrorScopeCredential,
 		CooldownUntil: now.Add(time.Minute),
 	}, now, false)
 	fallback, _, err := serialPickAt(snapshot, registry, now)
