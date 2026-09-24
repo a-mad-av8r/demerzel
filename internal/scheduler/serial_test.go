@@ -247,3 +247,138 @@ func TestSerialRequest429AndPermanentDenialDoNotAdvanceCursor(t *testing.T) {
 		})
 	}
 }
+
+func TestSerialNewHealthyQuotaObservationMakesBlockedAccountProbeEligible(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	first, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iterator.RecordAttempt(first, health.Decision{
+		Category: health.FailureCategoryRateLimited,
+		Scope: execution.ErrorScopeCredential,
+		CooldownUntil: now.Add(time.Hour),
+	}, now, false)
+	fallback, _, err := serialPickAt(snapshot, registry, now)
+	if err != nil || fallback.CredentialID != 12 {
+		t.Fatalf("rate-limited fallback = %#v, %v", fallback, err)
+	}
+
+	remaining := 0.8
+	staleReset := now.Add(30 * time.Minute)
+	if !registry.SetCredentialQuotaObservation(11, &remaining, staleReset) {
+		t.Fatal("stale provider quota observation was rejected")
+	}
+	stillFallback, _, err := serialPickAt(snapshot, registry, now.Add(30*time.Minute))
+	if err != nil || stillFallback.CredentialID != 12 || stillFallback.SerialProbe {
+		t.Fatalf("stale healthy observation reopened the account: %#v, %v", stillFallback, err)
+	}
+
+	resetAt := now.Add(7 * 24 * time.Hour)
+	if !registry.SetCredentialQuotaObservation(11, &remaining, resetAt) {
+		t.Fatal("new healthy provider quota observation was rejected")
+	}
+	blockedUntil := now.Add(time.Hour)
+	beforeGraceEnds := blockedUntil.Add(serialFailbackGrace - time.Second)
+	stillInGrace, _, err := serialPickAt(snapshot, registry, beforeGraceEnds)
+	if err != nil || stillInGrace.CredentialID != 12 || stillInGrace.SerialProbe {
+		t.Fatalf("new reset generation skipped post-cooldown grace: %#v, %v", stillInGrace, err)
+	}
+	account := registry.SchedulingState().CaptureCheckpoint().SerialGroups[0].Accounts[0]
+	expectedProbeAt := blockedUntil.Add(serialFailbackGrace)
+	if !account.ResetAt.Equal(resetAt) || !account.CooldownUntil.IsZero() ||
+		!account.NextProbeAt.Equal(expectedProbeAt) {
+		t.Fatalf("healthy observation recovery state = %#v", account)
+	}
+	probe, _, err := serialPickAt(snapshot, registry, expectedProbeAt)
+	if err != nil || probe.CredentialID != 11 || !probe.SerialProbe {
+		t.Fatalf("new reset generation did not become probe eligible after old cooldown grace: %#v, %v", probe, err)
+	}
+}
+
+func TestSerialChargeReplayAllowsExplicitSameCredentialRefresh(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	selection, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, exists := registry.CredentialRef(selection.CredentialID)
+	if !exists || !iterator.ChargeReplay(selection, ref) {
+		t.Fatalf("explicit refresh replay was not charged for cursor %d", selection.CredentialID)
+	}
+}
+
+func TestAbandonedSerialProbeReleasesLeaseWithoutPromotingPrimary(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	first, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iterator.RecordAttempt(first, health.Decision{
+		Category: health.FailureCategoryRateLimited,
+		Scope: execution.ErrorScopeCredential,
+		CooldownUntil: now.Add(time.Minute),
+	}, now, false)
+	fallback, _, err := serialPickAt(snapshot, registry, now)
+	if err != nil || fallback.CredentialID != 12 {
+		t.Fatalf("fallback selection = %#v, %v", fallback, err)
+	}
+	probeNow := now.Add(2 * time.Minute)
+	probe, _, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || !probe.SerialProbe {
+		t.Fatalf("due probe selection = %#v, %v", probe, err)
+	}
+	probeIterator := newWithClock(snapshot, registry, serialSchedulerQuery(), func() time.Time { return probeNow })
+	probeIterator.RecordSerialProbe(probe, SerialProbeSucceeded, probeNow)
+	pending := probe
+	pending.SerialProbe, pending.SerialProbePending = false, true
+	probeIterator.AbandonSerialProbe(pending, probeNow)
+	checkpoint := registry.SchedulingState().CaptureCheckpoint()
+	account := checkpoint.SerialGroups[0].Accounts[0]
+	if checkpoint.SerialGroups[0].CursorCredentialID != 12 || account.ProbeFailures != 1 ||
+		account.NextProbeAt.Before(probeNow.Add(5*time.Second)) {
+		t.Fatalf("abandoned probe state = %#v", checkpoint.SerialGroups)
+	}
+	next, _, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || next.CredentialID != 12 || next.SerialProbe {
+		t.Fatalf("abandoned probe trapped or promoted the primary: %#v, %v", next, err)
+	}
+}
+
+func TestSerialUnsupportedSafeProbeUsesSerializedCallerInference(t *testing.T) {
+	snapshot, registry, now := serialSchedulerFixture(t)
+	first, iterator, err := serialPickAt(snapshot, registry, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iterator.RecordAttempt(first, health.Decision{
+		Category: health.FailureCategoryRateLimited,
+		Scope: execution.ErrorScopeCredential,
+		CooldownUntil: now.Add(time.Minute),
+	}, now, false)
+	fallback, _, err := serialPickAt(snapshot, registry, now)
+	if err != nil || fallback.CredentialID != 12 {
+		t.Fatalf("initial fallback = %#v, %v", fallback, err)
+	}
+	probeNow := now.Add(2 * time.Minute)
+	selection, probeIterator, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || selection.CredentialID != 11 || !selection.SerialProbe {
+		t.Fatalf("due primary selection = %#v, %v", selection, err)
+	}
+	probeIterator.RecordSerialProbe(selection, SerialProbeUnsupported, probeNow)
+	pending := selection
+	pending.SerialProbe, pending.SerialProbePending = false, true
+	checkpoint := registry.SchedulingState().CaptureCheckpoint()
+	if len(checkpoint.SerialGroups) != 1 || !checkpoint.SerialGroups[0].Accounts[0].ProbeUnsupported {
+		t.Fatalf("unsupported probe capability was not persisted: %#v", checkpoint.SerialGroups)
+	}
+	concurrent, _, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || concurrent.CredentialID != 12 || concurrent.SerialProbePending {
+		t.Fatalf("parallel caller escaped fallback during recovery inference: %#v, %v", concurrent, err)
+	}
+	probeIterator.RecordAttempt(pending, health.Decision{Category: health.FailureCategoryOK}, probeNow, false)
+	active, _, err := serialPickAt(snapshot, registry, probeNow)
+	if err != nil || active.CredentialID != 11 {
+		t.Fatalf("successful caller inference did not restore unsupported account: %#v, %v", active, err)
+	}
+}

@@ -20,6 +20,10 @@ type serialProbeReporter interface {
 type serialAttemptReporter interface {
 	RecordAttempt(scheduler.Selection, health.Decision, time.Time, bool)
 }
+type serialProbeAbandoner interface {
+	AbandonSerialProbe(scheduler.Selection, time.Time)
+}
+
 
 func serialListModelsRoute(
 	group state.GroupView,
@@ -56,6 +60,11 @@ func reportSerialProbe(
 ) {
 	if reporter, ok := iterator.(serialProbeReporter); ok {
 		reporter.RecordSerialProbe(selection, result, now)
+	}
+}
+func abandonSerialProbe(iterator scheduler.SelectionIterator, selection scheduler.Selection, now time.Time) {
+	if reporter, ok := iterator.(serialProbeAbandoner); ok {
+		reporter.AbandonSerialProbe(selection, now)
 	}
 }
 

@@ -25,9 +25,7 @@ func (iterator *Iterator) ChargeReplay(selection Selection, ref state.Credential
 			weight := effectiveWeight(selection.Group.WeightManual, meta.WeightManual)
 			if weight > 0 {
 				previousRetryID, previousRetryGroupID := iterator.retrySameCredentialID, iterator.retrySameGroupID
-				if selection.SerialProbePending {
-					iterator.retrySameCredentialID, iterator.retrySameGroupID = ref.ID, ref.GroupID
-				}
+				iterator.retrySameCredentialID, iterator.retrySameGroupID = ref.ID, ref.GroupID
 				selected, found := iterator.selectCredential(
 					[]weightedCredential{{meta: meta, weight: weight}}, ref.ID, now,
 				)
@@ -141,19 +139,30 @@ func (iterator *Iterator) selectCredential(
 				first = alternative
 			}
 		}
-		if first.serialProbe {
+		probeAccount := false
+		probeAlreadyInFlight := false
+		if first.serialProbe || first.serialProbePending {
 			serial := ledger.SerialGroups[first.meta.GroupID]
-			account := serial.Accounts[first.meta.ID]
-			if account == nil || account.IdentityGeneration != first.meta.IdentityGeneration || account.ProbeInFlight {
+			if serial == nil {
 				return
 			}
+			account := serial.Accounts[first.meta.ID]
+			if account == nil || account.IdentityGeneration != first.meta.IdentityGeneration ||
+				account.ProbeInFlight && !first.serialProbePending {
+				return
+			}
+			probeAccount = true
+			probeAlreadyInFlight = account.ProbeInFlight
 			account.ProbeInFlight = true
+			if first.serialProbePending {
+				account.ProbeVerified = true
+			}
 		}
 		member := ledger.Members[first.meta.ID]
 		next, ok := member.Progress.Advance(uint64(first.weight))
 		if !ok {
-			if first.serialProbe {
-				ledger.SerialGroups[first.meta.GroupID].Accounts[first.meta.ID].ProbeInFlight = false
+			if probeAccount {
+				ledger.SerialGroups[first.meta.GroupID].Accounts[first.meta.ID].ProbeInFlight = probeAlreadyInFlight
 			}
 			return
 		}

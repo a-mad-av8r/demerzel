@@ -52,20 +52,26 @@ func selectSerialCandidateLocked(
 
 	for _, candidate := range candidates {
 		meta := candidate.meta
-		if meta.GroupID != group.ID || meta.QuotaRemaining == nil || meta.QuotaResetAt.IsZero() ||
-			*meta.QuotaRemaining > float64(group.SerialQuotaReservePercent)/100 {
+		if meta.GroupID != group.ID || meta.QuotaRemaining == nil || meta.QuotaResetAt.IsZero() {
 			continue
 		}
 		account := serialAccountState(serial, meta)
+		reserve := float64(group.SerialQuotaReservePercent) / 100
+		if *meta.QuotaRemaining > reserve {
+			if serialAccountBlocked(account) && meta.QuotaResetAt.After(account.ResetAt) {
+				nextProbeAt := later(account.ResetAt, account.CooldownUntil).Add(serialFailbackGrace)
+				account.ResetAt, account.CooldownUntil = meta.QuotaResetAt, time.Time{}
+				account.NextProbeAt = nextProbeAt
+				account.ProbeFailures, account.ProbeInFlight, account.ProbeVerified = 0, false, false
+			}
+			continue
+		}
 		if account.SuppressedQuotaResetAt.Equal(meta.QuotaResetAt) {
 			continue
 		}
 		if serialAccountBlocked(account) {
 			if meta.QuotaResetAt.After(account.ResetAt) {
 				account.ResetAt = meta.QuotaResetAt
-			}
-			if meta.QuotaResetAt.After(account.CooldownUntil) {
-				account.CooldownUntil = meta.QuotaResetAt
 			}
 			minimumProbeAt := later(account.ResetAt, account.CooldownUntil).Add(serialFailbackGrace)
 			if account.NextProbeAt.Before(minimumProbeAt) {
@@ -75,7 +81,7 @@ func selectSerialCandidateLocked(
 		}
 		account.ResetAt, account.CooldownUntil = meta.QuotaResetAt, meta.QuotaResetAt
 		account.NextProbeAt = meta.QuotaResetAt.Add(serialFailbackGrace)
-		account.ProbeFailures, account.ProbeInFlight = 0, false
+		account.ProbeFailures, account.ProbeInFlight, account.ProbeVerified = 0, false, false
 	}
 
 	var probe weightedCredential
@@ -98,23 +104,24 @@ func selectSerialCandidateLocked(
 			continue
 		}
 		account := serial.Accounts[meta.ID]
-		if !serialAccountBlocked(account) || account.ProbeUnsupported || account.ProbeInFlight {
+		if !serialAccountBlocked(account) || account.ProbeInFlight {
 			continue
 		}
-		probeAt := later(account.ResetAt, account.CooldownUntil).Add(serialFailbackGrace)
-		if account.NextProbeAt.After(probeAt) {
-			probeAt = account.NextProbeAt
+		probeAt := account.NextProbeAt
+		if probeAt.IsZero() {
+			probeAt = later(account.ResetAt, account.CooldownUntil).Add(serialFailbackGrace)
 		}
 		if now.Before(probeAt) {
 			continue
 		}
+		candidate.serialProbe = !account.ProbeUnsupported
+		candidate.serialProbePending = account.ProbeUnsupported
 		if !probeFound || meta.ID < probe.meta.ID {
 			probe, probeFound = candidate, true
 		}
 	}
 	if probeFound {
-		probe.serialProbe = true
-		return probe, true, true
+		return probe, probe.serialProbe, true
 	}
 
 	if serial.CursorCredentialID != 0 {
@@ -242,7 +249,7 @@ func (iterator *Iterator) RecordSerialProbe(selection Selection, result SerialPr
 		case SerialProbeSucceeded:
 			account.ProbeVerified = true
 		case SerialProbeUnsupported:
-			account.ProbeInFlight, account.ProbeVerified = false, false
+			account.ProbeVerified = true
 			account.ProbeUnsupported = true
 		case SerialProbeFailed:
 			account.ProbeInFlight, account.ProbeVerified = false, false
@@ -251,6 +258,30 @@ func (iterator *Iterator) RecordSerialProbe(selection Selection, result SerialPr
 			}
 			account.NextProbeAt = now.Add(serialProbeBackoff(account.ProbeFailures))
 		}
+	})
+}
+
+func (iterator *Iterator) AbandonSerialProbe(selection Selection, now time.Time) {
+	if iterator == nil || selection.Group.AccountSelection != state.AccountSelectionSerial ||
+		!selection.SerialProbePending {
+		return
+	}
+	iterator.progress.WithLock(func(ledger *state.SchedulingLedger) {
+		serial := ledger.SerialGroups[selection.GroupID]
+		if serial == nil {
+			return
+		}
+		account := serial.Accounts[selection.CredentialID]
+		if account == nil || account.IdentityGeneration != selection.IdentityGeneration ||
+			!account.ProbeInFlight && !account.ProbeVerified {
+			return
+		}
+		account.ProbeInFlight, account.ProbeVerified = false, false
+		if account.ProbeFailures < 32 {
+			account.ProbeFailures++
+		}
+		resetAt := later(account.ResetAt, account.CooldownUntil).Add(serialFailbackGrace)
+		account.NextProbeAt = later(resetAt, now.Add(serialProbeBackoff(account.ProbeFailures)))
 	})
 }
 
@@ -295,12 +326,13 @@ func (iterator *Iterator) RecordAttempt(
 				ID: selection.CredentialID, GroupID: selection.GroupID,
 				IdentityGeneration: selection.IdentityGeneration,
 			})
-			until := decision.CooldownUntil
-			if until.IsZero() {
-				until = now.Add(time.Minute)
+			cooldownUntil := decision.CooldownUntil
+			if cooldownUntil.IsZero() {
+				cooldownUntil = now.Add(time.Minute)
 			}
-			account.ResetAt, account.CooldownUntil = until, until
-			account.NextProbeAt = until.Add(serialFailbackGrace)
+			resetAt := later(cooldownUntil, selection.QuotaResetAt)
+			account.ResetAt, account.CooldownUntil = resetAt, cooldownUntil
+			account.NextProbeAt = later(resetAt, cooldownUntil).Add(serialFailbackGrace)
 			account.ProbeFailures, account.ProbeInFlight, account.ProbeVerified = 0, false, false
 		})
 		return
@@ -352,12 +384,12 @@ func (iterator *Iterator) recordSerialProbeInferenceAttempt(
 		account.ProbeVerified = false
 		if decision.Category == health.FailureCategoryRateLimited &&
 			decision.Scope == execution.ErrorScopeCredential {
-			until := decision.CooldownUntil
-			if until.IsZero() {
-				until = now.Add(time.Minute)
+			cooldownUntil := decision.CooldownUntil
+			if cooldownUntil.IsZero() {
+				cooldownUntil = now.Add(time.Minute)
 			}
-			until = later(until, selection.QuotaResetAt)
-			account.ResetAt, account.CooldownUntil = until, until
+			resetAt := later(cooldownUntil, selection.QuotaResetAt)
+			account.ResetAt, account.CooldownUntil = resetAt, cooldownUntil
 		}
 		if account.ProbeFailures < 32 {
 			account.ProbeFailures++

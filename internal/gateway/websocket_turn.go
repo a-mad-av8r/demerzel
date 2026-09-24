@@ -287,6 +287,12 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 	var refreshRef state.CredentialRef
 	authRefreshUsed := false
 	var finishRejectedAttempt func()
+	var pendingSerialProbes []scheduler.Selection
+	defer func() {
+		for _, selection := range pendingSerialProbes {
+			abandonSerialProbe(iterator, selection, h.now())
+		}
+	}()
 	for sequence := 1; sequence <= limit; sequence++ {
 		if s.ctx.Err() != nil {
 			recorder.completeCanceled(s.ctx, 0, -1)
@@ -322,6 +328,14 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 				return
 			}
 			ref = query.AllowedCredentialRefs[selection.CredentialID]
+		}
+		probeCleanupSelection := selection
+		if selection.SerialProbe {
+			probeCleanupSelection.SerialProbe = false
+			probeCleanupSelection.SerialProbePending = true
+		}
+		if probeCleanupSelection.SerialProbePending {
+			pendingSerialProbes = append(pendingSerialProbes, probeCleanupSelection)
 		}
 		payload, effective, err := prepareWebsocketPayload(turn.body, original, selection)
 		if err != nil {
@@ -399,6 +413,44 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 			}
 			admission.admitted = true
 		}
+		if selection.SerialProbe {
+			probeProtocol, probeMode, probeDialect, supported :=
+				serialListModelsRoute(selection.Group, h.dialects)
+			if !supported {
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeUnsupported, h.now())
+			} else {
+				probeCtx, cancelProbe := context.WithTimeout(requestCtx, selection.Group.Timeouts.Request)
+				probeInput := ForwardInput{
+					Dialect: probeDialect, Group: selection.Group,
+					APIKey: credential.apiKey, CredentialSecrets: credential.secrets,
+					Request: &dialect.ParsedRequest{
+						Method: http.MethodGet, Path: "/v1/models", Header: make(http.Header),
+					},
+					RequestID: id,
+					AttemptID: id + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
+					AttemptSequence: 1, ClientProtocol: probeProtocol,
+					Operation: execution.OperationListModels,
+					ChannelID: string(selection.ChannelID), RouteMode: probeMode,
+					TargetConfig: selection.ResolvedTarget.TargetConfig,
+					Credential: execution.NewCredentialSnapshot(
+						selection.CredentialID, ref.Version, ref.IdentityGeneration, credential.payload,
+					),
+					Proxy: proxy, ProxyFingerprint: fingerprint,
+				}
+				probeResult := h.forwarder.Forward(probeCtx, probeInput)
+				cancelProbe()
+				probeNow := h.now()
+				if !serialListModelsProbeSucceeded(probeResult) {
+					reportSerialProbe(iterator, selection, scheduler.SerialProbeFailed, probeNow)
+					sequence--
+					continue
+				}
+				reportSerialProbe(iterator, selection, scheduler.SerialProbeSucceeded, probeNow)
+			}
+			selection.SerialProbe = false
+			selection.SerialProbePending = true
+		}
+
 		recorder.setReasoning(effective.metadata.Reasoning)
 		recorder.setUsageApplicable(effective.metadata.ObserveUsage)
 		recorder.setPricingMode(effective.metadata.PricingMode)
@@ -504,9 +556,11 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 		// 是否可重放仍由错误规则决定；续接和共享连接不能随某一轮切换身份。
 		retryableTurn := result.DispatchState == execution.DispatchNotSent ||
 			(len(result.Body) > 0 && result.Stream.EndReason == StreamEndSSEError)
-		if retryableTurn && !result.Committed && newBinding &&
+		willRetry := retryableTurn && !result.Committed && newBinding &&
 			(binding == nil || !binding.capabilities.Multiplex) && decision.Retry != health.RetryNone &&
-			sequence < limit && requiredRef == nil && !authRefreshUsed && s.ctx.Err() == nil {
+			sequence < limit && requiredRef == nil && !authRefreshUsed && s.ctx.Err() == nil
+		reportSerialAttempt(iterator, selection, decision, h.now(), willRetry)
+		if willRetry {
 			if decision.Retry == health.RetryRefreshCredential {
 				refreshSelection, refreshRef = &selection, ref
 			}

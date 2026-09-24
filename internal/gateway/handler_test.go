@@ -4008,7 +4008,10 @@ func TestSubscriptionExplicit401RetriesSameCredentialWithForcedRefresh(t *testin
 		ChannelRegistry: channel.NewRegistry(),
 		Groups: []state.GroupConfig{{
 			ID: 1, Name: "subscription", ChannelID: channel.Codex,
-			Settings:       config.Settings{state.SettingRetryCount: 0},
+			Settings: config.Settings{
+				state.SettingRetryCount:       0,
+				state.SettingAccountSelection: string(state.AccountSelectionSerial),
+			},
 			ConnectionType: "subscription", Params: json.RawMessage(`{}`),
 			Models: []state.ModelConfig{{ID: "gpt-4o"}}, Enabled: true,
 		}},

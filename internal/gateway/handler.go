@@ -870,6 +870,12 @@ func (handler *Handler) executeAttempts(
 ) {
 	stream := originalMetadata.Stream
 	operation := originalMetadata.Operation
+	var pendingSerialProbes []scheduler.Selection
+	defer func() {
+		for _, selection := range pendingSerialProbes {
+			abandonSerialProbe(iterator, selection, handler.now())
+		}
+	}()
 	type deferredAttempt struct {
 		result        UpstreamResult
 		decision      health.Decision
@@ -1086,6 +1092,9 @@ func (handler *Handler) executeAttempts(
 			}
 			ref = candidateRef
 		}
+		if selection.SerialProbePending {
+			pendingSerialProbes = append(pendingSerialProbes, selection)
+		}
 		var serialProbeProtocol protocol.Protocol
 		var serialProbeMode execution.RouteMode
 		var serialProbeDialect dialect.Dialect
@@ -1095,7 +1104,9 @@ func (handler *Handler) executeAttempts(
 				serialListModelsRoute(selection.Group, handler.dialects)
 			if !supported {
 				reportSerialProbe(iterator, selection, scheduler.SerialProbeUnsupported, handler.now())
-				continue
+				selection.SerialProbe = false
+				selection.SerialProbePending = true
+				pendingSerialProbes = append(pendingSerialProbes, selection)
 			}
 		}
 		encrypted, active := handler.registry.ActiveEncryptedCredentialDataIfMatch(ref)
@@ -1271,6 +1282,7 @@ func (handler *Handler) executeAttempts(
 			reportSerialProbe(iterator, selection, scheduler.SerialProbeSucceeded, probeNow)
 			selection.SerialProbe = false
 			selection.SerialProbePending = true
+			pendingSerialProbes = append(pendingSerialProbes, selection)
 		}
 
 		attemptSequence++

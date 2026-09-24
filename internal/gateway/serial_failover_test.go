@@ -209,7 +209,12 @@ func (forwarder *quotaMismatchForwarder) Forward(_ context.Context, input Forwar
 			},
 		}
 	default:
-		return successfulAffinityResult()
+		return UpstreamResult{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       []byte(`{"id":"chatcmpl-serial-fallback","object":"chat.completion","created":1,"model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`),
+			RequestWritten: true, DispatchState: execution.DispatchMaybeSent,
+		}
 	}
 }
 
@@ -233,8 +238,8 @@ func TestGatewayListModelsSuccessDoesNotPromoteQuotaLimitedInference(t *testing.
 		forwarder.inputs[0].Operation != execution.OperationListModels || forwarder.inputs[0].APIKey != "sk-primary" ||
 		forwarder.inputs[1].Operation != execution.OperationChatCompletion || forwarder.inputs[1].APIKey != "sk-primary" ||
 		forwarder.inputs[2].Operation != execution.OperationChatCompletion || forwarder.inputs[2].APIKey != "sk-fallback" {
-		t.Fatalf("list-models success promoted a quota-limited inference account: status=%d inputs=%#v body=%s",
-			response.Code, forwarder.inputs, response.Body.String())
+		t.Fatalf("list-models success promoted a quota-limited inference account: status=%d attempts=%d",
+			response.Code, len(forwarder.inputs))
 	}
 	checkpoint := registry.SchedulingState().CaptureCheckpoint()
 	if len(checkpoint.SerialGroups) != 1 || checkpoint.SerialGroups[0].CursorCredentialID != 2 ||
@@ -242,5 +247,112 @@ func TestGatewayListModelsSuccessDoesNotPromoteQuotaLimitedInference(t *testing.
 		checkpoint.SerialGroups[0].Accounts[0].ProbeFailures != 1 ||
 		!checkpoint.SerialGroups[0].Accounts[0].NextProbeAt.After(time.Now()) {
 		t.Fatalf("account-scoped inference 429 did not preserve fallback/backoff: %#v", checkpoint.SerialGroups)
+	}
+}
+
+func TestGatewayMissingSafeProbeUsesOnlyCallerInference(t *testing.T) {
+	forwarder := &quotaMismatchForwarder{}
+	engine, handler, registry := serialGatewayHarness(
+		t, forwarder, "https://upstream.example/v1", "sk-primary", "sk-fallback",
+	)
+	group := handler.manager.Current().Groups[1]
+	group.ClientProtocols = []protocol.Protocol{protocol.OpenAIResponses}
+	handler.manager.Current().Groups[1] = group
+	seedDueSerialProbe(registry, time.Now())
+
+	response := serialChatRequest(t, engine)
+	if response.Code != http.StatusOK || len(forwarder.inputs) != 2 ||
+		forwarder.inputs[0].Operation != execution.OperationChatCompletion || forwarder.inputs[0].APIKey != "sk-primary" ||
+		forwarder.inputs[1].Operation != execution.OperationChatCompletion || forwarder.inputs[1].APIKey != "sk-fallback" {
+		t.Fatalf("unsupported safe probe used hidden work or failed to use fallback: status=%d attempts=%d",
+			response.Code, len(forwarder.inputs))
+	}
+}
+
+func TestWebsocketSerialProbeUsesCallerInferenceBeforePromotion(t *testing.T) {
+	probeSeen := make(chan struct{}, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/models" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"data":[]}`))
+			probeSeen <- struct{}{}
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	handler, engine, input := websocketTestHandler(t, upstream.URL+"/v1", channel.OpenAI)
+	input.Groups[0].Settings = config.Settings{
+		state.SettingAccountSelection:         string(state.AccountSelectionSerial),
+		state.SettingSerialQuotaReservePercent: 10,
+	}
+	input.Credentials = append(input.Credentials, testCredentialConfig(2, 1))
+	if _, err := handler.manager.Publish(input); err != nil {
+		t.Fatal(err)
+	}
+	registry := handler.registry.(*state.CredentialRegistry)
+	if err := registry.ReplaceCredentials([]state.CredentialEntry{
+		testCredentialEntry(t, handler.encryption, 1, 1, "primary"),
+		testCredentialEntry(t, handler.encryption, 2, 1, "fallback"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	seedDueSerialProbe(registry, time.Now())
+
+	openedCredential := make(chan uint, 1)
+	handler.forwarder = websocketScriptForwarder{
+		AttemptForwarder: handler.forwarder,
+		open: func(_ context.Context, input ForwardInput) (execution.WebsocketSession, execution.WebsocketResult) {
+			openedCredential <- input.Credential.ID
+			session := &websocketScriptSession{done: make(chan struct{})}
+			session.turn = func(ctx context.Context, _ []byte, emit func(context.Context, []byte) error) execution.WebsocketResult {
+				if err := emit(ctx, websocketCompleted("resp_serial", "")); err != nil {
+					return execution.WebsocketResult{
+						DispatchState: execution.DispatchMaybeSent,
+						Error:         &execution.ErrorEvidence{Kind: execution.ErrorKindCanceled},
+					}
+				}
+				return execution.WebsocketResult{DispatchState: execution.DispatchMaybeSent}
+			}
+			return session, execution.WebsocketResult{DispatchState: execution.DispatchNotSent}
+		},
+	}
+	sink := &recordingRequestLogSink{}
+	handler.requestLogSink = sink
+	server := httptest.NewServer(engine)
+	defer server.Close()
+	conn := dialGatewayWebsocket(t, server.URL)
+	defer conn.Close()
+	if err := conn.WriteJSON(map[string]any{
+		"type": "response.create", "model": "public", "input": "hello",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second))
+	_, event, err := conn.ReadMessage()
+	if err != nil || !strings.Contains(string(event), "response.completed") {
+		t.Fatalf("WebSocket inference response unavailable: %s, %v", event, err)
+	}
+	select {
+	case <-probeSeen:
+	case <-time.After(time.Second):
+		t.Fatal("safe list-models probe was not sent")
+	}
+	select {
+	case credentialID := <-openedCredential:
+		if credentialID != 1 {
+			t.Fatalf("caller inference used credential %d, want recovered primary 1", credentialID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("WebSocket caller inference was not opened")
+	}
+	waitWebsocketLogs(t, sink, 1)
+	checkpoint := registry.SchedulingState().CaptureCheckpoint()
+	if len(checkpoint.SerialGroups) != 1 || checkpoint.SerialGroups[0].CursorCredentialID != 1 ||
+		len(checkpoint.SerialGroups[0].Accounts) != 1 ||
+		!checkpoint.SerialGroups[0].Accounts[0].ResetAt.IsZero() ||
+		!checkpoint.SerialGroups[0].Accounts[0].CooldownUntil.IsZero() {
+		t.Fatalf("successful caller inference did not promote the recovered account: %#v", checkpoint.SerialGroups)
 	}
 }
