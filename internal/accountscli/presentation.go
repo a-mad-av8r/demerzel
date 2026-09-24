@@ -136,7 +136,8 @@ func healthDisplay(item credentialItem) string {
 	if item.AuthErrorCode != "" {
 		parts = append(parts, "auth_error="+safeDisplay(item.AuthErrorCode))
 	}
-	if item.LastFailureCategory != "" {
+	if item.LastFailureCategory != "" &&
+		(item.RecentFailureCount > 0 || item.ConsecutiveFailureCount > 0 || item.LastStatusCode != nil) {
 		parts = append(parts, "last_failure="+safeDisplay(item.LastFailureCategory))
 	}
 	if item.RecentSuccessCount > 0 || item.RecentFailureCount > 0 || item.ConsecutiveFailureCount > 0 {

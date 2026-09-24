@@ -34,21 +34,22 @@ type group struct {
 }
 
 type credentialItem struct {
-	CredentialID            uint                  `json:"credential_id"`
-	Label                   string                `json:"label"`
-	Mask                    string                `json:"mask"`
-	Account                 accountIdentity       `json:"account"`
-	AuthState               string                `json:"auth_state"`
-	AuthErrorCode           string                `json:"auth_error_code"`
-	ConfiguredStatus        string                `json:"configured_status"`
-	EffectiveStatus         string                `json:"effective_status"`
-	RecentSuccessCount      uint64                `json:"recent_success_count"`
-	RecentFailureCount      uint64                `json:"recent_failure_count"`
-	ConsecutiveFailureCount uint64                `json:"consecutive_failure_count"`
-	LastFailureCategory     string                `json:"last_failure_category"`
-	CooldownUntilMS         *int64                `json:"cooldown_until_ms"`
-	ModelCooldowns          []modelCooldown       `json:"model_cooldowns"`
-	Observation             *observation          `json:"observation"`
+	CredentialID            uint            `json:"credential_id"`
+	Label                   string          `json:"label"`
+	Mask                    string          `json:"mask"`
+	Account                 accountIdentity `json:"account"`
+	AuthState               string          `json:"auth_state"`
+	AuthErrorCode           string          `json:"auth_error_code"`
+	ConfiguredStatus        string          `json:"configured_status"`
+	EffectiveStatus         string          `json:"effective_status"`
+	RecentSuccessCount      uint64          `json:"recent_success_count"`
+	RecentFailureCount      uint64          `json:"recent_failure_count"`
+	ConsecutiveFailureCount uint64          `json:"consecutive_failure_count"`
+	LastFailureCategory     string          `json:"last_failure_category"`
+	LastStatusCode          *int            `json:"last_status_code"`
+	CooldownUntilMS         *int64          `json:"cooldown_until_ms"`
+	ModelCooldowns          []modelCooldown `json:"model_cooldowns"`
+	Observation             *observation    `json:"observation"`
 }
 
 type accountIdentity struct {
@@ -62,9 +63,9 @@ type modelCooldown struct {
 }
 
 type observation struct {
-	State           string                  `json:"state"`
-	LastErrorCode   string                  `json:"last_error_code"`
-	Snapshot        *observationSnapshot    `json:"snapshot"`
+	State         string               `json:"state"`
+	LastErrorCode string               `json:"last_error_code"`
+	Snapshot      *observationSnapshot `json:"snapshot"`
 }
 
 type observationSnapshot struct {
