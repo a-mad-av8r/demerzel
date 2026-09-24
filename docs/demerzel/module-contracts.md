@@ -44,6 +44,6 @@ the gateway fails closed: it does not call the upstream.
 **Outbound policy:** automatic catalog sync is disabled by default; only
 `MODELS_DEV_AUTO_SYNC_ENABLED=true` allows startup, periodic and group-change
 sync. Provider executors need network for requests, and an operator may invoke
-catalog synchronization or update checks. The old “only executors ever speak
-to the internet” slogan is **not an absolute runtime claim**. Offline smoke
-must prove no automatic egress while idle.
+catalog synchronization. The core has **no GitHub release checker**; installer
+frontends own authenticated update discovery and artifact verification. Offline
+smoke must prove no automatic egress while idle.

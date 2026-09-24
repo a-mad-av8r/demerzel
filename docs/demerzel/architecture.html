@@ -78,7 +78,7 @@
   <div class="arrow">▼</div>
   <div class="layer">CREDENTIAL SERVICES <small>vault (local) · OAuth refresh (provider network) · quota ledger · observability</small></div>
   <div class="arrow">▼</div>
-  <div class="layer">L-1 · EXECUTORS <small>one per provider/auth kind — provider requests leave here; explicit operator sync/update paths are separate</small></div>
+  <div class="layer">L-1 · EXECUTORS <small>one per provider/auth kind — provider requests leave here; explicit operator catalog sync is separate</small></div>
   <div class="arrow">▼</div>
   <div class="grid4">
     <div class="node">Claude ×3 subs</div>
@@ -196,7 +196,7 @@
 <ul>
 <li><b>Existing contracts, not imagined plugins.</b> <code>encryption.Service</code>, <code>scheduler.CredentialSource</code>/<code>SelectionIterator</code>, and <code>execution.Executor</code> carry the swappable seams. Provider adapters are compiled-in (Bifrost/CPA already live under <code>internal/execution/</code>); swapping one means implementing its contract and shipping a new build. <a href="module-contracts.md">Full contract map</a>.</li>
 <li><b>Pinned commits + ledger.</b> VENDORING.md records donor, commit, paths, destination, license, modifications. Upgrading a donor = bump the pin + run that module's golden tests. Rebasing the gpt-load baseline is an explicit <code>git merge upstream/main</code> — never a silent package update.</li>
-<li><b>Bounded outbound behavior.</b> Idle boots must make no external call by default. Executors use outbound clients for provider requests; an explicit process opt-in enables automatic Models.dev sync, and authenticated operator actions can trigger sync/update checks. This is verified by offline boot, not asserted to be a network sandbox. <a href="module-contracts.md">Exact interface contracts</a>.</li>
+<li><b>Bounded outbound behavior.</b> Idle boots must make no external call by default. Executors use outbound clients for provider requests; an explicit process opt-in enables automatic Models.dev sync, and authenticated operators may trigger catalog sync. The core has no GitHub update checker: only installer frontends discover signed releases. This is verified by offline boot, not asserted to be a network sandbox. <a href="module-contracts.md">Exact interface contracts</a>.</li>
 <li><b>State and recovery.</b> Database data, the custody item or age identity/ciphertext, and <code>auth.key</code> when generated need coordinated, restore-proven backups. Native custody identity is bound to the canonical DATA_DIR path. <a href="key-custody.md">Recovery runbook and external-DB guard</a>.</li>
 </ul>
 </div>
@@ -210,7 +210,7 @@
     <div class="node">bunx installer<small><code>bunx @&lt;you&gt;/demerzel install</code> · verifies manifest + checksum first</small></div>
     <div class="node">tar / container<small>Linux systemd --user · XDG dirs · Secret Service or explicit age mode</small></div>
   </div>
-  <p class="muted" style="margin:12px 0 0">Installer frontends and cosign-signed release manifests are M4 targets, not published M1 features. Fresh boots do not automatically sync catalog or check updates; a process opt-in or authenticated operator request can make outbound calls. Secrets never ship in artifacts. Cross-platform builds, native custody and restore proof remain release gates.</p>
+  <p class="muted" style="margin:12px 0 0">Installer frontends and cosign-signed release manifests are M4 targets, not published M1 features. Fresh boots do not automatically sync catalog, and the gateway core never checks GitHub releases; installer frontends own update discovery. A process opt-in or authenticated catalog-sync action can make outbound calls. Secrets never ship in artifacts. Cross-platform builds, native custody and restore proof remain release gates.</p>
 </div>
 
 <div class="panel">

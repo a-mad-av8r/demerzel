@@ -58,6 +58,47 @@ unset it; subsequent restarts load the existing key. An existing managed
 if the custody item is missing. `ENCRYPTION_KEY` and guarded legacy import are
 explicit recovery options, not automatic fallback behavior.
 
+At startup, Demerzel stores a non-secret, domain-separated key-identity HMAC in
+the database under `_internal.encryption.master_key_identity.v1`. Every later
+boot checks it **before** loading runtime credentials or accepting traffic. For
+older databases without a marker, an existing encrypted access key, account or
+proxy must authenticate under the selected key before the marker is created.
+A mismatched key fails closed; neither an existing ciphertext nor its marker
+is rotated to make startup succeed.
+
+### Find a native vault item for supervised escrow
+
+The Keychain account / Linux Secret Service `installation` attribute is the
+non-secret digest of the **canonical** absolute `DATA_DIR` path. The installed
+binary prints that locator without opening or revealing the vault:
+
+```sh
+export DATA_DIR="$HOME/.demerzel"
+locator="$(demerzel key-locator --data-dir "$DATA_DIR")"
+printf 'Vault account locator: %s\n' "$locator"
+```
+
+For a supervised escrow export, set `ESCROW_FILE` to a destination protected
+independently from the database backup (for example, a mounted encrypted
+off-machine vault). The export is interactive, never part of the service:
+
+```sh
+: "${ESCROW_FILE:?Set a protected off-machine escrow file path first}"
+umask 077
+# macOS, with login Keychain unlocked:
+security find-generic-password -s io.demerzel.encryption.master-key.v1 -a "$locator" -w > "$ESCROW_FILE"
+# Linux instead, with the Secret Service collection unlocked and secret-tool installed:
+# secret-tool lookup application io.demerzel purpose encryption.master-key.v1 installation "$locator" > "$ESCROW_FILE"
+```
+
+Both commands reveal the 64-hex master key: **never paste their output into
+chat, logs, shell history, or a database backup.** Keep the escrow copy
+separately custodied and prove a restore before retiring any source. If
+restoring to a different absolute path, the locator changes; a supervised
+`DEMERZEL_ENCRYPTION_KEY_IMPORT_LEGACY=1` import from a 0600 source file can
+bind the original master to that new installation, but do not remove the
+temporary source until restore proof and backup gate approval.
+
 ## Import donor plaintext key without rotating it
 
 1. Stop the old process. Record a consistent database snapshot **and a separate
