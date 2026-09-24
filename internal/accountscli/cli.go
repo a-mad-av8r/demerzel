@@ -316,4 +316,3 @@ func mutationHelp(command string) string {
 }
 
 const accountsConnectionHelp = `\nConnection options:\n  --url URL             Loopback control API\n  --auth-key-file PATH  Owner-only AUTH_KEY file\n  --data-dir PATH       Durable application data root\n`
-`})} cfm? We need ensure compile struct flags created issue: common flags added first. For runList, we create group flag after newCommon. Fine. But runLabel does own newCommon. Top-level `run` currently for label before creation. Good. `run` default command picks `newCommonFlagSet(command)` for list/add/mutation. In runAdd etc good. Helpers `parseFlags` command help if no args no error. `flag.ErrHelp` prints usage but parseFlags returns nil; run continues command with default group 0 causing positive missing ID after help. Need add flag help detection before run? parseFlags could return special `errShowedHelp` and caller checks; or use `flagSet.Bool(

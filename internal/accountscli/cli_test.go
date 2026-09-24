@@ -27,12 +27,12 @@ type fakeCredential struct {
 }
 
 type fakeManagementAPI struct {
-	mu                    sync.Mutex
-	server                *httptest.Server
-	credential            *fakeCredential
-	importedSecret        string
-	importIdempotencyKey  string
-	lastBatchAction       string
+	mu                   sync.Mutex
+	server               *httptest.Server
+	credential           *fakeCredential
+	importedSecret       string
+	importIdempotencyKey string
+	lastBatchAction      string
 	rejectAuthentication bool
 }
 
@@ -70,6 +70,7 @@ func (fixture *fakeManagementAPI) serveHTTP(w http.ResponseWriter, request *http
 				},
 			},
 		})
+	case request.Method == http.MethodGet && request.URL.Path == "/api/modern/groups/7/credentials":
 		fixture.listCredentials(w, request)
 	case request.Method == http.MethodPost && request.URL.Path == "/api/groups/7/credentials/import":
 		fixture.importCredential(w, request)
@@ -192,19 +193,19 @@ func (fixture *fakeManagementAPI) credentialResponse() map[string]any {
 	item := fixture.credential
 	resetAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC).UnixMilli()
 	return map[string]any{
-		"credential_id": item.id,
-		"label":         item.label,
-		"mask":          "sk-...cafe",
-		"account":       map[string]any{"email": "owner@example.test", "email_mask": "o***@example.test"},
-		"auth_state":    "ready",
-		"configured_status": item.status,
-		"effective_status":  item.status,
-		"recent_success_count": 8,
-		"recent_failure_count": 1,
+		"credential_id":             item.id,
+		"label":                     item.label,
+		"mask":                      "sk-...cafe",
+		"account":                   map[string]any{"email": "owner@example.test", "email_mask": "o***@example.test"},
+		"auth_state":                "ready",
+		"configured_status":         item.status,
+		"effective_status":          item.status,
+		"recent_success_count":      8,
+		"recent_failure_count":      1,
 		"consecutive_failure_count": 0,
-		"last_failure_category": "rate_limited",
-		"cooldown_until_ms": resetAt,
-		"model_cooldowns": []any{},
+		"last_failure_category":     "rate_limited",
+		"cooldown_until_ms":         resetAt,
+		"model_cooldowns":           []any{},
 		"observation": map[string]any{
 			"state": "ready",
 			"snapshot": map[string]any{

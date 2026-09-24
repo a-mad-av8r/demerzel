@@ -42,6 +42,8 @@ func dispatchCommand(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "accounts":
 		return accountscli.Run(args[1:], os.Stdin, stdout, stderr)
+	case "key-locator":
+		return dispatchKeyLocator(args[1:], stdout, stderr)
 	case "service":
 		return dispatchServiceCommand(args[1:], stdout, stderr)
 	default:
@@ -58,6 +60,7 @@ func printHelp(output io.Writer) {
 	fmt.Fprintln(output, "  demerzel                    Start the gateway")
 	fmt.Fprintln(output, "  demerzel help               Display this help message")
 	fmt.Fprintln(output, "  demerzel accounts           Manage API-key accounts")
+	fmt.Fprintln(output, "  demerzel key-locator --data-dir PATH   Print the non-secret vault account locator")
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Windows Service Commands:")
 	fmt.Fprintln(output, "  demerzel service start      Start the Windows service")
