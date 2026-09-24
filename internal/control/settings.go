@@ -145,17 +145,14 @@ func (s *Service) UpdateSettings(
 	ctx context.Context,
 	request SettingsUpdateRequest,
 ) (SettingsResponse, error) {
+	if settingRequestContains(request, state.SettingModelsDevAutoSyncEnabled) {
+		return SettingsResponse{}, app_errors.ErrValidation
+	}
 	updates, err := normalizeSettingUpdates(request, s.encryption)
 	if err != nil {
 		return SettingsResponse{}, err
 	}
-	if s.modelsDevAutoSyncOverride != nil && settingRequestContains(request, state.SettingModelsDevAutoSyncEnabled) {
-		return SettingsResponse{}, app_errors.ErrValidation
-	}
-
-	previousAutoSyncEnabled := false
-	snapshot, err := s.writeConfig(ctx, func(tx *gorm.DB) error {
-		previousAutoSyncEnabled = s.modelsDevAutoSyncEnabled()
+	_, err = s.writeConfig(ctx, func(tx *gorm.DB) error {
 		if raw, exists := request.Settings[automodel.SettingKey]; exists {
 			update, err := s.normalizeAutoModelUpdate(tx, raw)
 			if err != nil {
@@ -168,18 +165,7 @@ func (s *Service) UpdateSettings(
 	if err != nil {
 		return SettingsResponse{}, err
 	}
-	s.requestCatalogSyncOnEnable(
-		settingRequestContains(request, state.SettingModelsDevAutoSyncEnabled),
-		previousAutoSyncEnabled,
-		snapshot.Settings.ModelsDevAutoSyncEnabled,
-	)
 	return s.GetSettings(ctx)
-}
-
-func (s *Service) requestCatalogSyncOnEnable(requested, before, after bool) {
-	if requested && !before && after && s.catalogSync != nil {
-		s.catalogSync.RequestImmediateSync()
-	}
 }
 
 func (s *Service) applySettingUpdates(
@@ -314,7 +300,8 @@ func mapSettingsResponse(
 	overrides := make([]string, 0, len(rows))
 	var configuredProxy *outboundproxy.Config
 	for _, row := range rows {
-		if state.IsRuntimeSettingKey(row.Key) || row.Key == automodel.SettingKey {
+		if row.Key != state.SettingModelsDevAutoSyncEnabled &&
+			(state.IsRuntimeSettingKey(row.Key) || row.Key == automodel.SettingKey) {
 			overrides = append(overrides, row.Key)
 		}
 		if row.Key == outboundproxy.SystemSettingKey {
@@ -341,12 +328,8 @@ func mapSettingsResponse(
 	if err != nil {
 		return SettingsResponse{}, app_errors.ErrInternalServer
 	}
-	readOnly := make([]string, 0)
-	modelsDevAutoSyncEnabled := settings.ModelsDevAutoSyncEnabled
-	if modelsDevAutoSyncOverride != nil {
-		modelsDevAutoSyncEnabled = *modelsDevAutoSyncOverride
-		readOnly = append(readOnly, state.SettingModelsDevAutoSyncEnabled)
-	}
+	readOnly := []string{state.SettingModelsDevAutoSyncEnabled}
+	modelsDevAutoSyncEnabled := modelsDevAutoSyncOverride != nil && *modelsDevAutoSyncOverride
 	return SettingsResponse{
 		AutoModelTemplate: automodel.Template(),
 		DecisionModels:    decisionModelNames(snapshot),

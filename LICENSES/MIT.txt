@@ -18,6 +18,10 @@ go-brrr (github.com/molecule-man/go-brrr):
 
     Copyright (c) 2026 Andrii Berezhynskyi
 
+go-keychain (github.com/keybase/go-keychain):
+
+    Copyright (c) 2015 Keybase
+
 Lobe Icons (github.com/lobehub/lobe-icons):
 
     Copyright (c) 2023 LobeHub

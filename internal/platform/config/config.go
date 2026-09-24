@@ -45,8 +45,10 @@ type LogConfig struct {
 type SecretSource string
 
 const (
-	SecretSourceEnvironment SecretSource = "environment"
-	SecretSourceKeyFile     SecretSource = "key_file"
+	SecretSourceEnvironment           SecretSource = "environment"
+	SecretSourceKeyFile               SecretSource = "key_file"
+	SecretSourceSystemCredentialStore SecretSource = "system_credential_store"
+	SecretSourceAgeFile               SecretSource = "age_encrypted_file"
 )
 
 // SecretMetadata describes where process key material was sourced without
@@ -108,17 +110,18 @@ type DatabaseMetadata struct {
 
 // Config contains static environment configuration for the application process.
 type Config struct {
-	Server                    ServerConfig
-	DataDir                   string
-	DatabaseDSN               string
-	DatabaseMetadata          DatabaseMetadata
-	DatabasePool              DatabasePoolConfig
-	EncryptionKey             string
-	AuthKey                   string
-	AuthKeyMetadata           SecretMetadata
-	EncryptionKeyMetadata     SecretMetadata
-	Log                       LogConfig
-	ModelsDevAutoSyncOverride *bool
+	Server                         ServerConfig
+	DataDir                        string
+	DatabaseDSN                    string
+	DatabaseMetadata               DatabaseMetadata
+	DatabasePool                   DatabasePoolConfig
+	AllowExternalKeyInitialization bool
+	EncryptionKey                  string
+	AuthKey                        string
+	AuthKeyMetadata                SecretMetadata
+	EncryptionKeyMetadata          SecretMetadata
+	Log                            LogConfig
+	ModelsDevAutoSyncOverride      *bool
 }
 
 // Settings is the dynamic settings shape shared by system and group layers.
@@ -211,6 +214,11 @@ func Load() (*Config, error) {
 
 	explicitAuthKey := os.Getenv("AUTH_KEY")
 	explicitEncryptionKey := os.Getenv("ENCRYPTION_KEY")
+	ageIdentityPath := os.Getenv("DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE")
+	ageRecipient := os.Getenv("DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT")
+	if explicitEncryptionKey != "" && (ageIdentityPath != "" || ageRecipient != "") {
+		return nil, fmt.Errorf("ENCRYPTION_KEY and age custody settings cannot be used together")
+	}
 	authKey, err := authkey.Resolve(explicitAuthKey, dataDir)
 	if err != nil {
 		return nil, err
@@ -225,12 +233,17 @@ func Load() (*Config, error) {
 	}
 	encryptionKeyMetadata := SecretMetadata{Source: SecretSourceEnvironment}
 	if explicitEncryptionKey == "" {
-		// Keep this filename in sync with encryption.KeyFileName. Importing the
-		// encryption implementation here would violate runtime-domain boundaries.
-		encryptionKeyMetadata = SecretMetadata{
-			Source: SecretSourceKeyFile,
-			Path:   filepath.Join(dataDir, "encryption.key"),
+		encryptionKeyMetadata = SecretMetadata{Source: SecretSourceSystemCredentialStore}
+		if ageIdentityPath != "" || ageRecipient != "" {
+			encryptionKeyMetadata.Source = SecretSourceAgeFile
 		}
+	}
+	initializationConsent := os.Getenv("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL")
+	if initializationConsent != "" && initializationConsent != "1" {
+		return nil, fmt.Errorf("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL must be 1 or unset")
+	}
+	if initializationConsent == "1" && databaseSource != DatabaseSourceExternal {
+		return nil, fmt.Errorf("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL requires an external DATABASE_DSN")
 	}
 
 	logFormat := valueOrDefault("LOG_FORMAT", "text")
@@ -257,10 +270,11 @@ func Load() (*Config, error) {
 			MaxOpenConnections: databaseMaxOpenConnections,
 			MaxIdleConnections: databaseMaxIdleConnections,
 		},
-		EncryptionKey:         explicitEncryptionKey,
-		AuthKey:               authKey,
-		AuthKeyMetadata:       authKeyMetadata,
-		EncryptionKeyMetadata: encryptionKeyMetadata,
+		EncryptionKey:                  explicitEncryptionKey,
+		AuthKey:                        authKey,
+		AuthKeyMetadata:                authKeyMetadata,
+		EncryptionKeyMetadata:          encryptionKeyMetadata,
+		AllowExternalKeyInitialization: initializationConsent == "1",
 		Log: LogConfig{
 			Level:  valueOrDefault("LOG_LEVEL", "info"),
 			Format: logFormat,

@@ -82,9 +82,10 @@ export default {
       validation_interval: '認証情報の検証間隔',
       models_dev_auto_sync_enabled: 'Models.dev カタログと価格を自動同期',
       modelsDevAutoSyncHelp:
-        '有効にするとカタログと自動価格を定期同期します。Models 画面からの手動同期は引き続き利用できます。',
-      environmentSource: '環境変数で固定',
-      environmentManaged: 'この設定は環境変数で管理されているため、ここでは変更できません。',
+        '自動同期は既定で無効です。Models 画面からの手動同期は引き続き利用できます。',
+      environmentSource: '起動時の明示的な有効化',
+      environmentManaged:
+        '自動同期を有効にするには、起動前に MODELS_DEV_AUTO_SYNC_ENABLED=true を設定して再起動してください。手動同期も利用できます。',
       seconds: '秒',
       countUnit: '回',
       timeoutError: '9,223,372,036 以下の正の安全な整数を入力してください。',
@@ -197,6 +198,8 @@ export default {
       sources: {
         environment: '環境変数',
         key_file: 'キーファイル',
+        system_credential_store: 'OS の資格情報ストア',
+        age_encrypted_file: 'age 暗号化ファイル',
       },
       securityNote:
         'コピーできるのは機密でないパスだけです。AUTH_KEY や暗号化キーの内容は表示しません。',

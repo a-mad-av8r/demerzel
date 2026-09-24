@@ -82,7 +82,8 @@ export const zhCN = {
     blacklist_threshold: '连续失败达到此值后拉黑凭据；0 表示关闭自动拉黑。',
     validation_interval: '后台重新检测凭据的时间间隔。',
     request_log_retention_days: '后台自动清理超出保留期的日志，可设置 1–365 天。',
-    models_dev_auto_sync_enabled: '按计划同步 Models.dev 目录与自动价格，关闭后仍可手动同步。',
+    models_dev_auto_sync_enabled:
+      '默认关闭自动同步。仅在启动前设置 MODELS_DEV_AUTO_SYNC_ENABLED=true 并重启后启用；手动同步仍可用。',
     header_rules: '发往上游之前设置或移除的请求头。',
     response_header_rules: '返回客户端之前设置或移除的响应头。',
     cors: '仅作用于 /v1 和 /v1beta，管理 API 不开放跨域访问。',
@@ -151,7 +152,12 @@ export const zhCN = {
     encryptionSource: '加密密钥来源',
     encryption: '静态加密',
     encryptionEnabled: '已启用',
-    sources: { environment: '环境变量', key_file: '密钥文件' },
+    sources: {
+      environment: '环境变量',
+      key_file: '密钥文件',
+      system_credential_store: '系统凭据库',
+      age_encrypted_file: 'age 加密文件',
+    },
     failed: '系统信息加载失败',
   },
 }
@@ -243,7 +249,7 @@ export const enUS = {
     validation_interval: 'Interval between background credential checks.',
     request_log_retention_days: 'Automatically delete older logs. Allowed range: 1–365 days.',
     models_dev_auto_sync_enabled:
-      'Sync the Models.dev catalog and automatic prices on schedule. Manual sync remains available.',
+      'Automatic sync is off by default. Set MODELS_DEV_AUTO_SYNC_ENABLED=true before startup and restart; manual sync remains available.',
     header_rules: 'Set or remove request headers before sending upstream.',
     response_header_rules: 'Set or remove response headers before returning to the client.',
     cors: 'Applies only to /v1 and /v1beta. Management APIs do not allow cross-origin access.',
@@ -314,7 +320,12 @@ export const enUS = {
     encryptionSource: 'Encryption key source',
     encryption: 'Encryption at rest',
     encryptionEnabled: 'Enabled',
-    sources: { environment: 'Environment variable', key_file: 'Key file' },
+    sources: {
+      environment: 'Environment variable',
+      key_file: 'Key file',
+      system_credential_store: 'OS credential vault',
+      age_encrypted_file: 'age-encrypted file',
+    },
     failed: 'Unable to load system information',
   },
 }
@@ -406,7 +417,7 @@ export const jaJP = {
     validation_interval: 'バックグラウンドで認証情報を再確認する間隔。',
     request_log_retention_days: '保持期間を超えたログを自動削除します。1～365 日。',
     models_dev_auto_sync_enabled:
-      'Models.dev のカタログと自動料金を定期同期します。無効でも手動同期できます。',
+      '自動同期は既定で無効です。起動前に MODELS_DEV_AUTO_SYNC_ENABLED=true を設定して再起動してください。手動同期は引き続き利用できます。',
     header_rules: '上流に送信する前にヘッダーを設定または削除します。',
     response_header_rules: 'クライアントに返す前にヘッダーを設定または削除します。',
     cors: '/v1 と /v1beta のみに適用します。管理 API はクロスオリジンアクセスを許可しません。',
@@ -477,7 +488,12 @@ export const jaJP = {
     encryptionSource: '暗号化キーの取得元',
     encryption: '保存時の暗号化',
     encryptionEnabled: '有効',
-    sources: { environment: '環境変数', key_file: 'キーファイル' },
+    sources: {
+      environment: '環境変数',
+      key_file: 'キーファイル',
+      system_credential_store: 'OS の資格情報ストア',
+      age_encrypted_file: 'age 暗号化ファイル',
+    },
     failed: 'システム情報を読み込めません',
   },
 }

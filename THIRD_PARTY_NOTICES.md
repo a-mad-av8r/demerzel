@@ -8,7 +8,7 @@ SBOM (`bom.cdx.json`) inventorying the resolved Go module graph.
 ## Bifrost Core
 
 - Module: `github.com/maximhq/bifrost/core`
-- Version: `v1.8.4`
+- Version: `v1.9.0` (`core/v1.9.0`, commit `b7601eb126dd5c919ea52fccce4fc32f1434342d`)
 - Copyright: 2025 H3 Labs Inc.
 - License: Apache License 2.0
 
@@ -38,6 +38,37 @@ rejects replacement connection binding before another business request is sent.
 This facade is not connected to the existing HTTP data plane.
 
 The complete MIT License text is distributed in `LICENSES/MIT.txt`.
+
+## macOS Keychain library
+
+- Module: `github.com/keybase/go-keychain`
+- Version: `v0.0.1` (commit `dd79abb5f55f5239037126b5943c0b1335a84abc`)
+- Copyright: 2015 Keybase
+- License: MIT License
+
+Demerzel uses this library to store its master encryption key in the macOS
+Keychain; its own code determines the account identity and import procedure.
+The complete license and copyright are in `LICENSES/MIT.txt`.
+
+## Linux Secret Service D-Bus client
+
+- Module: `github.com/keybase/dbus`
+- Version: `v0.0.0-20220506165403-5aa21ea2c23a` (commit `5aa21ea2c23a538784857945d7454f9bf83b7170`)
+- Copyright: 2013 Georg Reinke and Google
+- License: BSD-2-Clause
+
+Demerzel uses this local session-bus client to access the Secret Service
+collection on Linux. The complete license is in `LICENSES/BSD-2-Clause-dbus.txt`.
+
+## age
+
+- Module: `filippo.io/age`
+- Version: `v1.3.2` (commit `b74dce4cdbe35b5e5f66c06d9612b72f89028758`)
+- Copyright: 2019 The age Authors; 2019 Google LLC; 2022 Filippo Valsorda
+- License: BSD-3-Clause
+
+Demerzel uses age for its explicitly configured headless master-key recovery
+file. The complete license and copyright are in `LICENSES/BSD-3-Clause-age.txt`.
 
 ## Inno Setup Simplified Chinese Messages
 

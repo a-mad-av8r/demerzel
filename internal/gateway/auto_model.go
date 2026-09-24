@@ -301,7 +301,7 @@ func (handler *Handler) executeAutoDecision(
 	}
 	query.AllowedCredentialIDs = allowedIDs
 	query.AllowedCredentialRefs = allowedRefs
-	selection, err := scheduler.New(snapshot, handler.registry, query).Next()
+	selection, err := handler.newSelectionIterator(snapshot, handler.registry, query).Next()
 	if err != nil {
 		decision.Reason = "no_candidate"
 		return decision

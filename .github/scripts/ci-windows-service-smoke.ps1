@@ -74,10 +74,15 @@ try {
   Copy-Item -Path $binary -Destination $serviceBinary
   New-Item -ItemType Directory -Path $configDir | Out-Null
   [System.IO.File]::WriteAllText($dataOwnerMarker, $installOwnerToken)
+  $masterBytes = New-Object byte[] 32
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($masterBytes) } finally { $rng.Dispose() }
+  $smokeMaster = [System.BitConverter]::ToString($masterBytes).Replace("-", "").ToLowerInvariant()
   @(
     "HOST=127.0.0.1",
     "PORT=$port",
-    "LOG_FORMAT=json"
+    "LOG_FORMAT=json",
+    "ENCRYPTION_KEY=$smokeMaster"
   ) | Set-Content -Path $envFile -Encoding utf8NoBOM
 
   & $serviceBinary service install
@@ -98,10 +103,12 @@ try {
   if ($null -eq $health) { throw "Windows service health check timed out" }
 
   $authFile = Join-Path $dataDir "auth.key"
-  $encryptionFile = Join-Path $dataDir "encryption.key"
-  foreach ($path in @($configDir, $dataDir, $authFile, $encryptionFile)) {
+  foreach ($path in @($configDir, $dataDir, $authFile, $envFile)) {
     if (-not (Test-Path $path)) { throw "Windows service path is missing: $path" }
     Assert-ServiceAcl -Path $path
+  }
+  if (Test-Path (Join-Path $dataDir "encryption.key")) {
+    throw "service wrote a plaintext master key file"
   }
   $authKey = (Get-Content $authFile -Raw).Trim()
   Invoke-RestMethod "http://127.0.0.1:$port/api/system/info" -Headers @{

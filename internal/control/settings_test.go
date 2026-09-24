@@ -16,7 +16,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"gpt-load/internal/catalog"
 	"gpt-load/internal/outboundproxy"
 	"gpt-load/internal/platform/config"
 	app_errors "gpt-load/internal/platform/errors"
@@ -190,8 +189,9 @@ func TestGetSettingsReturnsSnapshotDefaultsAndNoOverrides(t *testing.T) {
 	if got.Overrides == nil {
 		t.Fatal("overrides = nil, want empty slice")
 	}
-	if !got.Values.ModelsDevAutoSyncEnabled || got.ReadOnly == nil || len(got.ReadOnly) != 0 {
-		t.Fatalf("Models.dev settings = %#v/%#v, want true and no read-only keys", got.Values, got.ReadOnly)
+	if got.Values.ModelsDevAutoSyncEnabled ||
+		!reflect.DeepEqual(got.ReadOnly, []string{state.SettingModelsDevAutoSyncEnabled}) {
+		t.Fatalf("Models.dev settings = %#v/%#v, want effective false and read-only key", got.Values, got.ReadOnly)
 	}
 }
 
@@ -408,48 +408,43 @@ func TestModelsDevEnvironmentOverrideWinsAndIsReadOnlyWithoutPersistence(t *test
 	}
 }
 
-func TestUpdateSettingsEnablingModelsDevRequestsImmediateSyncOnce(t *testing.T) {
+func TestModelsDevEnvironmentTrueOptInIsReadOnly(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
-	if _, err := fixture.service.UpdateSettings(t.Context(), SettingsUpdateRequest{
-		Settings: map[string]json.RawMessage{
-			state.SettingModelsDevAutoSyncEnabled: json.RawMessage("false"),
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	coordinator := newCatalogSyncCoordinator(
-		fixture.service,
-		nil,
-		"unused",
-		catalog.Metadata{},
-		false,
-	)
+	enabled := true
+	fixture.service.modelsDevAutoSyncOverride = &enabled
 
-	if _, err := fixture.service.UpdateSettings(t.Context(), SettingsUpdateRequest{
-		Settings: map[string]json.RawMessage{
-			state.SettingModelsDevAutoSyncEnabled: json.RawMessage("true"),
-		},
-	}); err != nil {
+	got, err := fixture.service.GetSettings(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case <-coordinator.immediateWake:
-	default:
-		t.Fatal("false -> true did not request immediate catalog sync")
+	if !got.Values.ModelsDevAutoSyncEnabled ||
+		!reflect.DeepEqual(got.ReadOnly, []string{state.SettingModelsDevAutoSyncEnabled}) {
+		t.Fatalf("GetSettings() = %#v, want effective true opt-in and read-only key", got)
 	}
+}
 
-	if _, err := fixture.service.UpdateSettings(t.Context(), SettingsUpdateRequest{
-		Settings: map[string]json.RawMessage{
-			state.SettingModelsDevAutoSyncEnabled: json.RawMessage("true"),
-		},
-	}); err != nil {
+func TestUpdateSettingsCannotChangeModelsDevAutoSyncSetting(t *testing.T) {
+	t.Parallel()
+	fixture := newServiceFixture(t)
+	for _, value := range []string{"true", "false"} {
+		_, err := fixture.service.UpdateSettings(t.Context(), SettingsUpdateRequest{
+			Settings: map[string]json.RawMessage{
+				state.SettingModelsDevAutoSyncEnabled: json.RawMessage(value),
+			},
+		})
+		if !errors.Is(err, app_errors.ErrValidation) {
+			t.Fatalf("UpdateSettings(%s) error = %v, want validation", value, err)
+		}
+	}
+	var count int64
+	if err := fixture.db.Model(&models.SystemSetting{}).
+		Where("key = ?", state.SettingModelsDevAutoSyncEnabled).
+		Count(&count).Error; err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case <-coordinator.immediateWake:
-		t.Fatal("true -> true requested another immediate catalog sync")
-	default:
+	if count != 0 {
+		t.Fatalf("runtime setting persisted %d rows", count)
 	}
 }
 

@@ -764,7 +764,6 @@ func TestReleaseWorkflowBuildsOneWebDistAndFiveVersionedBinaries(t *testing.T) {
 		downloadArtifactActionRef,
 		"name: verified-web-dist",
 		"path: internal/webui/dist",
-		"CGO_ENABLED: 0",
 		"go build -trimpath",
 		`gpt-load/internal/platform/version.Version=${{ github.ref_name }}`,
 		"gpt-load-linux-amd64",
@@ -1770,8 +1769,8 @@ func TestReleaseWorkflowKeepsReleaseNotesConciseAndWarnsAboutDataIncompatibility
 
 	for _, required := range []string{
 		"not compatible with 1.x",
-		"start 2.x from an empty database",
-		"new `encryption.key`",
+		"start 2.x with an empty database",
+		"newly provisioned master key",
 	} {
 		if !strings.Contains(english, required) {
 			t.Fatalf("English release notes do not contain %q:\n%s", required, english)
@@ -1780,7 +1779,7 @@ func TestReleaseWorkflowKeepsReleaseNotesConciseAndWarnsAboutDataIncompatibility
 	for _, required := range []string{
 		"1.x 数据不兼容",
 		"全新数据库",
-		"新的 `encryption.key`",
+		"全新主密钥",
 	} {
 		if !strings.Contains(chinese, required) {
 			t.Fatalf("Chinese release notes do not contain %q:\n%s", required, chinese)
@@ -1944,7 +1943,6 @@ func TestWindowsNativeSmokeMatchesManagedStorageACLContract(t *testing.T) {
 		"managed path DACL is neither protected nor inherited: $Path",
 		"@{ Path = $dataDir; RequireProtected = $true }",
 		"@{ Path = $authFile; RequireProtected = $true }",
-		"@{ Path = $encryptionFile; RequireProtected = $true }",
 		"@{ Path = $databaseFile; RequireProtected = $false }",
 		"@{ Path = $walFile; RequireProtected = $false }",
 		"@{ Path = $shmFile; RequireProtected = $false }",
@@ -3020,9 +3018,6 @@ func TestReleaseAssetManifestIsTheSingleSourceOfTruth(t *testing.T) {
 			assets = append(assets, name)
 		}
 	}
-	if len(assets) != 14 {
-		t.Fatalf("release asset manifest lists %d assets, want 14", len(assets))
-	}
 	sorted := append([]string(nil), assets...)
 	sort.Strings(sorted)
 	for index := range assets {
@@ -3032,26 +3027,18 @@ func TestReleaseAssetManifestIsTheSingleSourceOfTruth(t *testing.T) {
 	}
 
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
-	// 许可证与 SBOM 资产名只允许出现在生成它们的 package-metadata 里，
-	// 清单与校验和一律从 .github/release-assets.txt 派生。
-	for _, name := range []string{
-		"Apache-2.0.txt",
-		"Inno-Setup.txt",
-		"MIT.txt",
-		"MPL-2.0.txt",
-		"THIRD_PARTY_NOTICES.md",
-		"bom.cdx.json",
-	} {
-		metadataJob := workflowJobBlock(t, content, "package-metadata")
+	metadataJob := workflowJobBlock(t, content, "package-metadata")
+	// Every declared license and notice must actually be packaged; asset names
+	// must not be hardcoded into unrelated publication steps.
+	for _, name := range assets {
+		if !strings.HasSuffix(name, ".txt") &&
+			name != "THIRD_PARTY_NOTICES.md" && name != "bom.cdx.json" {
+			continue
+		}
 		occurrences := strings.Count(content, name)
 		inMetadata := strings.Count(metadataJob, name)
-		if occurrences != inMetadata {
-			t.Fatalf(
-				"asset %q is hardcoded outside package-metadata (%d total, %d in metadata)",
-				name,
-				occurrences,
-				inMetadata,
-			)
+		if inMetadata == 0 || occurrences != inMetadata {
+			t.Fatalf("asset %q is missing from package-metadata or hardcoded outside it (%d total, %d in metadata)", name, occurrences, inMetadata)
 		}
 	}
 	// 资产数量与校验和行数不得再作为魔数散落在 workflow 中。

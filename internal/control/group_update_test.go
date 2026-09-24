@@ -70,6 +70,8 @@ func TestSubscriptionGroupSettingsAndModelsRemainUpdatable(t *testing.T) {
 func TestGroupCatalogSyncTriggerOnlyTracksProviderAndModelIDChanges(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	enabled := true
+	fixture.service.modelsDevAutoSyncOverride = &enabled
 	created, err := fixture.service.CreateGroup(t.Context(), GroupCreateRequest{
 		ChannelID: channel.OpenAI,
 		Params:    json.RawMessage(`{}`),

@@ -56,6 +56,7 @@ cleanup_temp() {
 trap cleanup_temp EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+printf 'ENCRYPTION_KEY=%s\n' "$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')" >"${task_tmp}/smoke-secrets.env"
 
 for target in "${container}" "${probe}" "${fake_container}"; do
   if docker container inspect "${target}" >/dev/null 2>&1; then
@@ -177,6 +178,8 @@ docker run --name "${probe}" \
     test -r /app/licenses/LICENSE
     test -r /app/licenses/THIRD_PARTY_NOTICES.md
     test -r /app/licenses/Apache-2.0.txt
+    test -r /app/licenses/BSD-2-Clause-dbus.txt
+    test -r /app/licenses/BSD-3-Clause-age.txt
     test -r /app/licenses/MIT.txt
     test -r /app/licenses/MPL-2.0.txt
     printf canary >/app/data/release-write-canary
@@ -210,6 +213,7 @@ start_container() {
     --network "${network}" \
     --publish "127.0.0.1:${app_port}:3001" \
     --volume "${volume}:/app/data" \
+    --env-file "${task_tmp}/smoke-secrets.env" \
     "${image}" >/dev/null
   # Docker 原子分配可用端口；重建容器后也重新查询，避免多个 Runner 抢占端口。
   local binding
@@ -268,17 +272,13 @@ test "$(docker exec "${container}" id -u):$(docker exec "${container}" id -g)" =
 test "$(docker exec "${container}" printenv DATA_DIR)" = "/app/data"
 test "$(docker exec "${container}" printenv HOST)" = "0.0.0.0"
 
-for asset in auth.key encryption.key gpt-load.db; do
+for asset in auth.key gpt-load.db; do
   docker exec "${container}" test -f "/app/data/${asset}"
 done
+docker exec "${container}" test ! -e /app/data/encryption.key
 auth_key="$(docker exec "${container}" cat /app/data/auth.key)"
-encryption_key="$(docker exec "${container}" cat /app/data/encryption.key)"
 test -n "${auth_key}"
-test -n "${encryption_key}"
 auth_hash_before="$(docker exec "${container}" sha256sum /app/data/auth.key | awk '{print $1}')"
-encryption_hash_before="$(
-  docker exec "${container}" sha256sum /app/data/encryption.key | awk '{print $1}'
-)"
 
 node -e '
   const fs=require("fs");
@@ -414,7 +414,7 @@ for _ in $(seq 1 80); do
 done
 test "${usage_complete}" = true
 test "$(docker exec "${container}" stat -c '%a' /app/data)" = "700"
-for asset in auth.key encryption.key gpt-load.db gpt-load.db-wal gpt-load.db-shm; do
+for asset in auth.key gpt-load.db gpt-load.db-wal gpt-load.db-shm; do
   test "$(docker exec "${container}" stat -c '%a' "/app/data/${asset}")" = "600"
 done
 
@@ -432,15 +432,11 @@ smoke_stage="verify-restored-state"
 second_container_id="$(docker inspect -f '{{.Id}}' "${container}")"
 test "${first_container_id}" != "${second_container_id}"
 restored_auth_key="$(docker exec "${container}" cat /app/data/auth.key)"
-restored_encryption_key="$(docker exec "${container}" cat /app/data/encryption.key)"
 test "${restored_auth_key}" = "${auth_key}"
-test "${restored_encryption_key}" = "${encryption_key}"
 test "$(
   docker exec "${container}" sha256sum /app/data/auth.key | awk '{print $1}'
 )" = "${auth_hash_before}"
-test "$(
-  docker exec "${container}" sha256sum /app/data/encryption.key | awk '{print $1}'
-)" = "${encryption_hash_before}"
+docker exec "${container}" test ! -e /app/data/encryption.key
 
 api_get "/api/groups" >"${task_tmp}/groups-second.json"
 api_get "${model_price_list_path}" >"${task_tmp}/prices-second.json"

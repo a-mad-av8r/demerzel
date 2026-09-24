@@ -55,9 +55,9 @@
 <div class="page">
 
 <h1>Demerzel — Architecture &amp; Design</h1>
-<p class="sub">2026-09-22 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · Cortex platform: <a href="https://github.com/Kaidera-AI/cortex">github.com/Kaidera-AI/cortex</a> (install guide for team members without it)</p>
+<p class="sub">Updated 2026-09-24 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · optional contributor platform: <a href="https://github.com/Kaidera-AI/cortex">Cortex</a></p>
 
-<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with a <b>pool of accounts behind every provider</b> — several Claude or Codex subscriptions, API-key collections, cloud providers — with deterministic serial failover between them. This page answers: what we borrow from where · how the modules fit · why any module can be replaced later · how it ships to the team.</p>
+<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with multiple accounts per provider. The M1 fork hardens custody, outbound defaults and module seams; deterministic serial failover, model policy, extra connectors and team installers remain planned. This page answers: what we borrow from where · how the modules fit · which seams exist now · how it is intended to ship to the team.</p>
 
 <h2>1 · The five layers</h2>
 
@@ -76,9 +76,9 @@
   <div class="arrow">▼</div>
   <div class="layer">L0 · ACCOUNTS — stage 2 <small>which <b>account</b> in that model's pool: eligibility → cooldown → quota → serial-failover cursor → lease</small></div>
   <div class="arrow">▼</div>
-  <div class="layer">CREDENTIAL SERVICES <small>vault · OAuth refresh · quota ledger · observability — they know state, none touch the network</small></div>
+  <div class="layer">CREDENTIAL SERVICES <small>vault (local) · OAuth refresh (provider network) · quota ledger · observability</small></div>
   <div class="arrow">▼</div>
-  <div class="layer">L-1 · EXECUTORS <small>one per provider/auth kind — the ONLY layer that talks to the internet</small></div>
+  <div class="layer">L-1 · EXECUTORS <small>one per provider/auth kind — provider requests leave here; explicit operator sync/update paths are separate</small></div>
   <div class="arrow">▼</div>
   <div class="grid4">
     <div class="node">Claude ×3 subs</div>
@@ -107,8 +107,8 @@
     <div>
       <b>Donors (upstream, pinned)</b>
       <div class="node donor" style="margin-top:8px">gpt-load v2 @1f615d83 — MIT<small>registry · scheduler · refresh lifecycle · encryption split — the fork baseline</small></div>
-      <div class="node donor">CLIProxyAPI @ffe6ad3c — MIT<small>OAuth executors + selectors — arrives via gpt-load's pinned dep graph</small></div>
-      <div class="node donor">Bifrost @40c3f7ee — Apache-2.0<small>provider execution + protocol conversion — via gpt-load</small></div>
+      <div class="node donor">CLIProxyAPI v7.3.6 @8c664b2f — MIT<small>OAuth executors + selectors; local subset in third_party/cpaembedded</small></div>
+      <div class="node donor">Bifrost Core v1.9.0 @b7601eb1 — Apache-2.0<small>provider execution + protocol conversion; Go module with an adapter in internal/execution/bifrost</small></div>
       <div class="node donor">OmniRoute @06f1df9d — MIT<small>strategy semantics — <b>reference only, no code</b></small></div>
       <div class="node donor">CRS / grok2api — MIT<small>patterns read, no code (CRS crypto fails open)</small></div>
       <div class="node donor">NVIDIA-NeMo/Switchyard — Apache-2.0<small>model-routing patterns; spike = evaluation oracle in M2</small></div>
@@ -117,7 +117,7 @@
       <b>Demerzel modules (ours)</b>
       <div class="node ours" style="margin-top:8px">Core registry · selector · lease<small>inherited from gpt-load — ours to keep + harden</small></div>
       <div class="node ours">Executors behind OUR interface<small>CLIProxyAPI / Bifrost impls plugged in, never imported deep</small></div>
-      <div class="node ours">Vault — REWRITTEN<small>fail-closed · Keychain (macOS) · Secret Service/libsecret (Linux) · age-file headless fallback</small></div>
+      <div class="node ours">Master-key custody — M1<small>fail-closed · native Keychain (macOS) · Secret Service (Linux) · explicit age-encrypted headless file</small></div>
       <div class="node ours">Policy engine — model selection<small>Switchyard-pattern: escalation / stage / classifier / prefill</small></div>
       <div class="node ours">Jev + Custom-API connectors<small>first-party; custom gets SSRF guardrails (TLS verify, host/IP allowlist, admin-only create/test)</small></div>
     </div>
@@ -129,13 +129,13 @@
 <thead><tr><th>Layer</th><th>Module</th><th>Source</th><th>Interface it hides behind</th></tr></thead>
 <tbody>
 <tr><td>L2 edge</td><td>Protocol facade + admin API</td><td>gpt-load (vendored)</td><td>OpenAI/Anthropic wire in · admin REST out</td></tr>
-<tr><td>L1 policy</td><td>Model-selection engine</td><td><b>ours</b></td><td><code>PolicyEngine.Pick(ctx, req) → ModelChoice</code></td></tr>
-<tr><td>L0 accounts</td><td>Registry · selector · lease</td><td>gpt-load (vendored, hardened)</td><td><code>Selector.Pick(pool, state) → AccountID</code></td></tr>
-<tr><td>services</td><td>Vault</td><td><b>rewritten by us</b> — fail-closed</td><td><code>Vault.Get/Put(accountUUID)</code> · keychain/libsecret/age backends</td></tr>
-<tr><td>services</td><td>OAuth refresh</td><td>CLIProxyAPI + gpt-load lifecycle</td><td><code>Refresher.EnsureFresh(accountUUID)</code></td></tr>
-<tr><td>services</td><td>Quota ledger</td><td>gpt-load patterns</td><td><code>Ledger.Observe(accountID, usage|429|reset)</code></td></tr>
-<tr><td>L-1</td><td>Executors (per provider/auth)</td><td>CLIProxyAPI + Bifrost — plugged, not deep-imported</td><td><code>Executor.Do(ctx, account, req) → resp</code></td></tr>
-<tr><td>connectors</td><td>TypeSafe Jev · Custom API</td><td><b>ours</b></td><td>same Executor interface · custom adds SSRF guardrails</td></tr>
+<tr><td>L1 policy</td><td>Model-selection engine</td><td>planned for M2/M5</td><td>No alternative policy contract is wired in M1</td></tr>
+<tr><td>L0 accounts</td><td>Registry · selector · lease</td><td>gpt-load fork, hardened</td><td><code>gateway.SelectionFactory → scheduler.SelectionIterator.Next()</code></td></tr>
+<tr><td>services</td><td>Credential encryption + custody</td><td>fork-owned fail-closed boundary</td><td><code>encryption.Service.Encrypt/Decrypt/Hash</code> · native Keychain/Secret Service or explicit age custody</td></tr>
+<tr><td>services</td><td>OAuth refresh</td><td>CLIProxyAPI + fork lifecycle</td><td>Existing credential manager; not a replaceable M1 seam</td></tr>
+<tr><td>services</td><td>Quota ledger</td><td>gpt-load patterns</td><td>Existing quota runtime, not a new M1 interface</td></tr>
+<tr><td>L-1</td><td>Executors (per provider/auth)</td><td>CLIProxyAPI + Bifrost, compiled adapters</td><td><code>execution.Executor.Execute/ExecuteStream</code> for one preselected attempt</td></tr>
+<tr><td>connectors</td><td>TypeSafe Jev · Custom API</td><td>planned first-party</td><td>Not implemented or shipped in M1; future executors require capability validation and SSRF guards</td></tr>
 </tbody></table>
 
 <h2>3 · Request path — two stages</h2>
@@ -194,10 +194,10 @@
 
 <div class="panel">
 <ul>
-<li><b>Tiny interfaces we own.</b> Donor code (CLIProxyAPI executors, Bifrost conversions) is adapted at the boundary — never imported deep. Replacing Bifrost with another converter touches one adapter file.</li>
+<li><b>Existing contracts, not imagined plugins.</b> <code>encryption.Service</code>, <code>scheduler.CredentialSource</code>/<code>SelectionIterator</code>, and <code>execution.Executor</code> carry the swappable seams. Provider adapters are compiled-in (Bifrost/CPA already live under <code>internal/execution/</code>); swapping one means implementing its contract and shipping a new build. <a href="module-contracts.md">Full contract map</a>.</li>
 <li><b>Pinned commits + ledger.</b> VENDORING.md records donor, commit, paths, destination, license, modifications. Upgrading a donor = bump the pin + run that module's golden tests. Rebasing the gpt-load baseline is an explicit <code>git merge upstream/main</code> — never a silent package update.</li>
-<li><b>One outbound edge.</b> Only executors speak to the internet. Vault, selector, scheduler, UI make no network calls — a donor with phone-home habits is neutered by construction.</li>
-<li><b>State lives in one place.</b> SQLite + Keychain/libsecret key. The contract with reality (the DB schema) is narrow, so modules can be rewritten freely.</li>
+<li><b>Bounded outbound behavior.</b> Idle boots must make no external call by default. Executors use outbound clients for provider requests; an explicit process opt-in enables automatic Models.dev sync, and authenticated operator actions can trigger sync/update checks. This is verified by offline boot, not asserted to be a network sandbox. <a href="module-contracts.md">Exact interface contracts</a>.</li>
+<li><b>State and recovery.</b> Database data, the custody item or age identity/ciphertext, and <code>auth.key</code> when generated need coordinated, restore-proven backups. Native custody identity is bound to the canonical DATA_DIR path. <a href="key-custody.md">Recovery runbook and external-DB guard</a>.</li>
 </ul>
 </div>
 
@@ -208,18 +208,18 @@
     <div class="node">CI release<small>cross-build matrix · cosign sign + SBOM · <code>release.json.sig</code></small></div>
     <div class="node">Homebrew tap (private)<small><code>brew install &lt;you&gt;/tap/demerzel</code> · bottles · <code>brew services</code></small></div>
     <div class="node">bunx installer<small><code>bunx @&lt;you&gt;/demerzel install</code> · verifies manifest + checksum first</small></div>
-    <div class="node">tar / container<small>Linux systemd --user · XDG dirs · libsecret</small></div>
+    <div class="node">tar / container<small>Linux systemd --user · XDG dirs · Secret Service or explicit age mode</small></div>
   </div>
-  <p class="muted" style="margin:12px 0 0">Every installer frontend verifies the same cosign-signed manifest before installing. The core never self-updates, never phones home. Secrets never ship in any artifact — each machine bootstraps its own vault and accounts. Release matrix is a proof gate: darwin/arm64 verified today; the other three targets are CI acceptance items.</p>
+  <p class="muted" style="margin:12px 0 0">Installer frontends and cosign-signed release manifests are M4 targets, not published M1 features. Fresh boots do not automatically sync catalog or check updates; a process opt-in or authenticated operator request can make outbound calls. Secrets never ship in artifacts. Cross-platform builds, native custody and restore proof remain release gates.</p>
 </div>
 
 <div class="panel">
 <table>
 <thead><tr><th>Component</th><th>Demerzel needs it?</th><th>Install guide</th></tr></thead>
 <tbody>
-<tr><td>Demerzel gateway</td><td>—</td><td>brew tap / bunx / tar (above)</td></tr>
-<tr><td><b>Cortex</b> (agent memory + handoffs — for agents/automation touching our work)</td><td>optional for end users; required for agent contributors</td><td><b><a href="https://github.com/Kaidera-AI/cortex">github.com/Kaidera-AI/cortex</a></b> — install guide for anyone without it</td></tr>
-<tr><td>Provider credentials</td><td>per provider</td><td>each machine adds its own via the account registry UI/CLI (<code>demerzel accounts add claude --label me@work</code>…)</td></tr>
+<tr><td>Demerzel gateway</td><td>yes</td><td>Source build only today; brew tap / bunx / tar installers are M4 targets, not published methods.</td></tr>
+<tr><td><b>Cortex</b> (optional agent memory/handoffs, not a gateway dependency)</td><td>optional for end users; agent contributors may use it</td><td><b><a href="https://github.com/Kaidera-AI/cortex">Kaidera-AI/cortex</a></b> · <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-macos.md">macOS</a> / <a href="https://github.com/Kaidera-AI/cortex/blob/main/docs/install-linux.md">Linux</a> guides: v0.1.002 installs the launcher/preflight only; standalone <code>cortex install</code> refuses until the v0.1.003 digest-pinned payload ships. Rootless Podman ≥5.0 required.</td></tr>
+<tr><td>Provider credentials</td><td>per provider</td><td>Current management UI stores account credentials; dedicated <code>demerzel accounts</code> CLI is planned, not shipped in M1.</td></tr>
 </tbody></table>
 </div>
 
@@ -227,7 +227,7 @@
 
 <div class="panel">
 <ul>
-<li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed vault (Keychain/libsecret) · module interfaces · default-off outbound (incl. models.dev sync) · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress.</i></li>
+<li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed master-key custody (Keychain/Secret Service/age) · replaceable Go seams · default-off Models.dev auto-sync · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress; backup/restore and cross-platform checks before release.</i></li>
 <li><b>M2 — account control plane + serial failover + Switchyard spike:</b> registry UI/CLI · deterministic failover. <i>Accept: scripted-429 failover test (persisted cursor, reset+grace, backoff-probe failback) + spike report (NVIDIA = eval oracle only).</i></li>
 <li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
 <li><b>M4 — distribution:</b> tap + bunx + tar/container, all verifying the signed manifest; Linux = macOS parity. <i>Accept: install → service → health/auth → upgrade → rollback → uninstall on darwin/arm64 + linux/amd64.</i></li>
@@ -239,7 +239,7 @@
 
 <div class="panel">
 <ul>
-<li><b>Vault master-key custody on macOS:</b> Keychain via <code>security</code> CLI (recommended — no file on disk) vs age passphrase file (portable, but a file exists).</li>
+<li><b>Native vault recovery before team release:</b> each estate must back up the OS vault and prove an actual database-plus-key restore; losing the key makes encrypted credentials unrecoverable. <a href="key-custody.md">Custody runbook</a>.</li>
 <li><b>Subscription executors (Claude/Codex OAuth) in v1:</b> ship disabled behind a flag with a compliance warning (recommended) vs enable day one.</li>
 </ul>
 </div>

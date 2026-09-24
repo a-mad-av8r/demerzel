@@ -281,7 +281,7 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 	if requiredRef == nil {
 		query.PreferredCredentialID = affinity.preferredCredentialID
 	}
-	iterator := scheduler.New(snapshot, h.registry, query)
+	iterator := h.newSelectionIterator(snapshot, h.registry, query)
 	limit := retryAttemptLimit(snapshot.Settings.RetryCount)
 	var refreshSelection *scheduler.Selection
 	var refreshRef state.CredentialRef

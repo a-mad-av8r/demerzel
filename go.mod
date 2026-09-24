@@ -3,12 +3,15 @@ module gpt-load
 go 1.27.0
 
 require (
+	filippo.io/age v1.3.2
 	github.com/andybalholm/brotli v1.2.4
 	github.com/buger/jsonparser v1.6.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
+	github.com/keybase/dbus v0.0.0-20220506165403-5aa21ea2c23a
+	github.com/keybase/go-keychain v0.0.1
 	github.com/klauspost/compress v1.20.0
 	github.com/maximhq/bifrost/core v1.9.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
@@ -29,7 +32,8 @@ require (
 require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
-	filippo.io/edwards25519 v1.1.1 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect

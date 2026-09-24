@@ -95,6 +95,7 @@ type Handler struct {
 	channels            *channel.Registry
 	subscriptions       *subscriptionruntime.Runtime
 	registry            runtimeCredentialRegistry
+	selectionFactory    SelectionFactory
 	encryption          encryption.Service
 	forwarder           AttemptForwarder
 	dialects            dialect.Set
@@ -680,7 +681,7 @@ func (handler *Handler) Handle(ginContext *gin.Context) {
 		)
 		query.PreferredCredentialID = requestAffinity.preferredCredentialID
 	}
-	iterator := scheduler.New(snapshot, handler.registry, query)
+	iterator := handler.newSelectionIterator(snapshot, handler.registry, query)
 	handler.executeAttempts(
 		ginContext,
 		iterator,
@@ -855,7 +856,7 @@ func headerFieldValues(headers http.Header, name string) []string {
 
 func (handler *Handler) executeAttempts(
 	ginContext *gin.Context,
-	iterator *scheduler.Iterator,
+	iterator scheduler.SelectionIterator,
 	forwardAttemptLimit int,
 	allowedCredentialRefs map[uint]state.CredentialRef,
 	selectedDialect dialect.Dialect,

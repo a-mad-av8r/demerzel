@@ -63,9 +63,10 @@ func TestCompilePublishesDefaultRuntimeSettingsWithoutGroups(t *testing.T) {
 		AffinityCapacity:          10_000,
 		ValidationInterval:        10 * time.Minute,
 		RequestLogRetentionDays:   7,
-		ModelsDevAutoSyncEnabled:  true,
 	}
-	if !reflect.DeepEqual(snapshot.Settings, want) {
+	settingsWithoutAutoSync := snapshot.Settings
+	settingsWithoutAutoSync.ModelsDevAutoSyncEnabled = false
+	if !reflect.DeepEqual(settingsWithoutAutoSync, want) {
 		t.Fatalf("Settings = %#v, want %#v", snapshot.Settings, want)
 	}
 }
@@ -370,13 +371,15 @@ func TestAffinitySettingsRejectInvalidValues(t *testing.T) {
 	}
 }
 
-func TestModelsDevAutoSyncSettingDefaultsTrueAndIsSystemOnly(t *testing.T) {
-	defaults, err := ResolveRuntimeSettings(nil)
+func TestModelsDevAutoSyncSettingIsSystemOnly(t *testing.T) {
+	enabled, err := ResolveRuntimeSettings(config.Settings{
+		SettingModelsDevAutoSyncEnabled: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !defaults.ModelsDevAutoSyncEnabled {
-		t.Fatal("ModelsDevAutoSyncEnabled = false, want default true")
+	if !enabled.ModelsDevAutoSyncEnabled {
+		t.Fatal("persisted ModelsDevAutoSyncEnabled = false, want stored value true")
 	}
 
 	disabled, err := ResolveRuntimeSettings(config.Settings{
@@ -386,13 +389,13 @@ func TestModelsDevAutoSyncSettingDefaultsTrueAndIsSystemOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	if disabled.ModelsDevAutoSyncEnabled {
-		t.Fatal("ModelsDevAutoSyncEnabled = true, want persisted false")
+		t.Fatal("persisted ModelsDevAutoSyncEnabled = true, want stored value false")
 	}
 	if !IsRuntimeSettingKey(SettingModelsDevAutoSyncEnabled) {
 		t.Fatal("models_dev_auto_sync_enabled is not a public runtime setting")
 	}
 	if _, err := ResolveGroupRuntimeSettings(
-		defaults,
+		DefaultRuntimeSettings(),
 		config.Settings{SettingModelsDevAutoSyncEnabled: false},
 	); err == nil {
 		t.Fatal("Group override accepted system-only models_dev_auto_sync_enabled")

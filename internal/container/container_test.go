@@ -553,7 +553,7 @@ func TestBuildContainerResolvesRuntimeDependencies(t *testing.T) {
 	t.Setenv("AUTH_KEY", "test-auth-key")
 	t.Setenv("DATA_DIR", dataDir)
 	t.Setenv("DATABASE_DSN", "")
-	t.Setenv("ENCRYPTION_KEY", "")
+	t.Setenv("ENCRYPTION_KEY", "test-master-key-long")
 
 	dependencyContainer, err := BuildContainer()
 	if err != nil {
@@ -641,10 +641,11 @@ func TestBuildContainerResolvesRuntimeDependencies(t *testing.T) {
 		if want := filepath.Join(dataDir, "gpt-load.db"); cfg.DatabaseDSN != want {
 			t.Fatalf("DatabaseDSN = %q, want %q", cfg.DatabaseDSN, want)
 		}
-		for _, name := range []string{"gpt-load.db", encryption.KeyFileName} {
-			if _, err := os.Stat(filepath.Join(dataDir, name)); err != nil {
-				t.Fatalf("%s was not created in DATA_DIR: %v", name, err)
-			}
+		if _, err := os.Stat(filepath.Join(dataDir, "gpt-load.db")); err != nil {
+			t.Fatalf("managed database missing: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dataDir, encryption.KeyFileName)); !os.IsNotExist(err) {
+			t.Fatalf("explicit ENCRYPTION_KEY must not create a plaintext master-key file: %v", err)
 		}
 		if _, err := os.Stat(filepath.Join(dataDir, authkey.FileName)); !os.IsNotExist(err) {
 			t.Fatalf("explicit AUTH_KEY created %s: %v", authkey.FileName, err)

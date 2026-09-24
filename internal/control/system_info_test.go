@@ -101,6 +101,24 @@ func TestSystemInfoResponseUsesNullPathsForEnvironmentSources(t *testing.T) {
 	}
 }
 
+func TestSystemInfoOmitsNativeAndHeadlessCustodyPaths(t *testing.T) {
+	t.Parallel()
+	for _, source := range []config.SecretSource{
+		config.SecretSourceSystemCredentialStore,
+		config.SecretSourceAgeFile,
+	} {
+		info := newSystemInfoResponse(&config.Config{
+			EncryptionKeyMetadata: config.SecretMetadata{
+				Source: source,
+				Path:   "/private/operator-identity",
+			},
+		})
+		if info.Encryption.Source != source || info.Encryption.Path != nil {
+			t.Fatalf("custody metadata %q exposed path: %#v", source, info.Encryption)
+		}
+	}
+}
+
 func TestSystemInfoResponseReportsSelectedDatabaseDriver(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

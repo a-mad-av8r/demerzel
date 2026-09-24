@@ -267,6 +267,11 @@ if ($beforeHash -ne $expectedHash) { throw "checksum mismatch before execution" 
 & $binary help | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "help failed" }
 
+$previousMaster = [Environment]::GetEnvironmentVariable("ENCRYPTION_KEY", "Process")
+$masterBytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($masterBytes) } finally { $rng.Dispose() }
+$env:ENCRYPTION_KEY = [System.BitConverter]::ToString($masterBytes).Replace("-", "").ToLowerInvariant()
 $dataDir = Join-Path $env:RUNNER_TEMP "gpt-load-native-smoke-$([guid]::NewGuid())"
 New-Item -ItemType Directory -Path $dataDir | Out-Null
 $env:DATA_DIR = $dataDir
@@ -286,10 +291,12 @@ try {
   if ($health.version -ne $releaseVersion) { throw "version mismatch" }
 
   $authFile = Join-Path $dataDir "auth.key"
-  $encryptionFile = Join-Path $dataDir "encryption.key"
   $databaseFile = Join-Path $dataDir "gpt-load.db"
-  foreach ($file in @($authFile, $encryptionFile, $databaseFile)) {
+  foreach ($file in @($authFile, $databaseFile)) {
     if (-not (Test-Path $file)) { throw "missing generated asset: $file" }
+  }
+  if (Test-Path (Join-Path $dataDir "encryption.key")) {
+    throw "portable binary wrote a plaintext master key file"
   }
 
   $authKey = (Get-Content $authFile -Raw).Trim()
@@ -319,7 +326,6 @@ try {
   foreach ($target in @(
     @{ Path = $dataDir; RequireProtected = $true },
     @{ Path = $authFile; RequireProtected = $true },
-    @{ Path = $encryptionFile; RequireProtected = $true },
     @{ Path = $databaseFile; RequireProtected = $false },
     @{ Path = $walFile; RequireProtected = $false },
     @{ Path = $shmFile; RequireProtected = $false }
@@ -349,4 +355,9 @@ try {
   }
   $process.Dispose()
   Remove-Item -Recurse -Force $dataDir -ErrorAction SilentlyContinue
+  if ($null -eq $previousMaster) {
+    Remove-Item Env:ENCRYPTION_KEY -ErrorAction SilentlyContinue
+  } else {
+    $env:ENCRYPTION_KEY = $previousMaster
+  }
 }

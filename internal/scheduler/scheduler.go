@@ -46,6 +46,18 @@ type Selection struct {
 	ResponsesStoreDowngraded bool
 }
 
+// SelectionIterator is the request-scoped selector contract. Implementations
+// must apply eligibility and never expose the credential secret to policy code.
+type SelectionIterator interface {
+	Next() (Selection, error)
+	SkipGroup(uint)
+	ChargeReplay(Selection, state.CredentialRef) bool
+	StaticReason() ReasonCode
+	CooldownUntil() (time.Time, bool)
+}
+
+var _ SelectionIterator = (*Iterator)(nil)
+
 type candidateTarget struct {
 	target                   state.RouteTarget
 	group                    state.GroupView

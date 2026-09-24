@@ -4,9 +4,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
+	"sync"
 	"testing"
 
 	"gpt-load/internal/platform/utils"
@@ -66,85 +67,92 @@ func TestNewServiceRejectsEmptyMasterKey(t *testing.T) {
 	}
 }
 
-func TestLoadOrCreateKeyMaterialGeneratesAndReusesKeyFile(t *testing.T) {
+func TestLoadOrCreateKeyMaterialExplicitKeyDoesNotUseBackend(t *testing.T) {
+	clearCustodyEnvironment(t)
 	dataDir := t.TempDir()
-
-	first, err := LoadOrCreateKeyMaterial("", dataDir)
-	if err != nil {
-		t.Fatalf("first LoadOrCreateKeyMaterial() error = %v", err)
-	}
-	if len(first) != 64 {
-		t.Fatalf("generated key length = %d, want 64 hex chars", len(first))
+	called := false
+	factory := func() (masterKeyStore, error) {
+		called = true
+		return nil, errors.New("backend unavailable")
 	}
 
-	second, err := LoadOrCreateKeyMaterial("", dataDir)
+	got, err := loadOrCreateKeyMaterial("explicit-headless-test-key", dataDir, factory, false)
 	if err != nil {
-		t.Fatalf("second LoadOrCreateKeyMaterial() error = %v", err)
+		t.Fatalf("explicit loadOrCreateKeyMaterial() error = %v", err)
 	}
-	if second != first {
-		t.Fatalf("keyfile was not reused: %q != %q", second, first)
+	if got != "explicit-headless-test-key" || called {
+		t.Fatal("explicit key was not used directly")
 	}
-
-	info, err := os.Stat(filepath.Join(dataDir, KeyFileName))
-	if err != nil {
-		t.Fatalf("Stat(keyfile) error = %v", err)
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
-		t.Fatalf("keyfile permissions = %o, want 600", info.Mode().Perm())
+	if _, err := os.Lstat(filepath.Join(dataDir, KeyFileName)); !os.IsNotExist(err) {
+		t.Fatalf("explicit key created a plaintext key file: %v", err)
 	}
 }
 
-func TestLoadOrCreateKeyMaterialPrefersExplicitKey(t *testing.T) {
+func TestNewServiceWithCustodyUsesExplicitMaterial(t *testing.T) {
 	dataDir := t.TempDir()
-
-	got, err := LoadOrCreateKeyMaterial("explicit-key", dataDir)
+	service, err := NewServiceWithCustody("explicit-service-master-key", dataDir, false)
 	if err != nil {
-		t.Fatalf("LoadOrCreateKeyMaterial() error = %v", err)
-	}
-	if got != "explicit-key" {
-		t.Fatalf("key material = %q", got)
-	}
-	if _, err := os.Stat(filepath.Join(dataDir, KeyFileName)); !os.IsNotExist(err) {
-		t.Fatalf("explicit key unexpectedly created keyfile: %v", err)
-	}
-}
-
-func TestNewServiceWithKeyFileUsesGeneratedMaterial(t *testing.T) {
-	dataDir := t.TempDir()
-	service, err := NewServiceWithKeyFile("", dataDir)
-	if err != nil {
-		t.Fatalf("NewServiceWithKeyFile() error = %v", err)
+		t.Fatalf("NewServiceWithCustody() error = %v", err)
 	}
 	ciphertext, err := service.Encrypt("value")
 	if err != nil {
 		t.Fatalf("Encrypt() error = %v", err)
 	}
-	if _, err := service.Decrypt(ciphertext); err != nil {
-		t.Fatalf("Decrypt() error = %v", err)
+	if plaintext, err := service.Decrypt(ciphertext); err != nil || plaintext != "value" {
+		t.Fatalf("Decrypt() did not preserve plaintext: error = %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dataDir, KeyFileName)); !os.IsNotExist(err) {
+		t.Fatalf("explicit service key created a plaintext file: %v", err)
 	}
 }
 
-func TestLoadOrCreateKeyMaterialRejectsCorruptKeyFile(t *testing.T) {
-	tests := []struct {
-		name     string
-		contents string
-	}{
-		{name: "empty", contents: ""},
-		{name: "short", contents: "abcd"},
-		{name: "odd length", contents: "abc"},
-		{name: "non hex", contents: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"},
-	}
+func clearCustodyEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv(LegacyImportEnv, "")
+	t.Setenv(AgeIdentityFileEnv, "")
+	t.Setenv(AgeRecipientEnv, "")
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dataDir := t.TempDir()
-			path := filepath.Join(dataDir, KeyFileName)
-			if err := os.WriteFile(path, []byte(tt.contents), 0o600); err != nil {
-				t.Fatalf("write corrupt keyfile: %v", err)
-			}
-			if _, err := LoadOrCreateKeyMaterial("", dataDir); err == nil {
-				t.Fatal("LoadOrCreateKeyMaterial() error = nil, want corrupt keyfile error")
-			}
-		})
+func memoryStoreFactory(store *memoryKeyStore) keyStoreFactory {
+	return func() (masterKeyStore, error) {
+		return store, nil
 	}
+}
+
+type memoryKeyStore struct {
+	mu   sync.Mutex
+	keys map[string]string
+}
+
+func newMemoryKeyStore() *memoryKeyStore {
+	return &memoryKeyStore{keys: make(map[string]string)}
+}
+
+func (store *memoryKeyStore) Load(installationID string) (string, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	keyMaterial, exists := store.keys[installationID]
+	if !exists {
+		return "", errKeyNotFound
+	}
+	return keyMaterial, nil
+}
+
+func (store *memoryKeyStore) StoreIfAbsent(installationID, keyMaterial string) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if _, exists := store.keys[installationID]; exists {
+		return errKeyAlreadyExists
+	}
+	store.keys[installationID] = keyMaterial
+	return nil
+}
+
+func mustCanonicalDataDir(t *testing.T, dataDir string) string {
+	t.Helper()
+	canonicalDir, err := canonicalDataDir(dataDir)
+	if err != nil {
+		t.Fatalf("canonicalDataDir() error = %v", err)
+	}
+	return canonicalDir
 }

@@ -123,6 +123,10 @@ function Assert-ServiceAcl {
 }
 
 try {
+  $masterBytes = New-Object byte[] 32
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($masterBytes) } finally { $rng.Dispose() }
+  $smokeMaster = [System.BitConverter]::ToString($masterBytes).Replace("-", "").ToLowerInvariant()
   [System.IO.File]::WriteAllText($installOwnerMarker, $installOwnerToken)
   # 同盘准备完整归属凭据后再公开固定目录，避免中断留下半初始化状态。
   New-Item -ItemType Directory -Path $preparedConfig | Out-Null
@@ -144,7 +148,8 @@ try {
     # 测试服务读取同一端口；独占监听保持到安装失败回滚验收结束。
     @(
       "HOST=127.0.0.1",
-      "PORT=$port"
+      "PORT=$port",
+      "ENCRYPTION_KEY=$smokeMaster"
     ) | Set-Content -Path $envFile -Encoding utf8NoBOM
     Invoke-CheckedProcess -Path $setup -Arguments @(
       "/VERYSILENT",
@@ -212,10 +217,12 @@ try {
   if ($health.version -ne $releaseVersion) { throw "installed service version mismatch" }
 
   $authFile = Join-Path $dataDir "auth.key"
-  $encryptionFile = Join-Path $dataDir "encryption.key"
-  foreach ($path in @($configDir, $dataDir, $authFile, $encryptionFile)) {
+  foreach ($path in @($configDir, $dataDir, $authFile, $envFile)) {
     if (-not (Test-Path $path)) { throw "installed service path is missing: $path" }
     Assert-ServiceAcl -Path $path
+  }
+  if (Test-Path (Join-Path $dataDir "encryption.key")) {
+    throw "installer wrote a plaintext master key file"
   }
   $authKey = (Get-Content $authFile -Raw).Trim()
   $headers = @{ Authorization = "Bearer $authKey" }

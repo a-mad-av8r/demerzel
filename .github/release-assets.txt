@@ -1,4 +1,6 @@
 Apache-2.0.txt
+BSD-2-Clause-dbus.txt
+BSD-3-Clause-age.txt
 Inno-Setup.txt
 LICENSE
 MIT.txt

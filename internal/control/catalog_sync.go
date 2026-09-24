@@ -603,17 +603,7 @@ func (coordinator *CatalogSyncCoordinator) failureStatus(
 }
 
 func (s *Service) modelsDevAutoSyncEnabled() bool {
-	if s == nil {
-		return false
-	}
-	if s.modelsDevAutoSyncOverride != nil {
-		return *s.modelsDevAutoSyncOverride
-	}
-	snapshot := s.manager.Current()
-	if snapshot == nil {
-		return true
-	}
-	return snapshot.Settings.ModelsDevAutoSyncEnabled
+	return s != nil && s.modelsDevAutoSyncOverride != nil && *s.modelsDevAutoSyncOverride
 }
 
 func (s *Service) applyCatalogSnapshot(ctx context.Context, snapshot *catalog.Snapshot) error {

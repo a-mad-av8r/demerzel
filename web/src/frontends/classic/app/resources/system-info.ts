@@ -12,7 +12,8 @@ import {
   projectString,
 } from './projector'
 
-export type SecretSource = 'environment' | 'key_file'
+export type SecretSource =
+  'environment' | 'key_file' | 'system_credential_store' | 'age_encrypted_file'
 export type DatabaseDriver = 'sqlite' | 'mysql' | 'postgres'
 
 export interface SecretSourceInfo {
@@ -57,9 +58,18 @@ function projectSecretSource(value: unknown, includeEnabled: boolean): SecretSou
   const fields = includeEnabled ? ['enabled', 'source', 'path'] : ['source', 'path']
   assertExactFields(record, fields)
   if (includeEnabled && projectBoolean(record.enabled) !== true) invalidResponse()
-  const source = projectEnum(record.source, ['environment', 'key_file'] as const)
+  const source = projectEnum(record.source, [
+    'environment',
+    'key_file',
+    'system_credential_store',
+    'age_encrypted_file',
+  ] as const)
   const path = record.path === null ? null : projectNonBlankTrimmedString(record.path)
-  if ((source === 'environment' && path !== null) || (source === 'key_file' && path === null)) {
+  if (
+    (includeEnabled && source === 'key_file') ||
+    (!includeEnabled && source !== 'environment' && source !== 'key_file') ||
+    (source === 'key_file' ? path === null : path !== null)
+  ) {
     invalidResponse()
   }
   return { source, path }

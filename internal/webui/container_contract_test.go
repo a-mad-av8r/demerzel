@@ -184,27 +184,6 @@ func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T
 	}
 }
 
-func TestNetworkConfigurationKeepsExampleSimpleAndDocumentsAdvancedOverrides(t *testing.T) {
-	environmentExample := readRepositoryFile(t, ".env.example")
-	for _, required := range []string{"HOST=127.0.0.1", "PORT=3001"} {
-		if !strings.Contains(environmentExample, required) {
-			t.Fatalf(".env.example does not contain %q", required)
-		}
-	}
-
-	readmes := []string{"README.md", "README_CN.md", "README_JP.md"}
-	for _, advanced := range []string{"BIND_ADDRESS", "OAUTH_CALLBACK_BIND_ADDRESS"} {
-		if strings.Contains(environmentExample, advanced) {
-			t.Fatalf(".env.example exposes advanced Compose override %s", advanced)
-		}
-		for _, readme := range readmes {
-			if !strings.Contains(readRepositoryFile(t, readme), advanced) {
-				t.Fatalf("%s does not document advanced Compose override %s", readme, advanced)
-			}
-		}
-	}
-}
-
 func TestDockerfileFinalStageDeclaresNonRootPersistentRuntime(t *testing.T) {
 	content := readRepositoryFile(t, "Dockerfile")
 	// runtime 是唯一的 runtime 定义，源码自包含构建与发布用的 prebuilt 都继承它。

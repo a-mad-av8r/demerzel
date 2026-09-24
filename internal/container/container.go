@@ -52,9 +52,11 @@ func BuildContainer() (*dig.Container, error) {
 	providers := []any{
 		config.Load,
 		func(cfg *config.Config) (encryption.Service, error) {
-			return encryption.NewServiceWithKeyFile(cfg.EncryptionKey, cfg.DataDir)
+			allowInitialization := cfg.DatabaseMetadata.Source == config.DatabaseSourceManaged ||
+				cfg.AllowExternalKeyInitialization
+			return encryption.NewServiceWithCustody(cfg.EncryptionKey, cfg.DataDir, allowInitialization)
 		},
-		func(cfg *config.Config) (*gorm.DB, error) {
+		func(cfg *config.Config, _ encryption.Service) (*gorm.DB, error) {
 			db, err := storage.OpenConfigured(cfg)
 			if err == nil {
 				logrus.WithField("event", "startup.database_open").Info("database opened")

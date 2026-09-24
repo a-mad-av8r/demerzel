@@ -4,7 +4,7 @@ import { boolean, oneOf, record, text } from './response'
 
 export const systemInfoKey = ['modern', 'system-info'] as const
 export interface SecretSourceInfo {
-  source: 'environment' | 'key_file'
+  source: 'environment' | 'key_file' | 'system_credential_store' | 'age_encrypted_file'
   path: string | null
 }
 export interface SystemInfo {
@@ -14,11 +14,21 @@ export interface SystemInfo {
   authKey: SecretSourceInfo
   encryption: SecretSourceInfo
 }
-function readSecretSource(value: unknown): SecretSourceInfo {
+function readSecretSource(value: unknown, encrypted = false): SecretSourceInfo {
   const row = record(value)
-  const source = oneOf(row.source, ['environment', 'key_file'] as const)
+  const source = oneOf(row.source, [
+    'environment',
+    'key_file',
+    'system_credential_store',
+    'age_encrypted_file',
+  ] as const)
   const path = row.path === null ? null : asNonBlankString(row.path)
-  if ((source === 'environment') !== (path === null)) throw new InvalidResponseError()
+  if (
+    (encrypted && source === 'key_file') ||
+    (!encrypted && source !== 'environment' && source !== 'key_file') ||
+    (source === 'key_file' ? path === null : path !== null)
+  )
+    throw new InvalidResponseError()
   return { source, path }
 }
 export async function getSystemInfo(client: ApiClient, signal: AbortSignal): Promise<SystemInfo> {
@@ -35,7 +45,7 @@ export async function getSystemInfo(client: ApiClient, signal: AbortSignal): Pro
     database: oneOf(deployment.database, ['sqlite', 'mysql', 'postgres']),
     dataDir: text(row.data_dir),
     authKey: readSecretSource(row.auth_key),
-    encryption: readSecretSource(row.encryption),
+    encryption: readSecretSource(row.encryption, true),
   }
 }
 

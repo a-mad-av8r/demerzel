@@ -19,6 +19,7 @@ import (
 	"gpt-load/internal/catalog"
 	"gpt-load/internal/channel"
 	"gpt-load/internal/pricing"
+	"gpt-load/internal/state"
 	"gpt-load/internal/storage/models"
 )
 
@@ -29,6 +30,11 @@ func (function catalogSyncClientFunc) Sync(
 	metadata catalog.Metadata,
 ) (catalog.SyncResult, error) {
 	return function(ctx, metadata)
+}
+
+func optInModelsDevAutoSync(service *Service) {
+	enabled := true
+	service.modelsDevAutoSyncOverride = &enabled
 }
 
 func TestCatalogSyncEmitsLifecycleLogsWithoutLeakingFailureDetails(t *testing.T) {
@@ -368,6 +374,7 @@ func TestCatalogStartupReconcilesDurableLKGBeforeAnyNetworkSync(t *testing.T) {
 func TestCatalogSyncSingleFlightJoinsManualStartupAndGroupTriggers(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
@@ -606,6 +613,147 @@ func TestCatalogSyncCacheFailureUsesCurrentCheckWithoutAdvancingSuccessfulFetch(
 	}
 }
 
+func TestCatalogSyncStartupIgnoresDefaultAndLegacyEnabledSettingWithoutEnvOptIn(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name              string
+		persistedAutoSync bool
+	}{
+		{name: "fresh settings"},
+		{name: "legacy persisted true", persistedAutoSync: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newServiceFixture(t)
+			if test.persistedAutoSync {
+				if err := fixture.db.Create(&models.SystemSetting{
+					Key:         state.SettingModelsDevAutoSyncEnabled,
+					Value:       "true",
+					UpdatedAtMS: time.Now().UnixMilli(),
+				}).Error; err != nil {
+					t.Fatal(err)
+				}
+				snapshot, err := fixture.manager.Publish(mustBuildCompileInput(t, fixture.db))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !snapshot.Settings.ModelsDevAutoSyncEnabled {
+					t.Fatal("legacy persisted setting was not loaded as true")
+				}
+			}
+
+			var calls atomic.Int32
+			client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
+				calls.Add(1)
+				return catalogResultFixture(100, "startup", nil), nil
+			})
+			coordinator := newCatalogSyncCoordinator(
+				fixture.service,
+				client,
+				filepath.Join(t.TempDir(), "catalog.json"),
+				catalog.Metadata{},
+				false,
+			)
+			coordinator.newTicker = func(time.Duration) runtimeTicker { return newFakeRuntimeTicker() }
+			coordinator.storeCache = func(string, catalog.SyncResult) error { return nil }
+			coordinator.applySnapshot = func(context.Context, *catalog.Snapshot) error { return nil }
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			done := make(chan struct{})
+			go func() {
+				coordinator.Run(ctx)
+				close(done)
+			}()
+			deadline := time.Now().Add(time.Second)
+			for {
+				status := coordinator.readStatus()
+				if status.Trigger == CatalogSyncStartup && status.Skipped {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatalf("startup status = %#v, want skipped", status)
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if calls.Load() != 0 {
+				t.Fatalf("startup network calls = %d, want 0", calls.Load())
+			}
+			settings, err := fixture.service.GetSettings(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if settings.Values.ModelsDevAutoSyncEnabled ||
+				!reflect.DeepEqual(settings.ReadOnly, []string{state.SettingModelsDevAutoSyncEnabled}) ||
+				len(settings.Overrides) != 0 {
+				t.Fatalf("effective legacy setting = %#v, want false/read-only without stale override", settings)
+			}
+
+			status, err := coordinator.Sync(t.Context(), CatalogSyncManual)
+			if err != nil || status.Skipped {
+				t.Fatalf("manual Sync() = %#v, %v; want executed", status, err)
+			}
+			if calls.Load() != 1 {
+				t.Fatalf("manual network calls = %d, want 1", calls.Load())
+			}
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(time.Second):
+				t.Fatal("catalog scheduler did not stop")
+			}
+		})
+	}
+}
+
+func TestCatalogSyncStartupFetchesWhenEnvironmentOptInIsTrue(t *testing.T) {
+	t.Parallel()
+	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
+	calls := make(chan struct{}, 1)
+	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
+		calls <- struct{}{}
+		return catalogResultFixture(100, "opt-in", nil), nil
+	})
+	coordinator := newCatalogSyncCoordinator(
+		fixture.service,
+		client,
+		filepath.Join(t.TempDir(), "catalog.json"),
+		catalog.Metadata{},
+		false,
+	)
+	coordinator.newTicker = func(time.Duration) runtimeTicker { return newFakeRuntimeTicker() }
+	coordinator.storeCache = func(string, catalog.SyncResult) error { return nil }
+	coordinator.applySnapshot = func(context.Context, *catalog.Snapshot) error { return nil }
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		coordinator.Run(ctx)
+		close(done)
+	}()
+	awaitCatalogCall(t, calls)
+	waitForCatalogIdle(t, coordinator)
+	status := coordinator.readStatus()
+	if status.Skipped || status.Trigger != CatalogSyncStartup {
+		t.Fatalf("opted-in startup status = %#v, want executed", status)
+	}
+	settings, err := fixture.service.GetSettings(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settings.Values.ModelsDevAutoSyncEnabled ||
+		!reflect.DeepEqual(settings.ReadOnly, []string{state.SettingModelsDevAutoSyncEnabled}) {
+		t.Fatalf("effective opted-in setting = %#v, want true/read-only", settings)
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("catalog scheduler did not stop")
+	}
+}
+
 func TestCatalogSyncDisabledAutomaticTriggersDoNotCallNetworkButManualStillWorks(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
@@ -656,6 +804,7 @@ func TestCatalogSyncSchedulerRetriesNoLKGAfterOneHourAndKeepsLKGOnDailyCadence(t
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newServiceFixture(t)
+			optInModelsDevAutoSync(fixture.service)
 			if test.hasLKG {
 				fixture.catalogRuntime.Publish(&catalog.Snapshot{Providers: map[string]catalog.Provider{}})
 			}
@@ -721,6 +870,7 @@ func TestCatalogSyncSchedulerRetriesNoLKGAfterOneHourAndKeepsLKGOnDailyCadence(t
 func TestCatalogSyncSchedulerDebouncesGroupChangeBursts(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	calls := make(chan struct{}, 4)
 	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
 		calls <- struct{}{}
@@ -778,6 +928,7 @@ func TestCatalogSyncSchedulerDebouncesGroupChangeBursts(t *testing.T) {
 func TestCatalogSyncSchedulerRunsImmediateSettingsTrigger(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	calls := make(chan struct{}, 2)
 	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
 		calls <- struct{}{}
@@ -820,6 +971,7 @@ func TestCatalogSyncSchedulerRunsImmediateSettingsTrigger(t *testing.T) {
 func TestCatalogSyncSchedulerRetries304WithoutLKGAfterOneHour(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	calls := make(chan struct{}, 2)
 	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
 		calls <- struct{}{}
@@ -858,6 +1010,7 @@ func TestCatalogSyncSchedulerRetries304WithoutLKGAfterOneHour(t *testing.T) {
 func TestCatalogSyncShutdownWaitsForBlockedCacheAndPreventsLateReconcile(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	result := catalogResultFixture(100, "shutdown", nil)
 	var calls atomic.Int32
 	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
@@ -918,6 +1071,7 @@ func TestCatalogSyncShutdownWaitsForBlockedCacheAndPreventsLateReconcile(t *test
 func TestCatalogSyncShutdownWaitsForBlockedReconcile(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
+	optInModelsDevAutoSync(fixture.service)
 	result := catalogResultFixture(100, "shutdown", nil)
 	client := catalogSyncClientFunc(func(context.Context, catalog.Metadata) (catalog.SyncResult, error) {
 		return result, nil

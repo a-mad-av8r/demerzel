@@ -12,13 +12,10 @@ import (
 	"fmt"
 	"io"
 
-	"gpt-load/internal/platform/securefile"
 	"gpt-load/internal/platform/utils"
-
-	"github.com/sirupsen/logrus"
 )
 
-// KeyFileName is the persistent master-key filename within DATA_DIR.
+// KeyFileName is the legacy plaintext key path, retained only for guarded import.
 const (
 	KeyFileName          = "encryption.key"
 	encryptionKeyDomain  = "gpt-load/encryption/aes-256-gcm/v1"
@@ -55,34 +52,20 @@ func NewService(keyMaterial string) (Service, error) {
 	return &aesService{hashKey: hashKey, gcm: gcm}, nil
 }
 
-// NewServiceWithKeyFile resolves explicit key material or a persistent keyfile
-// before constructing the encryption service.
-func NewServiceWithKeyFile(explicitKey, dataDir string) (Service, error) {
-	keyMaterial, err := LoadOrCreateKeyMaterial(explicitKey, dataDir)
+// NewServiceWithCustody resolves the master key without creating one when
+// initialization is forbidden (for example, for a pre-existing external DB).
+func NewServiceWithCustody(explicitKey, dataDir string, allowInitialization bool) (Service, error) {
+	keyMaterial, err := LoadOrCreateKeyMaterial(explicitKey, dataDir, allowInitialization)
 	if err != nil {
 		return nil, err
 	}
 	return NewService(keyMaterial)
 }
 
-// LoadOrCreateKeyMaterial prefers explicit key material. When it is absent, a
-// 32-byte random key is loaded from or created at DATA_DIR/encryption.key.
-func LoadOrCreateKeyMaterial(explicitKey, dataDir string) (string, error) {
-	if explicitKey != "" {
-		return explicitKey, nil
-	}
-	if dataDir == "" {
-		return "", fmt.Errorf("DATA_DIR is required when ENCRYPTION_KEY is empty")
-	}
-	result, err := securefile.LoadOrCreateHex(dataDir, KeyFileName)
-	if err != nil {
-		return "", err
-	}
-	if result.Created {
-		logrus.WithField("path", result.Path).
-			Warn("Generated encryption keyfile; back it up before relying on encrypted credentials")
-	}
-	return result.Value, nil
+// LoadOrCreateKeyMaterial loads the selected custody backend, allowing first
+// initialization only when the caller has established its database policy.
+func LoadOrCreateKeyMaterial(explicitKey, dataDir string, allowInitialization bool) (string, error) {
+	return loadOrCreateKeyMaterial(explicitKey, dataDir, newSystemKeyStore, allowInitialization)
 }
 
 type aesService struct {

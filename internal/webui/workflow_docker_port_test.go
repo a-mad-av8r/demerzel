@@ -106,6 +106,7 @@ network=network
 volume=volume
 image=image
 starts=0
+task_tmp=unused
 docker() {
   if [[ "$1" == run ]]; then
     starts=$((starts + 1))

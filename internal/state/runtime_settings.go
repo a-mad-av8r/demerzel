@@ -95,7 +95,7 @@ func DefaultRuntimeSettings() RuntimeSettings {
 		AffinityCapacity:          defaultAffinityCapacity,
 		ValidationInterval:        10 * time.Minute,
 		RequestLogRetentionDays:   defaultRequestLogRetentionDays,
-		ModelsDevAutoSyncEnabled:  true,
+		ModelsDevAutoSyncEnabled:  false,
 	}
 }
 

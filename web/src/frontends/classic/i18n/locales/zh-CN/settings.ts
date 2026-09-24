@@ -78,9 +78,10 @@ export default {
       blacklistThresholdHelp: '凭据达到该连续失败次数后自动拉黑；0 表示关闭自动拉黑。',
       validation_interval: '检测间隔',
       models_dev_auto_sync_enabled: '自动同步 Models.dev 目录与价格',
-      modelsDevAutoSyncHelp: '启用后按计划同步目录和自动价格；关闭后仍可在模型页手动同步。',
-      environmentSource: '环境变量锁定',
-      environmentManaged: '此设置由环境变量管理，不能在界面中修改。',
+      modelsDevAutoSyncHelp: '自动同步默认关闭；仍可在模型页手动同步。',
+      environmentSource: '启动时显式启用',
+      environmentManaged:
+        '要启用自动同步，请在启动前设置 MODELS_DEV_AUTO_SYNC_ENABLED=true 并重启；仍可手动同步。',
       seconds: '秒',
       countUnit: '次',
       timeoutError: '请输入不超过 9,223,372,036 的正安全整数。',
@@ -188,6 +189,8 @@ export default {
       sources: {
         environment: '环境变量',
         key_file: '密钥文件',
+        system_credential_store: '系统凭据库',
+        age_encrypted_file: 'age 加密文件',
       },
       securityNote: '仅可复制非秘密路径；界面绝不显示 AUTH_KEY 或加密密钥内容。',
     },

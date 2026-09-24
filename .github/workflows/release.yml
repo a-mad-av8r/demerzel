@@ -369,7 +369,7 @@ jobs:
       - name: Build release binary
         shell: bash
         env:
-          CGO_ENABLED: 0
+          CGO_ENABLED: ${{ matrix.goos == 'darwin' && '1' || '0' }}
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
@@ -454,6 +454,8 @@ jobs:
           cp LICENSE release/LICENSE
           cp THIRD_PARTY_NOTICES.md release/THIRD_PARTY_NOTICES.md
           cp LICENSES/Apache-2.0.txt release/Apache-2.0.txt
+          cp LICENSES/BSD-2-Clause-dbus.txt release/BSD-2-Clause-dbus.txt
+          cp LICENSES/BSD-3-Clause-age.txt release/BSD-3-Clause-age.txt
           cp LICENSES/Inno-Setup.txt release/Inno-Setup.txt
           cp LICENSES/MIT.txt release/MIT.txt
           cp LICENSES/MPL-2.0.txt release/MPL-2.0.txt
@@ -1169,11 +1171,11 @@ jobs:
           # 目录内容已由上面的清单校验锁定为 .github/release-assets.txt 的全集。
           files: release/*
           body: |
-            2.x is a rewrite and is not compatible with 1.x data, start 2.x from an empty database and a new `encryption.key`.
+            2.x is a rewrite and is not compatible with 1.x data; start 2.x with an empty database and a newly provisioned master key in native vault custody or explicitly configured headless custody.
 
             ---
 
-            2.x 是全新重写版本，与 1.x 数据不兼容，请以全新数据库和新的 `encryption.key` 部署 2.x。
+            2.x 是全新重写版本，与 1.x 数据不兼容；请使用全新数据库，以及保存在系统原生密钥库或明确配置的无头密钥存储中的全新主密钥部署 2.x。
 
   post-publish-image-smoke:
     # GHCR 与 Docker Hub 的 exact tag 已在 publish-images 断言为同一 digest，

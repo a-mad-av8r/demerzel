@@ -89,10 +89,10 @@ export default {
       validation_interval: 'Credential validation interval',
       models_dev_auto_sync_enabled: 'Automatically sync the Models.dev catalog and prices',
       modelsDevAutoSyncHelp:
-        'When enabled, the catalog and automatic prices sync on schedule. Manual sync remains available on Models.',
-      environmentSource: 'Locked by environment',
+        'Automatic sync is off by default. Manual sync remains available on Models.',
+      environmentSource: 'Process opt-in',
       environmentManaged:
-        'This setting is managed by an environment variable and cannot be changed here.',
+        'Set MODELS_DEV_AUTO_SYNC_ENABLED=true before startup and restart to enable automatic sync. Manual sync remains available.',
       seconds: 'seconds',
       countUnit: 'times',
       timeoutError: 'Enter a positive safe integer no greater than 9,223,372,036.',
@@ -204,6 +204,8 @@ export default {
       sources: {
         environment: 'Environment variable',
         key_file: 'Key file',
+        system_credential_store: 'OS credential vault',
+        age_encrypted_file: 'age-encrypted file',
       },
       securityNote:
         'Only non-secret paths can be copied. AUTH_KEY and encryption-key contents are never shown.',

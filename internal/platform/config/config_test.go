@@ -169,7 +169,7 @@ func TestLoadReportsEnvironmentSecretSources(t *testing.T) {
 	}
 }
 
-func TestLoadReportsKeyFileSecretSources(t *testing.T) {
+func TestLoadReportsNativeCustodyWithoutAPlaintextKeyPath(t *testing.T) {
 	clearEnvironment(t)
 	dataDir := t.TempDir()
 	t.Setenv("DATA_DIR", dataDir)
@@ -180,9 +180,33 @@ func TestLoadReportsKeyFileSecretSources(t *testing.T) {
 	}
 	if cfg.AuthKeyMetadata.Source != SecretSourceKeyFile ||
 		cfg.AuthKeyMetadata.Path != filepath.Join(dataDir, authkey.FileName) ||
-		cfg.EncryptionKeyMetadata.Source != SecretSourceKeyFile ||
-		cfg.EncryptionKeyMetadata.Path != filepath.Join(dataDir, encryption.KeyFileName) {
+		cfg.EncryptionKeyMetadata.Source != SecretSourceSystemCredentialStore ||
+		cfg.EncryptionKeyMetadata.Path != "" {
 		t.Fatalf("metadata = %#v/%#v", cfg.AuthKeyMetadata, cfg.EncryptionKeyMetadata)
+	}
+}
+
+func TestLoadReportsHeadlessCustodyWithoutExposingTheIdentityPath(t *testing.T) {
+	clearEnvironment(t)
+	t.Setenv("AUTH_KEY", "test-auth-key")
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE", "/private/age-identity.txt")
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT", "age1test")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.EncryptionKeyMetadata.Source != SecretSourceAgeFile || cfg.EncryptionKeyMetadata.Path != "" {
+		t.Fatalf("age custody metadata exposed identity path: %#v", cfg.EncryptionKeyMetadata)
+	}
+}
+
+func TestLoadRejectsConflictingExplicitAndHeadlessCustody(t *testing.T) {
+	clearEnvironment(t)
+	t.Setenv("AUTH_KEY", "test-auth-key")
+	t.Setenv("ENCRYPTION_KEY", "explicit-master")
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE", "/private/identity")
+	if _, err := Load(); err == nil {
+		t.Fatal("conflicting master-key sources were silently accepted")
 	}
 }
 
@@ -227,6 +251,33 @@ func TestLoadClassifiesNonEmptyDatabaseDSNAsExternal(t *testing.T) {
 	}
 	if cfg.DatabaseMetadata.Source != DatabaseSourceExternal {
 		t.Fatalf("DatabaseMetadata.Source = %q, want %q", cfg.DatabaseMetadata.Source, DatabaseSourceExternal)
+	}
+}
+
+func TestLoadRequiresExplicitExternalMasterKeyInitializationConsent(t *testing.T) {
+	clearEnvironment(t)
+	t.Setenv("AUTH_KEY", "test-auth-key")
+	t.Setenv("DATABASE_DSN", ":memory:")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("external Load() error = %v", err)
+	}
+	if cfg.AllowExternalKeyInitialization {
+		t.Fatal("external database initialized a new key without opt-in")
+	}
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL", "1")
+	cfg, err = Load()
+	if err != nil || !cfg.AllowExternalKeyInitialization {
+		t.Fatalf("explicit initialization consent was rejected: %v", err)
+	}
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL", "false")
+	if _, err := Load(); err == nil {
+		t.Fatal("invalid initialization consent was silently accepted")
+	}
+	t.Setenv("DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL", "1")
+	t.Setenv("DATABASE_DSN", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("managed DB accepted external initialization consent")
 	}
 }
 
@@ -477,6 +528,8 @@ func clearEnvironment(t *testing.T) {
 		"LOG_LEVEL", "LOG_FORMAT", "GRACEFUL_SHUTDOWN_TIMEOUT",
 		"READ_TIMEOUT", "IDLE_TIMEOUT", "MODELS_DEV_AUTO_SYNC_ENABLED",
 		"DATABASE_MAX_OPEN_CONNECTIONS", "DATABASE_MAX_IDLE_CONNECTIONS",
+		"DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE", "DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT",
+		"DEMERZEL_ENCRYPTION_KEY_INITIALIZE_EXTERNAL",
 	} {
 		t.Setenv(key, "")
 	}

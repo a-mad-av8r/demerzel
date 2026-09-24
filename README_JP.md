@@ -1,3 +1,5 @@
+> **Demerzel に関する注意（2026-09-24）：**この文書は上流 GPT-Load の履歴資料であり、Demerzel のインストール・鍵管理ガイドではありません。特に `encryption.key` ファイルと Models.dev 自動同期の旧設定は適用しません。[Demerzel README](README.md) と [モジュール契約](docs/demerzel/module-contracts.md) を参照してください。
+
 <div align="center">
 
 <img src="./web/public/favicon.svg" alt="GPT-Load" width="96">

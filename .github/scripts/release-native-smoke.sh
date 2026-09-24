@@ -31,6 +31,7 @@ chmod +x "${binary}"
 
 data_dir="$(mktemp -d)"
 log_file="$(mktemp)"
+test_key="$(openssl rand -hex 32)"
 pid=
 cleanup() {
   if [[ -n "${pid}" ]]; then
@@ -41,6 +42,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+ENCRYPTION_KEY="${test_key}" \
 DATA_DIR="${data_dir}" \
   PORT="${port}" \
   "${binary}" >"${log_file}" 2>&1 &
@@ -54,7 +56,7 @@ done
 
 test -s "${data_dir}/health.json"
 test -f "${data_dir}/auth.key"
-test -f "${data_dir}/encryption.key"
+test ! -e "${data_dir}/encryption.key"
 test -f "${data_dir}/gpt-load.db"
 auth_key="$(cat "${data_dir}/auth.key")"
 test -n "${auth_key}"
@@ -78,7 +80,7 @@ curl -fsS \
   "http://127.0.0.1:${port}/api/access-keys" >/dev/null
 
 test "$(path_mode "${data_dir}")" = "700"
-for asset in auth.key encryption.key gpt-load.db gpt-load.db-wal gpt-load.db-shm; do
+for asset in auth.key gpt-load.db gpt-load.db-wal gpt-load.db-shm; do
   test -f "${data_dir}/${asset}"
   test "$(path_mode "${data_dir}/${asset}")" = "600"
 done
