@@ -1,4 +1,4 @@
-// Package main provides the GPT-Load 2.0 process entry point.
+// Package main provides the Demerzel process entry point.
 package main
 
 import (
@@ -10,6 +10,9 @@ import (
 	"syscall"
 
 	"github.com/sirupsen/logrus"
+	"go.uber.org/dig"
+
+	"gpt-load/internal/accountscli"
 )
 
 func main() {
@@ -17,7 +20,12 @@ func main() {
 		os.Exit(dispatchCommand(os.Args[1:], os.Stdout, os.Stderr))
 	}
 	if err := runServer(); err != nil {
-		logrus.WithError(err).Error("GPT-Load stopped with an error")
+		rootCause := dig.RootCause(err)
+		if rootCause == nil {
+			rootCause = err
+		}
+		logrus.WithError(rootCause).Error("Demerzel stopped with an error")
+		logrus.WithError(err).Debug("Demerzel startup error chain")
 		os.Exit(1)
 	}
 }
@@ -32,33 +40,30 @@ func dispatchCommand(args []string, stdout, stderr io.Writer) int {
 	case "help", "-h", "--help":
 		printHelp(stdout)
 		return 0
-	case "migrate-keys":
-		fmt.Fprintln(stderr, "migrate-keys will be available in a later release")
-		return 1
+	case "accounts":
+		return accountscli.Run(args[1:], os.Stdin, stdout, stderr)
 	case "service":
 		return dispatchServiceCommand(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "Unknown command: %s\n", args[0])
-		fmt.Fprintln(stderr, "Run 'gpt-load help' for usage.")
+		fmt.Fprintln(stderr, "Run 'demerzel help' for usage.")
 		return 1
 	}
 }
 
 func printHelp(output io.Writer) {
-	fmt.Fprintln(output, "GPT-Load - self-hosted AI API key gateway")
+	fmt.Fprintln(output, "Demerzel - self-hosted AI API key gateway")
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Usage:")
-	fmt.Fprintln(output, "  gpt-load                    Start the gateway")
-	fmt.Fprintln(output, "  gpt-load help               Display this help message")
+	fmt.Fprintln(output, "  demerzel                    Start the gateway")
+	fmt.Fprintln(output, "  demerzel help               Display this help message")
+	fmt.Fprintln(output, "  demerzel accounts           Manage API-key accounts")
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Windows Service Commands:")
-	fmt.Fprintln(output, "  gpt-load service start      Start the Windows service")
-	fmt.Fprintln(output, "  gpt-load service stop       Stop the Windows service")
-	fmt.Fprintln(output, "  gpt-load service restart    Restart the Windows service")
-	fmt.Fprintln(output, "  gpt-load service status     Display the Windows service status")
-	fmt.Fprintln(output)
-	fmt.Fprintln(output, "Deferred Commands:")
-	fmt.Fprintln(output, "  migrate-keys      Key rotation support will be available in a later release")
+	fmt.Fprintln(output, "  demerzel service start      Start the Windows service")
+	fmt.Fprintln(output, "  demerzel service stop       Stop the Windows service")
+	fmt.Fprintln(output, "  demerzel service restart    Restart the Windows service")
+	fmt.Fprintln(output, "  demerzel service status     Display the Windows service status")
 }
 
 func runServer() error {
