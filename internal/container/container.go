@@ -31,7 +31,6 @@ import (
 	"gpt-load/internal/pricing"
 	"gpt-load/internal/provideradapter"
 	"gpt-load/internal/ratelimit"
-	"gpt-load/internal/releasecheck"
 	"gpt-load/internal/requestlog"
 	"gpt-load/internal/state"
 	stateloader "gpt-load/internal/state/loader"
@@ -132,8 +131,6 @@ func BuildContainer() (*dig.Container, error) {
 		func(runtime *control.Runtime) app.ControlRuntime { return runtime },
 		httpclient.NewHTTPClientManager,
 		newSystemOutboundProxyProvider,
-		releasecheck.NewClient,
-		releasecheck.NewChecker,
 		func(
 			manager *httpclient.HTTPClientManager,
 			proxyProvider httpclient.OutboundProxyProvider,
@@ -200,13 +197,7 @@ func BuildContainer() (*dig.Container, error) {
 		control.NewCatalogSyncCoordinator,
 		func(service *control.Service) app.StartupBootstrap { return service },
 		func(service *control.Service) app.StartupRecovery { return service },
-		func(
-			cfg *config.Config,
-			service *control.Service,
-			checker *releasecheck.Checker,
-		) *control.Server {
-			return control.NewServerWithReleaseUpdateChecker(cfg, service, checker)
-		},
+		control.NewServer,
 		newHTTPRegistry,
 		func(
 			db *gorm.DB,

@@ -118,8 +118,6 @@ func TestSharedAPIResponseFieldsMatchClassicContracts(t *testing.T) {
 		{"settings", "settingsFields", SettingsResponse{}},
 		{"settings", "settingsValueFields", SettingsValuesResponse{}},
 		{"proxy", "proxyViewFields", outboundproxy.View{}},
-		{"system-update", "systemUpdateFields", systemUpdateResponse{}},
-		{"system-update", "releaseUpdateFields", releaseUpdateResponse{}},
 	} {
 		t.Run(test.resource+"/"+test.fields, func(t *testing.T) {
 			path := filepath.Join("web", "src", "frontends", "classic", "app", "resources", test.resource+".ts")
