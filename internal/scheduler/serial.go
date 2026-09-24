@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	serialFailbackGrace      = time.Minute
-	serialProbeInitialDelay  = 5 * time.Second
-	serialProbeMaximumDelay  = 5 * time.Minute
+	serialFailbackGrace     = time.Minute
+	serialProbeInitialDelay = 5 * time.Second
+	serialProbeMaximumDelay = 5 * time.Minute
 )
 
 type SerialProbeResult uint8
@@ -142,7 +142,7 @@ func selectSerialCandidateLocked(
 		return firstAvailableSerialCandidate(candidates, group.ID, serial, tried, retryID)
 	}
 
-	selected, ok := firstAvailableSerialCandidate(candidates, group.ID, serial, tried, retryID)
+	selected, _, ok := firstAvailableSerialCandidate(candidates, group.ID, serial, tried, retryID)
 	if ok {
 		serial.CursorCredentialID = selected.meta.ID
 		serial.CursorIdentityGeneration = selected.meta.IdentityGeneration

@@ -12,6 +12,7 @@ import (
 	"gpt-load/internal/scheduler"
 	"gpt-load/internal/state"
 )
+
 type serialProbeReporter interface {
 	RecordSerialProbe(scheduler.Selection, scheduler.SerialProbeResult, time.Time)
 }
@@ -47,7 +48,7 @@ func serialListModelsRoute(
 	return "", "", nil, false
 }
 
-func recordSerialProbe(
+func reportSerialProbe(
 	iterator scheduler.SelectionIterator,
 	selection scheduler.Selection,
 	result scheduler.SerialProbeResult,

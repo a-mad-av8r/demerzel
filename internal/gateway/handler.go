@@ -29,6 +29,7 @@ import (
 	platformheader "gpt-load/internal/platform/httpheader"
 	"gpt-load/internal/platform/utils"
 	"gpt-load/internal/pricing"
+	"gpt-load/internal/protocol"
 	"gpt-load/internal/ratelimit"
 	"gpt-load/internal/scheduler"
 	"gpt-load/internal/state"
@@ -1245,13 +1246,13 @@ func (handler *Handler) executeAttempts(
 			}
 			probeInput := ForwardInput{
 				Dialect: serialProbeDialect, Group: selection.Group,
-				APIKey: normalizedCredential.apiKey,
+				APIKey:            normalizedCredential.apiKey,
 				CredentialSecrets: normalizedCredential.secrets,
 				Request: &dialect.ParsedRequest{
 					Method: http.MethodGet, Path: "/v1/models", Header: make(http.Header),
 				},
-				RequestID: probeRequestID,
-				AttemptID: probeRequestID + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
+				RequestID:       probeRequestID,
+				AttemptID:       probeRequestID + ":serial-probe:" + strconv.FormatUint(uint64(selection.CredentialID), 10),
 				AttemptSequence: 1, ClientProtocol: serialProbeProtocol,
 				Operation: execution.OperationListModels,
 				ChannelID: string(selection.ChannelID), RouteMode: serialProbeMode,

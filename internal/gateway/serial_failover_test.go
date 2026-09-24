@@ -12,8 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"gpt-load/internal/channel"
-	"gpt-load/internal/config"
 	"gpt-load/internal/execution"
+	"gpt-load/internal/platform/config"
 	"gpt-load/internal/protocol"
 	"gpt-load/internal/state"
 	"gpt-load/internal/testutil/fakeupstream"
@@ -44,7 +44,7 @@ func serialGatewayHarness(
 		})
 	}
 	_, err := manager.Publish(state.CompileInput{
-		SystemSettings: config.Settings{state.SettingRetryCount: 1},
+		SystemSettings:  config.Settings{state.SettingRetryCount: 1},
 		ChannelRegistry: channel.NewRegistry(),
 		Groups: []state.GroupConfig{{
 			ID: 1, Name: "serial pool", ChannelID: channelID, ConnectionType: "api_key",
@@ -79,12 +79,12 @@ func TestGatewaySerialAccount429SelectsNextCredential(t *testing.T) {
 	forwarder := &scriptedForwarder{results: []UpstreamResult{
 		{
 			StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"60"}},
-			Body: []byte(`{"error":{"type":"rate_limit_error","code":"quota_exceeded"}}`),
+			Body:           []byte(`{"error":{"type":"rate_limit_error","code":"quota_exceeded"}}`),
 			RequestWritten: true, DispatchState: execution.DispatchMaybeSent,
 			ExecutionError: &execution.ErrorEvidence{
 				Kind: execution.ErrorKindHTTP, Hint: execution.FailureHintRateLimited,
 				OriginHint: execution.ErrorOriginUpstream, ScopeHint: execution.ErrorScopeCredential,
-				StatusCode: http.StatusTooManyRequests,
+				StatusCode:   http.StatusTooManyRequests,
 				ReplaySafety: execution.ReplaySafetyRejectedBeforeProcessing,
 			},
 		},
@@ -102,7 +102,7 @@ func TestGatewaySerialReplaySafe5xxRetriesSameCredential(t *testing.T) {
 	forwarder := &scriptedForwarder{results: []UpstreamResult{
 		{
 			StatusCode: http.StatusServiceUnavailable, Header: make(http.Header),
-			Body: []byte(`{"error":{"type":"service_unavailable_error","code":"server_is_overloaded"}}`),
+			Body:           []byte(`{"error":{"type":"service_unavailable_error","code":"server_is_overloaded"}}`),
 			RequestWritten: true, DispatchState: execution.DispatchMaybeSent,
 			ExecutionError: &execution.ErrorEvidence{
 				Kind: execution.ErrorKindHTTP, Hint: execution.FailureHintHostError,
@@ -199,7 +199,7 @@ func (forwarder *quotaMismatchForwarder) Forward(_ context.Context, input Forwar
 	case input.APIKey == "sk-primary":
 		return UpstreamResult{
 			StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"1800"}},
-			Body: []byte(`{"error":{"type":"rate_limit_error","code":"quota_exceeded"}}`),
+			Body:           []byte(`{"error":{"type":"rate_limit_error","code":"quota_exceeded"}}`),
 			RequestWritten: true, DispatchState: execution.DispatchMaybeSent,
 			ExecutionError: &execution.ErrorEvidence{
 				Kind: execution.ErrorKindHTTP, Hint: execution.FailureHintRateLimited,
