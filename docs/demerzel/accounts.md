@@ -1,9 +1,9 @@
 # Account CLI
 
 `demerzel accounts` manages API-key credentials through Demerzel's authenticated
-loopback control API. It does not access the database directly. Choose an
-existing API-key group and pass both its group ID and, for mutations, the
-credential ID returned by the API.
+owner-only Unix admin socket. It uses the control API, not direct database
+access. Choose an existing API-key group and pass both its group ID and, for
+mutations, the credential ID returned by the API.
 
 ```sh
 demerzel accounts list
@@ -51,24 +51,24 @@ The CLI uses these authenticated API contracts:
   credential.
 
 The `label` field on credential list/update responses is part of the server API
-contract. The CLI sends management requests only to an HTTP(S) loopback origin;
-redirects and non-loopback URLs are rejected so the bearer key is not forwarded
-to another host. API error bodies are not printed.
+contract. The CLI sends management requests only through `control.sock` under
+the owner-only data root. It rejects a socket or data root accessible by other
+users, symlinked sockets, redirects, and raw API error bodies. An HTTP endpoint
+or `DEMERZEL_CONTROL_URL` cannot override this transport.
 
 ## Management key and data root
 
 The management key comes from the `AUTH_KEY` environment variable when it is
 non-empty, or from an owner-only key file. The default file is
 `$DATA_DIR/auth.key`. Use `--data-dir` or `--auth-key-file` to select the same
-root/key file used by the running server. If `DATA_DIR` is not set, the CLI
-uses `$HOME/.demerzel` on macOS or `${XDG_DATA_HOME:-$HOME/.local/share}/demerzel`
-on Linux (`XDG_DATA_HOME` must be absolute); other platforms use their
-per-user config root under `demerzel/data`. The CLI does not create data
-directories or fall back to a repository-relative path. The control URL defaults
-to `http://127.0.0.1:3001`; `--url` or `DEMERZEL_CONTROL_URL` may select another
-loopback port.
+root/key file used by the running server. Without `DATA_DIR`, both server and CLI
+use `$HOME/.demerzel` on macOS or
+`${XDG_DATA_HOME:-$HOME/.local/share}/demerzel` on Linux
+(`XDG_DATA_HOME` must be absolute), independent of the working directory. The
+CLI does not create data directories or accept `--url`; account commands on
+other platforms currently fail closed without an owner-only Unix transport.
 
 The CLI never prints the management key, upstream key, request body, or raw
 control API error body. Commands return a nonzero exit code for invalid input,
-unsafe paths/URLs, authentication failures, API errors, and unconfirmed
+unsafe socket paths, authentication failures, API errors, and unconfirmed
 mutations.

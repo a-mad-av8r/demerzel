@@ -1,8 +1,11 @@
+//go:build darwin || linux
+
 package accountscli
 
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,9 +13,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"gpt-load/internal/platform/config"
 	"gpt-load/internal/platform/securefile"
 )
 
@@ -29,6 +34,7 @@ type fakeCredential struct {
 type fakeManagementAPI struct {
 	mu                   sync.Mutex
 	server               *httptest.Server
+	dataDir              string
 	credential           *fakeCredential
 	importedSecret       string
 	importIdempotencyKey string
@@ -36,9 +42,25 @@ type fakeManagementAPI struct {
 	rejectAuthentication bool
 }
 
-func newFakeManagementAPI() *fakeManagementAPI {
-	fixture := &fakeManagementAPI{}
-	fixture.server = httptest.NewServer(http.HandlerFunc(fixture.serveHTTP))
+func newFakeManagementAPI(t *testing.T) *fakeManagementAPI {
+	t.Helper()
+	dataDir, err := os.MkdirTemp("/tmp", "dmz-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dataDir) })
+	socket, err := net.Listen("unix", filepath.Join(dataDir, config.ControlSocketFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dataDir, config.ControlSocketFileName), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fixture := &fakeManagementAPI{dataDir: dataDir}
+	fixture.server = httptest.NewUnstartedServer(http.HandlerFunc(fixture.serveHTTP))
+	_ = fixture.server.Listener.Close()
+	fixture.server.Listener = socket
+	fixture.server.Start()
 	return fixture
 }
 
@@ -221,10 +243,10 @@ func (fixture *fakeManagementAPI) credentialResponse() map[string]any {
 
 func TestAccountLifecycleUsesAuthenticatedControlAPIAndRedactsSecrets(t *testing.T) {
 	t.Setenv("AUTH_KEY", "")
-	fixture := newFakeManagementAPI()
+	fixture := newFakeManagementAPI(t)
 	defer fixture.close()
 	authFile := writeOwnerOnlyTestFile(t, "auth.key", []byte(testManagementKey))
-	connection := []string{"--url", fixture.server.URL, "--auth-key-file", authFile}
+	connection := []string{"--data-dir", fixture.dataDir, "--auth-key-file", authFile}
 
 	stdout, stderr, code := invoke(t, []string{"add", "--group", "7", "--stdin"}, connection, testAccountKey+"\n")
 	if code != 0 || stderr != "" || stdout != "Added one account to group 7.\n" {
@@ -317,37 +339,91 @@ func TestAccountLifecycleUsesAuthenticatedControlAPIAndRedactsSecrets(t *testing
 
 func TestAccountCLIRejectsInsecureCredentialFileAndRemoteControlURL(t *testing.T) {
 	t.Setenv("AUTH_KEY", "")
-	fixture := newFakeManagementAPI()
+	fixture := newFakeManagementAPI(t)
 	defer fixture.close()
 	authFile := writeOwnerOnlyTestFile(t, "auth.key", []byte(testManagementKey))
-	if runtime.GOOS != "windows" {
-		keyFile := filepath.Join(t.TempDir(), "credential.key")
-		if err := os.WriteFile(keyFile, []byte(testAccountKey), 0o644); err != nil {
-			t.Fatal("could not create credential test file")
-		}
-		if err := os.Chmod(keyFile, 0o644); err != nil {
-			t.Fatal("could not make the credential test file readable by other users")
-		}
-
-		stdout, stderr, code := invoke(t, []string{"add", "--group", "7", "--key-file", keyFile},
-			[]string{"--url", fixture.server.URL, "--auth-key-file", authFile}, "")
-		if code == 0 || !strings.Contains(stderr, "restrictive regular file") {
-			t.Fatal("add accepted a credential file readable by other users")
-		}
-		assertRedacted(t, stdout, stderr)
+	keyFile := filepath.Join(t.TempDir(), "credential.key")
+	if err := os.WriteFile(keyFile, []byte(testAccountKey), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(keyFile, 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	stdout, stderr, code := invoke(t, []string{"list"},
+	stdout, stderr, code := invoke(t, []string{"add", "--group", "7", "--key-file", keyFile},
+		[]string{"--data-dir", fixture.dataDir, "--auth-key-file", authFile}, "")
+	if code == 0 || !strings.Contains(stderr, "restrictive regular file") {
+		t.Fatal("add accepted a credential file readable by other users")
+	}
+	assertRedacted(t, stdout, stderr)
+
+	stdout, stderr, code = invoke(t, []string{"list"},
 		[]string{"--url", "http://example.com", "--auth-key-file", authFile}, "")
-	if code == 0 || !strings.Contains(stderr, "loopback") {
-		t.Fatal("CLI accepted a non-loopback control API")
+	if code == 0 {
+		t.Fatal("CLI accepted an HTTP control API URL")
 	}
 	assertRedacted(t, stdout, stderr)
 }
 
+func TestAccountCLIUsesProtectedSocketInsteadOfInjectedTCPAndRejectsUnsafePaths(t *testing.T) {
+	t.Setenv("AUTH_KEY", "")
+	fixture := newFakeManagementAPI(t)
+	defer fixture.close()
+	authFile := writeOwnerOnlyTestFile(t, "auth.key", []byte(testManagementKey))
+	connection := []string{"--data-dir", fixture.dataDir, "--auth-key-file", authFile}
+
+	var tcpRequests atomic.Int32
+	malicious := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tcpRequests.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer malicious.Close()
+	t.Setenv("DEMERZEL_CONTROL_URL", malicious.URL)
+	stdout, stderr, code := invoke(t, []string{"list"}, connection, "")
+	if code != 0 || stderr != "" || tcpRequests.Load() != 0 {
+		t.Fatalf("account listing did not use the protected socket: %s", stderr)
+	}
+	assertRedacted(t, stdout, stderr)
+
+	socket := filepath.Join(fixture.dataDir, config.ControlSocketFileName)
+	if err := os.Chmod(socket, 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, code := invoke(t, []string{"list"}, connection, ""); code == 0 {
+		t.Fatal("CLI accepted a socket accessible by other users")
+	}
+	if err := os.Chmod(socket, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(fixture.dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, code := invoke(t, []string{"list"}, connection, ""); code == 0 {
+		t.Fatal("CLI accepted a data directory accessible by other users")
+	}
+	if err := os.Chmod(fixture.dataDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	linkedDir, err := os.MkdirTemp("/tmp", "dmz-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(linkedDir) })
+	if err := os.Symlink(socket, filepath.Join(linkedDir, config.ControlSocketFileName)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, code := invoke(t, []string{"list"},
+		[]string{"--data-dir", linkedDir, "--auth-key-file", authFile}, ""); code == 0 {
+		t.Fatal("CLI accepted a symlinked admin socket")
+	}
+	if tcpRequests.Load() != 0 {
+		t.Fatal("injected TCP endpoint received a management request")
+	}
+}
+
 func TestAccountCLIHidesControlAPIErrorBodies(t *testing.T) {
 	t.Setenv("AUTH_KEY", "")
-	fixture := newFakeManagementAPI()
+	fixture := newFakeManagementAPI(t)
 	defer fixture.close()
 	fixture.mu.Lock()
 	fixture.rejectAuthentication = true
@@ -355,7 +431,7 @@ func TestAccountCLIHidesControlAPIErrorBodies(t *testing.T) {
 	authFile := writeOwnerOnlyTestFile(t, "auth.key", []byte(testManagementKey))
 
 	stdout, stderr, code := invoke(t, []string{"add", "--group", "7", "--stdin"},
-		[]string{"--url", fixture.server.URL, "--auth-key-file", authFile}, testAccountKey)
+		[]string{"--data-dir", fixture.dataDir, "--auth-key-file", authFile}, testAccountKey)
 	if code == 0 || !strings.Contains(stderr, "HTTP 401") {
 		t.Fatal("unauthorized control API response did not produce a nonzero safe error")
 	}
@@ -401,7 +477,7 @@ func TestDefaultDataDirUsesPlatformInstallPathWithoutCreatingIt(t *testing.T) {
 	switch runtime.GOOS {
 	case "darwin":
 		t.Setenv("HOME", home)
-		path, err := defaultDataDir()
+		path, err := config.DefaultDataDir()
 		if err != nil {
 			t.Fatal("could not resolve macOS data root")
 		}
@@ -413,7 +489,7 @@ func TestDefaultDataDirUsesPlatformInstallPathWithoutCreatingIt(t *testing.T) {
 	case "linux":
 		t.Setenv("HOME", home)
 		t.Setenv("XDG_DATA_HOME", "")
-		path, err := defaultDataDir()
+		path, err := config.DefaultDataDir()
 		if err != nil {
 			t.Fatal("could not resolve default Linux data root")
 		}
@@ -425,14 +501,14 @@ func TestDefaultDataDirUsesPlatformInstallPathWithoutCreatingIt(t *testing.T) {
 
 		xdgRoot := filepath.Join(t.TempDir(), "xdg")
 		t.Setenv("XDG_DATA_HOME", xdgRoot)
-		path, err = defaultDataDir()
+		path, err = config.DefaultDataDir()
 		if err != nil || path != filepath.Join(xdgRoot, "demerzel") {
 			t.Fatal("Linux data root did not honor XDG_DATA_HOME")
 		}
 		paths = append(paths, path)
 
 		t.Setenv("XDG_DATA_HOME", "relative-data")
-		if _, err := defaultDataDir(); err == nil {
+		if _, err := config.DefaultDataDir(); err == nil {
 			t.Fatal("relative XDG_DATA_HOME was accepted")
 		}
 	default:

@@ -78,22 +78,50 @@ locator="$(demerzel key-locator --data-dir "$DATA_DIR")"
 printf 'Vault account locator: %s\n' "$locator"
 ```
 
-For a supervised escrow export, set `ESCROW_FILE` to a destination protected
-independently from the database backup (for example, a mounted encrypted
-off-machine vault). The export is interactive, never part of the service:
+For a supervised escrow export, select a **new** destination under an
+operator-owned private directory on an independently protected off-machine
+vault. The export is interactive, never part of the service. Python opens the
+destination exclusively, without following a final symlink, at mode 0600;
+plain shell `> "$ESCROW_FILE"` is unsafe even with `umask 077`:
 
 ```sh
-: "${ESCROW_FILE:?Set a protected off-machine escrow file path first}"
-umask 077
-# macOS, with login Keychain unlocked:
-security find-generic-password -s io.demerzel.encryption.master-key.v1 -a "$locator" -w > "$ESCROW_FILE"
-# Linux instead, with the Secret Service collection unlocked and secret-tool installed:
-# secret-tool lookup application io.demerzel purpose encryption.master-key.v1 installation "$locator" > "$ESCROW_FILE"
+: "${ESCROW_FILE:?Set a new protected off-machine escrow path first}"
+export ESCROW_FILE
+export DEMERZEL_VAULT_LOCATOR="$locator"
+python3 - <<'PY'
+import os
+import subprocess
+import stat
+import sys
+path = os.environ["ESCROW_FILE"]
+parent = os.lstat(os.path.dirname(os.path.abspath(path)))
+if (not stat.S_ISDIR(parent.st_mode) or parent.st_uid != os.geteuid()
+        or stat.S_IMODE(parent.st_mode) & 0o077):
+    raise ValueError("escrow destination parent must be an owner-only directory")
+
+locator = os.environ["DEMERZEL_VAULT_LOCATOR"]
+if sys.platform == "darwin":
+    command = ["security", "find-generic-password",
+               "-s", "io.demerzel.encryption.master-key.v1", "-a", locator, "-w"]
+else:
+    command = ["secret-tool", "lookup", "application", "io.demerzel",
+               "purpose", "encryption.master-key.v1", "installation", locator]
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+with os.fdopen(os.open(path, flags, 0o600), "wb") as output:
+    secret = subprocess.check_output(command, stderr=subprocess.DEVNULL).strip()
+    if len(secret) != 64 or any(c not in b"0123456789abcdefABCDEF" for c in secret):
+        raise ValueError("vault did not return a 64-hex master key")
+    output.write(secret + b"\n")
+PY
 ```
 
-Both commands reveal the 64-hex master key: **never paste their output into
-chat, logs, shell history, or a database backup.** Keep the escrow copy
-separately custodied and prove a restore before retiring any source. If
+If the export fails, the new destination may be empty or incomplete. Inspect
+and remove it manually before choosing another new destination.
+
+Both vault lookups return the 64-hex master key to this supervised export:
+**Never paste it into chat, logs, shell history, or a database backup.** Keep
+the escrow copy separately custodied and prove a restore before retiring any
+source. If
 restoring to a different absolute path, the locator changes; a supervised
 `DEMERZEL_ENCRYPTION_KEY_IMPORT_LEGACY=1` import from a 0600 source file can
 bind the original master to that new installation, but do not remove the

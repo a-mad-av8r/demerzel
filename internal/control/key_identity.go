@@ -27,7 +27,7 @@ func (s *Service) verifyMasterKeyIdentity(tx *gorm.DB) error {
 		return fmt.Errorf("master-key identity cannot be computed: %w", app_errors.ErrInternalServer)
 	}
 	var marker models.SystemSetting
-	result := tx.Where("key = ?", masterKeyIdentitySetting).Limit(1).Find(&marker)
+	result := masterKeyIdentityScope(tx).Limit(1).Find(&marker)
 	if result.Error != nil {
 		return app_errors.ParseDBError(result.Error)
 	}
@@ -69,8 +69,7 @@ func (s *Service) verifyPreexistingCiphertext(tx *gorm.DB) error {
 		}
 	}
 	var setting models.SystemSetting
-	result := tx.Where("key IN ?", []string{outboundproxy.SystemSettingKey, automodel.SettingKey}).
-		Limit(1).Find(&setting)
+	result := legacyEncryptedSettingScope(tx).Limit(1).Find(&setting)
 	if result.Error != nil {
 		return app_errors.ParseDBError(result.Error)
 	}
@@ -86,4 +85,12 @@ func (s *Service) authenticateLegacyCiphertext(value string) error {
 		return fmt.Errorf("existing encrypted state cannot be read by the custodied master key; restore the original key before startup: %w", app_errors.ErrInternalServer)
 	}
 	return nil
+}
+
+func masterKeyIdentityScope(tx *gorm.DB) *gorm.DB {
+	return tx.Where(&models.SystemSetting{Key: masterKeyIdentitySetting})
+}
+
+func legacyEncryptedSettingScope(tx *gorm.DB) *gorm.DB {
+	return tx.Where(map[string]any{"key": []string{outboundproxy.SystemSettingKey, automodel.SettingKey}})
 }

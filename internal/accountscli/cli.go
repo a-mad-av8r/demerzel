@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
-)
 
-const defaultControlURL = "http://127.0.0.1:3001"
+	"gpt-load/internal/platform/config"
+)
 
 var errHelpRequested = errors.New("help requested")
 
 type commonFlags struct {
-	controlURL *string
-	dataDir    *string
-	authFile   *string
+	dataDir  *string
+	authFile *string
 }
 
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -58,15 +56,10 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 func newCommonFlagSet(name string) (*flag.FlagSet, commonFlags) {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	urlDefault := strings.TrimSpace(os.Getenv("DEMERZEL_CONTROL_URL"))
-	if urlDefault == "" {
-		urlDefault = defaultControlURL
-	}
 	dataDirDefault := os.Getenv("DATA_DIR")
 	return flags, commonFlags{
-		controlURL: flags.String("url", urlDefault, "loopback control API URL"),
-		dataDir:    flags.String("data-dir", dataDirDefault, "durable application data directory"),
-		authFile:   flags.String("auth-key-file", "", "owner-only management key file"),
+		dataDir:  flags.String("data-dir", dataDirDefault, "durable application data directory"),
+		authFile: flags.String("auth-key-file", "", "owner-only management key file"),
 	}
 }
 
@@ -86,15 +79,23 @@ func parseFlags(flags *flag.FlagSet, args []string, help io.Writer, usage string
 }
 
 func commonClient(flags commonFlags) (*apiClient, error) {
-	baseURL, err := validateControlURL(*flags.controlURL)
+	dataDir := *flags.dataDir
+	if dataDir == "" {
+		var err error
+		dataDir, err = config.DefaultDataDir()
+		if err != nil {
+			return nil, err
+		}
+	}
+	socketPath, err := secureAdminSocket(dataDir)
 	if err != nil {
 		return nil, err
 	}
-	authKey, err := loadAuthKey(*flags.dataDir, *flags.authFile)
+	authKey, err := loadAuthKey(dataDir, *flags.authFile)
 	if err != nil {
 		return nil, err
 	}
-	return newAPIClient(baseURL, authKey), nil
+	return newAPIClient(socketPath, authKey), nil
 }
 
 func runList(args []string, flags *flag.FlagSet, common commonFlags, stdout io.Writer) error {
@@ -299,9 +300,8 @@ const accountsHelp = `Usage:
   demerzel accounts remove --group ID --credential ID
 
 Connection options for each command:
-  --url URL             Loopback control API (default http://127.0.0.1:3001)
   --auth-key-file PATH  Owner-only AUTH_KEY file (default DATA_DIR/auth.key)
-  --data-dir PATH       Durable application data root
+  --data-dir PATH       Durable application data root containing control.sock
   --help                Show command help
 
 API keys are read from stdin or a restrictive file, never from arguments.
@@ -315,4 +315,4 @@ func mutationHelp(command string) string {
 	return fmt.Sprintf("Usage: demerzel accounts %s --group ID --credential ID [connection options]\n%s", command, accountsConnectionHelp)
 }
 
-const accountsConnectionHelp = `\nConnection options:\n  --url URL             Loopback control API\n  --auth-key-file PATH  Owner-only AUTH_KEY file\n  --data-dir PATH       Durable application data root\n`
+const accountsConnectionHelp = `\nConnection options:\n  --auth-key-file PATH  Owner-only AUTH_KEY file\n  --data-dir PATH       Durable application data root containing control.sock\n`

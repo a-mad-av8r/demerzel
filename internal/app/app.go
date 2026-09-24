@@ -41,6 +41,7 @@ type App struct {
 	mu              sync.Mutex
 	httpServer      *http.Server
 	listener        net.Listener
+	adminListener   net.Listener
 	serveErrors     chan error
 	runtimeCancel   context.CancelFunc
 	runtimeDone     chan struct{}
@@ -137,7 +138,7 @@ func NewApp(params AppParams) *App {
 		requestLogs:       params.RequestLogs,
 		executionRuntime:  params.ExecutionRuntime,
 		listen:            net.Listen,
-		serveErrors:       make(chan error, 1),
+		serveErrors:       make(chan error, 2),
 	}
 }
 
@@ -189,24 +190,35 @@ func (a *App) Start() error {
 		logrus.WithField("event", "startup.execution_runtime_start").Info("execution runtime started")
 	}
 
+	adminListener, err := listenAdminSocket(a.config.AdminSocketPath)
+	if err != nil {
+		return a.startupFailure("admin_socket", err)
+	}
+	closeAdminListener := func() error {
+		if adminListener == nil {
+			return nil
+		}
+		return adminListener.Close()
+	}
+
 	address := net.JoinHostPort(a.config.Server.Host, strconv.Itoa(a.config.Server.Port))
 	listener, err := a.listen("tcp", address)
 	if err != nil {
-		return a.startupFailure("listen", fmt.Errorf("listen on %s: %w", address, err))
+		return a.startupFailure("listen", errors.Join(fmt.Errorf("listen on %s: %w", address, err), closeAdminListener()))
 	}
 	logrus.WithFields(logrus.Fields{
 		"event":   "startup.server_listen",
 		"address": listener.Addr().String(),
 	}).Info("HTTP listener bound")
 	if a.requestLogs == nil {
-		closeErr := listener.Close()
+		closeErr := errors.Join(listener.Close(), closeAdminListener())
 		return a.startupFailure("request_logs", errors.Join(
 			fmt.Errorf("start request logs: request log runtime is nil"),
 			wrapListenerCloseError(closeErr),
 		))
 	}
 	if err := a.requestLogs.Start(); err != nil {
-		closeErr := listener.Close()
+		closeErr := errors.Join(listener.Close(), closeAdminListener())
 		return a.startupFailure("request_logs", errors.Join(
 			fmt.Errorf("start request logs: %w", err),
 			wrapListenerCloseError(closeErr),
@@ -224,6 +236,7 @@ func (a *App) Start() error {
 	}
 	a.httpServer = server
 	a.listener = listener
+	a.adminListener = adminListener
 	runtimeContext, cancelRuntime := context.WithCancel(context.Background())
 	runtimeDone := make(chan struct{})
 	a.runtimeCancel = cancelRuntime
@@ -234,6 +247,13 @@ func (a *App) Start() error {
 			a.serveErrors <- fmt.Errorf("serve HTTP: %w", err)
 		}
 	}()
+	if adminListener != nil {
+		go func() {
+			if err := server.Serve(adminListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				a.serveErrors <- fmt.Errorf("serve local admin socket: %w", err)
+			}
+		}()
+	}
 	go func() {
 		defer close(runtimeDone)
 		logrus.WithField("event", "startup.control_runtime_start").Info("control runtime started")
@@ -272,6 +292,7 @@ func (a *App) Stop(ctx context.Context) error {
 	a.mu.Lock()
 	server := a.httpServer
 	listener := a.listener
+	adminListener := a.adminListener
 	cancelRuntime := a.runtimeCancel
 	runtimeDone := a.runtimeDone
 	requestLogs := a.requestLogs
@@ -313,6 +334,11 @@ func (a *App) Stop(ctx context.Context) error {
 	if listener != nil {
 		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			errs = append(errs, fmt.Errorf("close HTTP listener: %w", err))
+		}
+	}
+	if adminListener != nil {
+		if err := adminListener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			errs = append(errs, fmt.Errorf("close admin socket: %w", err))
 		}
 	}
 	if runtimeDone != nil {

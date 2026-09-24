@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -95,40 +94,23 @@ type credentialPage struct {
 	} `json:"pagination"`
 }
 
-func newAPIClient(baseURL, authKey string) *apiClient {
+func newAPIClient(socketPath, authKey string) *apiClient {
 	return &apiClient{
-		baseURL: baseURL,
+		baseURL: "http://unix",
 		authKey: authKey,
 		http: &http.Client{
 			Timeout: 20 * time.Second,
 			Transport: &http.Transport{
 				Proxy: nil,
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
+				},
 			},
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
 		},
 	}
-}
-
-func validateControlURL(value string) (string, error) {
-	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil || parsed == nil || parsed.Host == "" {
-		return "", errors.New("control API URL must be a loopback HTTP(S) URL")
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" ||
-		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" ||
-		parsed.Opaque != "" || parsed.Path != "" && parsed.Path != "/" {
-		return "", errors.New("control API URL must be a loopback HTTP(S) origin")
-	}
-	host := strings.TrimSuffix(parsed.Hostname(), ".")
-	if !strings.EqualFold(host, "localhost") {
-		ip := net.ParseIP(host)
-		if ip == nil || !ip.IsLoopback() {
-			return "", errors.New("management credentials may only be sent to a loopback control API")
-		}
-	}
-	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
 func (c *apiClient) listGroups() ([]group, error) {

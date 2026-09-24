@@ -1,6 +1,6 @@
 # Go binaries, builds, and coverage
-gpt-load
-demerzel
+/gpt-load
+/demerzel
 *.exe
 *.dll
 *.so

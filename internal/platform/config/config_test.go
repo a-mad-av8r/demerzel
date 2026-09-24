@@ -34,10 +34,11 @@ func TestLoadUsesDefaultConfiguration(t *testing.T) {
 	if cfg.Server.IdleTimeout != 120 {
 		t.Fatalf("IdleTimeout = %d, want 120", cfg.Server.IdleTimeout)
 	}
-	if cfg.DataDir != "./data" {
-		t.Fatalf("DataDir = %q, want ./data", cfg.DataDir)
+	wantDataDir, err := DefaultDataDir()
+	if err != nil || !filepath.IsAbs(wantDataDir) || cfg.DataDir != wantDataDir {
+		t.Fatalf("DataDir = %q, want absolute durable root %q (error %v)", cfg.DataDir, wantDataDir, err)
 	}
-	if cfg.DatabaseDSN != filepath.Join("./data", "gpt-load.db") {
+	if cfg.DatabaseDSN != filepath.Join(wantDataDir, "gpt-load.db") {
 		t.Fatalf("DatabaseDSN = %q", cfg.DatabaseDSN)
 	}
 	if cfg.DatabaseMetadata.Driver != DatabaseDriverSQLite {
@@ -48,6 +49,24 @@ func TestLoadUsesDefaultConfiguration(t *testing.T) {
 	}
 	if cfg.Log.Level != "info" || cfg.Log.Format != "text" {
 		t.Fatalf("Log = %#v, want info/text", cfg.Log)
+	}
+}
+
+func TestLoadUsesSameDataRootAcrossWorkingDirectories(t *testing.T) {
+	clearEnvironment(t)
+	t.Setenv("AUTH_KEY", "test-auth-key")
+	first, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	second, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.DataDir != second.DataDir || first.DatabaseDSN != second.DatabaseDSN ||
+		first.AdminSocketPath != second.AdminSocketPath {
+		t.Fatalf("changing directories moved installation state from %q to %q", first.DataDir, second.DataDir)
 	}
 }
 
@@ -523,6 +542,9 @@ func TestLoadRejectsInvalidRequiredAndNumericValues(t *testing.T) {
 func clearEnvironment(t *testing.T) {
 	t.Helper()
 	t.Chdir(t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("APPDATA", t.TempDir())
+	t.Setenv("XDG_DATA_HOME", "")
 	for _, key := range []string{
 		"HOST", "PORT", "DATA_DIR", "DATABASE_DSN", "ENCRYPTION_KEY", "AUTH_KEY",
 		"LOG_LEVEL", "LOG_FORMAT", "GRACEFUL_SHUTDOWN_TIMEOUT",

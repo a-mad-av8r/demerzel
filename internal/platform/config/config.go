@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -18,13 +19,46 @@ import (
 const (
 	defaultHost                    = "127.0.0.1"
 	defaultPort                    = 3001
-	defaultDataDir                 = "./data"
 	defaultGracefulShutdownSeconds = 10
 	defaultReadTimeoutSeconds      = 60
 	defaultIdleTimeoutSeconds      = 120
 	defaultDatabaseMaxOpenConns    = 10
 	defaultDatabaseMaxIdleConns    = 5
 )
+
+// ControlSocketFileName is the owner-only local admin transport used by the CLI.
+const ControlSocketFileName = "control.sock"
+
+// DefaultDataDir locates durable application state independently of the working directory.
+func DefaultDataDir() (string, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		home, err := os.UserHomeDir()
+		if err != nil || home == "" {
+			return "", fmt.Errorf("cannot resolve a durable data directory; set DATA_DIR")
+		}
+		return filepath.Join(home, ".demerzel"), nil
+	case "linux":
+		root := os.Getenv("XDG_DATA_HOME")
+		if root == "" {
+			home, err := os.UserHomeDir()
+			if err != nil || home == "" {
+				return "", fmt.Errorf("cannot resolve a durable data directory; set DATA_DIR")
+			}
+			root = filepath.Join(home, ".local", "share")
+		}
+		if !filepath.IsAbs(root) {
+			return "", fmt.Errorf("XDG_DATA_HOME must be an absolute path")
+		}
+		return filepath.Join(root, "demerzel"), nil
+	default:
+		root, err := os.UserConfigDir()
+		if err != nil || root == "" {
+			return "", fmt.Errorf("cannot resolve a durable data directory; set DATA_DIR")
+		}
+		return filepath.Join(root, "demerzel", "data"), nil
+	}
+}
 
 // ServerConfig contains process-level HTTP server settings.
 type ServerConfig struct {
@@ -112,6 +146,7 @@ type DatabaseMetadata struct {
 type Config struct {
 	Server                         ServerConfig
 	DataDir                        string
+	AdminSocketPath                string
 	DatabaseDSN                    string
 	DatabaseMetadata               DatabaseMetadata
 	DatabasePool                   DatabasePoolConfig
@@ -175,7 +210,13 @@ func Load() (*Config, error) {
 		)
 	}
 
-	dataDir := valueOrDefault("DATA_DIR", defaultDataDir)
+	dataDir := os.Getenv("DATA_DIR")
+	if dataDir == "" {
+		dataDir, err = DefaultDataDir()
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err := securefile.PrepareManagedDataDir(dataDir); err != nil {
 		return nil, fmt.Errorf("prepare DATA_DIR: %w", err)
 	}
@@ -255,6 +296,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	adminSocketPath := ""
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		adminSocketPath = filepath.Join(dataDir, ControlSocketFileName)
+	}
+
 	return &Config{
 		Server: ServerConfig{
 			Host:                    valueOrDefault("HOST", defaultHost),
@@ -264,6 +310,7 @@ func Load() (*Config, error) {
 			IdleTimeout:             idleTimeout,
 		},
 		DataDir:          dataDir,
+		AdminSocketPath:  adminSocketPath,
 		DatabaseDSN:      databaseDSN,
 		DatabaseMetadata: databaseMetadata,
 		DatabasePool: DatabasePoolConfig{

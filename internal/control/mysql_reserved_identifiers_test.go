@@ -40,6 +40,25 @@ func TestGlobalProxyConfigScopeQuotesKeyForMySQL(t *testing.T) {
 	}
 }
 
+func TestMasterKeyIdentityScopesQuoteKeyForMySQL(t *testing.T) {
+	t.Parallel()
+	for name, scope := range map[string]func(*gorm.DB) *gorm.DB{
+		"identity":          masterKeyIdentityScope,
+		"legacy_ciphertext": legacyEncryptedSettingScope,
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := scope(openReservedIdentifierMySQLDryRun(t)).Limit(1).Find(&models.SystemSetting{})
+			if result.Error != nil {
+				t.Fatalf("identity query error = %v", result.Error)
+			}
+			sql := result.Statement.SQL.String()
+			if strings.Contains(sql, "WHERE key") || !strings.Contains(sql, "`key`") {
+				t.Fatalf("generated SQL = %q, want a GORM-quoted system setting key", sql)
+			}
+		})
+	}
+}
+
 func openReservedIdentifierMySQLDryRun(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(gormmysql.New(gormmysql.Config{

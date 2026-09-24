@@ -6,9 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"unicode/utf8"
+
+	"gpt-load/internal/platform/config"
 )
 
 const maxCredentialInputBytes = 1 << 20
@@ -26,7 +27,7 @@ func loadAuthKey(dataDir, authKeyPath string) (string, error) {
 	if authKeyPath == "" {
 		if dataDir == "" {
 			var err error
-			dataDir, err = defaultDataDir()
+			dataDir, err = config.DefaultDataDir()
 			if err != nil {
 				return "", err
 			}
@@ -43,36 +44,6 @@ func loadAuthKey(dataDir, authKeyPath string) (string, error) {
 		return "", errors.New("management key file is empty or invalid")
 	}
 	return key, nil
-}
-
-func defaultDataDir() (string, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			return "", errors.New("could not determine a durable application data directory; set DATA_DIR")
-		}
-		return filepath.Join(home, ".demerzel"), nil
-	case "linux":
-		root := os.Getenv("XDG_DATA_HOME")
-		if root == "" {
-			home, err := os.UserHomeDir()
-			if err != nil || home == "" {
-				return "", errors.New("could not determine a durable application data directory; set DATA_DIR")
-			}
-			root = filepath.Join(home, ".local", "share")
-		}
-		if !filepath.IsAbs(root) {
-			return "", errors.New("XDG_DATA_HOME must be an absolute path")
-		}
-		return filepath.Join(root, "demerzel"), nil
-	default:
-		root, err := os.UserConfigDir()
-		if err != nil || root == "" {
-			return "", errors.New("could not determine a durable application data directory; set DATA_DIR")
-		}
-		return filepath.Join(root, "demerzel", "data"), nil
-	}
 }
 
 func readSingleCredential(input io.Reader) ([]byte, error) {
