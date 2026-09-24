@@ -55,7 +55,7 @@ func TestReleaseWorkflowRunsPostPublishGatesInParallel(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	smokeJob := workflowJobBlock(t, content, "post-publish-image-smoke")
 	for _, required := range []string{
-		"ghcr.io/tbphp/gpt-load",
+		"ghcr.io/${{ github.repository }}",
 		"RELEASE_SMOKE_SOURCE_IMAGE",
 		".github/scripts/release-docker-smoke.sh",
 	} {
@@ -63,12 +63,9 @@ func TestReleaseWorkflowRunsPostPublishGatesInParallel(t *testing.T) {
 			t.Fatalf("published image smoke job does not contain %q:\n%s", required, smokeJob)
 		}
 	}
-	// 两个 registry 的 exact tag 已被断言为同一 digest，完整运行时 smoke 只跑一遍；
-	// Docker Hub 侧的 digest 一致性与可拉取性由 post-publish-verify 覆盖。
-	if strings.Contains(smokeJob, "DOCKERHUB") {
-		t.Fatalf("published image smoke repeats the identical digest on a second registry:\n%s", smokeJob)
+	if strings.Contains(smokeJob, "tbphp/gpt-load") || strings.Contains(smokeJob, "DOCKERHUB") {
+		t.Fatalf("published image smoke references an unowned registry:\n%s", smokeJob)
 	}
-	// 同一 commit 的镜像已在发布前的 docker-smoke 扫描过，这里不得重复扫描。
 	if !strings.Contains(smokeJob, `RELEASE_SMOKE_SKIP_SCAN: "true"`) {
 		t.Fatalf("published image smoke repeats the pre-publication vulnerability scan:\n%s", smokeJob)
 	}

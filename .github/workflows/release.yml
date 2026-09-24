@@ -331,19 +331,19 @@ jobs:
           - goos: linux
             runner: ubuntu-24.04
             goarch: amd64
-            filename: gpt-load-linux-amd64
+            filename: demerzel-linux-amd64
           - goos: linux
             runner: ubuntu-24.04
             goarch: arm64
-            filename: gpt-load-linux-arm64
+            filename: demerzel-linux-arm64
           - goos: darwin
             runner: macos-15
             goarch: amd64
-            filename: gpt-load-macos-amd64
+            filename: demerzel-macos-amd64
           - goos: darwin
             runner: macos-15
             goarch: arm64
-            filename: gpt-load-macos-arm64
+            filename: demerzel-macos-arm64
           - goos: windows
             runner: windows-2025
             goarch: amd64
@@ -448,7 +448,7 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Generate release SBOM and license assets
+      - name: Generate release SBOM, license assets, and installer tools
         run: |
           mkdir -p release
           cp LICENSE release/LICENSE
@@ -459,6 +459,23 @@ jobs:
           cp LICENSES/Inno-Setup.txt release/Inno-Setup.txt
           cp LICENSES/MIT.txt release/MIT.txt
           cp LICENSES/MPL-2.0.txt release/MPL-2.0.txt
+          cp packaging/install.sh release/install.sh
+          cp packaging/verify-release.sh release/verify-release.sh
+          cp packaging/local-smoke.sh release/local-smoke.sh
+          cp packaging/homebrew/demerzel.rb release/demerzel.rb
+          python3 - "${GITHUB_REF_NAME#v}" <<'PY'
+          from pathlib import Path
+          import sys
+
+          formula_path = Path("release/demerzel.rb")
+          contents = formula_path.read_text(encoding="utf-8")
+          source = '  version local_manifest ? local_manifest.fetch("version") : "2.0.0"\n'
+          replacement = f'  version local_manifest ? local_manifest.fetch("version") : "{sys.argv[1]}"\n'
+          if contents.count(source) != 1:
+              raise SystemExit("Homebrew formula release-version anchor is missing or ambiguous")
+          formula_path.write_text(contents.replace(source, replacement), encoding="utf-8")
+          PY
+          chmod 0755 release/install.sh release/verify-release.sh release/local-smoke.sh
           go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0 \
             mod -json -noserial -notimestamp -output release/bom.cdx.json .
 
@@ -478,6 +495,9 @@ jobs:
       - package-metadata
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout tag commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -487,7 +507,7 @@ jobs:
       - name: Download all release binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: binary-gpt-load-*
+          pattern: binary-*
           path: release
           merge-multiple: true
 
@@ -497,11 +517,23 @@ jobs:
           name: release-metadata
           path: release
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+
+      - name: Create and sign the Demerzel release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          .github/scripts/release-create-manifest.sh \
+            release "${GITHUB_REPOSITORY}" "${GITHUB_REF_NAME}"
+          cosign sign-blob --yes \
+            --bundle release/manifest.sigstore.json \
+            release/manifest.json
+
       - name: Generate SHA256SUMS
         shell: bash
         run: |
           set -euo pipefail
-          # 校验和覆盖 .github/release-assets.txt 中除 SHA256SUMS 自身外的全部资产。
           grep -vFx 'SHA256SUMS' .github/release-assets.txt >/tmp/checksum-targets
           cd release
           xargs -a /tmp/checksum-targets -d '\n' sha256sum >SHA256SUMS
@@ -523,9 +555,8 @@ jobs:
           name: release-checksums
           path: release/SHA256SUMS
           if-no-files-found: error
-          # 供 native-artifact-smoke 按需下载单个校验和文件；保留期需与
-          # release-assets 一致，否则失败的 run 延迟重试时可能已过期。
           retention-days: 14
+
 
   native-artifact-smoke:
     # package-checksums 已经依赖 build-binaries，无需重复声明。
@@ -537,13 +568,13 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            filename: gpt-load-linux-amd64
+            filename: demerzel-linux-amd64
           - runner: ubuntu-24.04-arm
-            filename: gpt-load-linux-arm64
+            filename: demerzel-linux-arm64
           - runner: macos-15-intel
-            filename: gpt-load-macos-amd64
+            filename: demerzel-macos-amd64
           - runner: macos-15
-            filename: gpt-load-macos-arm64
+            filename: demerzel-macos-arm64
           - runner: windows-2025
             filename: gpt-load-windows-amd64.exe
     runs-on: ${{ matrix.runner }}
@@ -684,7 +715,7 @@ jobs:
       - name: Download prebuilt Linux binary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: binary-gpt-load-linux-${{ matrix.arch }}
+          name: binary-demerzel-linux-${{ matrix.arch }}
           path: release
 
       - name: Build and smoke prebuilt image
@@ -697,9 +728,6 @@ jobs:
         run: .github/scripts/release-docker-smoke.sh
 
   publication-preflight:
-    # 这里必须逐个列出全部 gate，即使其中几个已被别的 needs 间接依赖：
-    # 下面的 if 只能看到直接 needs 的 result，上游失败会让中间 job 变成 skipped，
-    # 漏列任何一个都会让它的 failure 无法被察觉。清理 needs 前先读这条注释。
     needs:
       - validate-tag
       - verify-and-build-web
@@ -714,17 +742,13 @@ jobs:
       - docker-smoke
       - prebuilt-image-smoke
       - database-contract
-    # race-tests、race-cpa 与 database-contract 在 CI 已验证同一 commit 时为 skipped，
-    # 这里只拒绝真正失败的 gate，不把 skipped 当作缺失的验证。
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      # Draft Releases are visible only to identities with push access.
       contents: write
       packages: read
     outputs:
-      publication_state: ${{ steps.classify.outputs.publication_state }}
       write_mode: ${{ steps.classify.outputs.write_mode }}
       github_state: ${{ steps.inventory.outputs.github_state }}
       github_target_sha: ${{ steps.inventory.outputs.github_target_sha }}
@@ -732,18 +756,12 @@ jobs:
       ghcr_state: ${{ steps.inventory.outputs.ghcr_state }}
       ghcr_digest: ${{ steps.inventory.outputs.ghcr_digest }}
       ghcr_revision: ${{ steps.inventory.outputs.ghcr_revision }}
-      dockerhub_state: ${{ steps.inventory.outputs.dockerhub_state }}
-      dockerhub_digest: ${{ steps.inventory.outputs.dockerhub_digest }}
-      dockerhub_revision: ${{ steps.inventory.outputs.dockerhub_revision }}
-      ghcr_latest_digest: ${{ steps.inventory.outputs.ghcr_latest_digest }}
-      dockerhub_latest_digest: ${{ steps.inventory.outputs.dockerhub_latest_digest }}
     steps:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
+          echo "DOCKER_CONFIG=${docker_config}" >>"${GITHUB_ENV}"
 
       - name: Checkout tag commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -757,7 +775,7 @@ jobs:
           name: release-assets
           path: release
 
-      - name: Verify current-run tag and release assets
+      - name: Verify current-run tag, ancestry, and assets
         shell: bash
         run: |
           set -euo pipefail
@@ -765,153 +783,80 @@ jobs:
           test "$(git rev-parse "${GITHUB_REF_NAME}^{commit}")" = "${GITHUB_SHA}"
           git fetch --no-tags origin main
           git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
+          .github/scripts/release-verify-assets.sh release
 
-      - name: Verify complete release asset set
-        run: .github/scripts/release-verify-assets.sh release
-
-      - name: Require publication credentials and verify read access
-        shell: bash
+      - name: Require private GitHub read access
         env:
           GH_TOKEN: ${{ github.token }}
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          # 只读 token 是可选降级项，缺失时各只读 job 会回落到 DOCKERHUB_TOKEN；
-          # 这里声明的是各 job 实际会用到的解析结果，确保发布前它们都可用。
-          DOCKERHUB_READ_TOKEN: ${{ secrets.DOCKERHUB_READ_TOKEN || secrets.DOCKERHUB_TOKEN }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
-          for credential in \
-            GH_TOKEN \
-            DOCKERHUB_USERNAME \
-            DOCKERHUB_READ_TOKEN \
-            DOCKERHUB_TOKEN; do
-            if [[ -z "${!credential}" ]]; then
-              printf 'required publication credential is missing: %s\n' \
-                "${credential}" >&2
-              exit 1
-            fi
-          done
+          test -n "${GH_TOKEN}"
           gh auth status
           gh api "repos/${GITHUB_REPOSITORY}" --silent
 
-      - name: Log in to GHCR for read-only inventory
+      - name: Log in to owned GHCR package for read-only inventory
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub for read-only inventory
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_READ_TOKEN || secrets.DOCKERHUB_TOKEN }}
-
-      - name: Inventory publication channels
+      - name: Inventory GitHub draft and owned GHCR exact image
         id: inventory
         env:
           GH_TOKEN: ${{ github.token }}
+          IMAGE_EXACT: ${{ needs.validate-tag.outputs.image_exact }}
         shell: bash
         run: |
           set -euo pipefail
 
           github_state=absent
-          github_release_id=
           github_target_sha=
           github_assets=absent
-          github_draft=
-          github_prerelease=
           if gh release view "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --json databaseId,targetCommitish,isDraft,isPrerelease,assets \
+            --json targetCommitish,isDraft,isPrerelease,assets \
             >/tmp/existing-release.json 2>/tmp/existing-release.error; then
             github_state=present
-            github_release_id="$(
-              jq -r '.databaseId // empty' /tmp/existing-release.json
-            )"
-            github_target_sha="$(
-              jq -r '.targetCommitish // empty' /tmp/existing-release.json
-            )"
-            github_draft="$(
-              jq -r '.isDraft' /tmp/existing-release.json
-            )"
-            github_prerelease="$(
-              jq -r '.isPrerelease' /tmp/existing-release.json
-            )"
-            [[ "${github_release_id}" =~ ^[1-9][0-9]*$ ]]
-            test "${github_draft}" = "true"
-            test "${github_prerelease}" = \
+            github_target_sha="$(jq -r '.targetCommitish // empty' /tmp/existing-release.json)"
+            test "$(jq -r '.isDraft' /tmp/existing-release.json)" = true
+            test "$(jq -r '.isPrerelease' /tmp/existing-release.json)" = \
               "${{ needs.validate-tag.outputs.prerelease }}"
             jq -r '.assets[].name' /tmp/existing-release.json |
               LC_ALL=C sort >/tmp/existing-release-assets
             github_assets=mismatch
             if cmp .github/release-assets.txt /tmp/existing-release-assets; then
-              rm -rf existing-release
               mkdir existing-release
               gh release download "${GITHUB_REF_NAME}" \
                 --repo "${GITHUB_REPOSITORY}" \
                 --dir existing-release
-              # 已发布资产必须与本次 run 的 SHA256SUMS 逐字节一致；
-              # 传入可信副本后，远端那份 SHA256SUMS 只参与比对，不会被执行。
               if .github/scripts/release-verify-assets.sh \
                 existing-release release/SHA256SUMS; then
                 github_assets=match
               fi
             fi
-          elif grep -Eqi \
-            'HTTP 404|Not Found|release not found' \
-            /tmp/existing-release.error; then
-            github_state=absent
-          else
+          elif ! grep -Eqi 'HTTP 404|Not Found|release not found' /tmp/existing-release.error; then
             cat /tmp/existing-release.error >&2
             exit 1
           fi
 
-          inventory_image() {
-            local image="$1"
-            local digest=
-            local revision=
-            local status=0
-
-            digest="$(.github/scripts/release-image-digest.sh "${image}")"
-            if [[ "${digest}" == "absent" ]]; then
-              printf 'absent|absent|\n'
-              return
-            fi
-
-            # 退出码 1 表示确实读到了不匹配的 revision，降级为 mismatch 交给分类器；
-            # 其他非零表示无法完成检查，此时让 job 失败以区分基础设施问题。
-            revision="$(
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${IMAGE_EXACT}"
+          ghcr_digest="$(.github/scripts/release-image-digest.sh "${image}")"
+          ghcr_state=absent
+          ghcr_revision=
+          if [[ "${ghcr_digest}" != absent ]]; then
+            ghcr_state=present
+            status=0
+            ghcr_revision="$(
               .github/scripts/release-verify-image-revision.sh \
                 "${image}" "${GITHUB_SHA}"
             )" || status=$?
-            if ((status != 0)); then
-              test "${status}" = "1"
-              revision=mismatch
+            if ((status == 1)); then
+              ghcr_revision=mismatch
+            elif ((status != 0)); then
+              exit "${status}"
             fi
-            printf 'present|%s|%s\n' "${digest}" "${revision}"
-          }
-
-          # 用命令替换而非进程替换：函数内的失败必须终止本 step，
-          # 而不是让 read 静默读到空状态。
-          ghcr_inventory="$(
-            inventory_image \
-              "ghcr.io/tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}"
-          )"
-          dockerhub_inventory="$(
-            inventory_image \
-              "tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}"
-          )"
-          IFS='|' read -r ghcr_state ghcr_digest ghcr_revision \
-            <<<"${ghcr_inventory}"
-          IFS='|' read -r dockerhub_state dockerhub_digest dockerhub_revision \
-            <<<"${dockerhub_inventory}"
-          ghcr_latest_digest="$(
-            .github/scripts/release-image-digest.sh ghcr.io/tbphp/gpt-load:latest
-          )"
-          dockerhub_latest_digest="$(
-            .github/scripts/release-image-digest.sh tbphp/gpt-load:latest
-          )"
+          fi
           {
             printf 'github_state=%s\n' "${github_state}"
             printf 'github_target_sha=%s\n' "${github_target_sha}"
@@ -919,23 +864,10 @@ jobs:
             printf 'ghcr_state=%s\n' "${ghcr_state}"
             printf 'ghcr_digest=%s\n' "${ghcr_digest}"
             printf 'ghcr_revision=%s\n' "${ghcr_revision}"
-            printf 'dockerhub_state=%s\n' "${dockerhub_state}"
-            printf 'dockerhub_digest=%s\n' "${dockerhub_digest}"
-            printf 'dockerhub_revision=%s\n' "${dockerhub_revision}"
-            printf 'ghcr_latest_digest=%s\n' "${ghcr_latest_digest}"
-            printf 'dockerhub_latest_digest=%s\n' \
-              "${dockerhub_latest_digest}"
           } >>"${GITHUB_OUTPUT}"
-          printf '%s\n' \
-            "github=${github_state}/${github_target_sha}/${github_assets}/${github_draft}/${github_prerelease}" \
-            "ghcr=${ghcr_state}/${ghcr_digest}/${ghcr_revision}" \
-            "dockerhub=${dockerhub_state}/${dockerhub_digest}/${dockerhub_revision}" \
-            "ghcr_latest=${ghcr_latest_digest}" \
-            "dockerhub_latest=${dockerhub_latest_digest}"
 
-      - name: Classify publication state
+      - name: Classify owned publication state
         id: classify
-        shell: bash
         env:
           RELEASE_EXPECTED_SHA: ${{ github.sha }}
           RELEASE_GITHUB_STATE: ${{ steps.inventory.outputs.github_state }}
@@ -944,42 +876,50 @@ jobs:
           RELEASE_GHCR_STATE: ${{ steps.inventory.outputs.ghcr_state }}
           RELEASE_GHCR_DIGEST: ${{ steps.inventory.outputs.ghcr_digest }}
           RELEASE_GHCR_REVISION: ${{ steps.inventory.outputs.ghcr_revision }}
-          RELEASE_DOCKERHUB_STATE: ${{ steps.inventory.outputs.dockerhub_state }}
-          RELEASE_DOCKERHUB_DIGEST: ${{ steps.inventory.outputs.dockerhub_digest }}
-          RELEASE_DOCKERHUB_REVISION: ${{ steps.inventory.outputs.dockerhub_revision }}
         run: |
           set -euo pipefail
           classification="$(.github/scripts/release-publication-state.sh)"
           printf '%s\n' "${classification}"
           while IFS='=' read -r key value; do
             case "${key}" in
-              publication_state | write_mode)
-                printf '%s=%s\n' "${key}" "${value}" >>"${GITHUB_OUTPUT}"
-                ;;
-              *)
-                printf 'unexpected classifier output\n' >&2
-                exit 1
-                ;;
+              publication_state|write_mode) printf '%s=%s\n' "${key}" "${value}" >>"${GITHUB_OUTPUT}" ;;
+              *) printf 'unexpected classifier output\n' >&2; exit 1 ;;
             esac
           done <<<"${classification}"
 
-      - name: Reject partial or conflicting publication
-        shell: bash
+      - name: Reject conflicting publication state
         env:
           WRITE_MODE: ${{ steps.classify.outputs.write_mode }}
+        run: test "${WRITE_MODE}" != blocked
+
+  release-approval:
+    needs: publication-preflight
+    if: ${{ !cancelled() && needs.publication-preflight.result == 'success' && needs.publication-preflight.outputs.write_mode == 'publish' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: demerzel-release
+    permissions:
+      contents: read
+    steps:
+      - name: Require tag-specific release authorization
+        env:
+          APPROVED_TAG: ${{ vars.DEMERZEL_RELEASE_APPROVED_TAG }}
         run: |
           set -euo pipefail
-          write_mode="${WRITE_MODE}"
-          test "${write_mode}" != "blocked"
+          if [[ "${APPROVED_TAG}" != "${GITHUB_REF_NAME}" ]]; then
+            printf 'release approval variable must exactly match tag %s\n' "${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          printf 'Explicitly authorized publication for %s after protected-environment approval.\n' \
+            "${GITHUB_REF_NAME}" >>"${GITHUB_STEP_SUMMARY}"
 
   publish-images:
     needs:
       - validate-tag
       - publication-preflight
-    # GitHub Actions 的默认 job 条件会沿整条依赖链传播 skip：只要 race-tests 等
-    # 间接祖先因 CI 结论复用而 skipped，publish-images 也会被默认条件连带跳过，
-    # 即便这里列出的直接 needs 全部成功。显式条件只看直接 needs，绕开这个传播。
-    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publication-preflight.result == 'success' }}
+      - release-approval
+    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publication-preflight.result == 'success' && (needs.release-approval.result == 'success' || (needs.publication-preflight.outputs.write_mode == 'verify' && needs.release-approval.result == 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -989,9 +929,8 @@ jobs:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
+          echo "DOCKER_CONFIG=${docker_config}" >>"${GITHUB_ENV}"
 
       - name: Checkout tag commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -999,65 +938,47 @@ jobs:
           persist-credentials: false
 
       - name: Download prebuilt Linux binaries
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
+        if: ${{ needs.publication-preflight.outputs.ghcr_state == 'absent' }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: binary-gpt-load-linux-*
+          pattern: binary-demerzel-linux-*
           path: release
           merge-multiple: true
 
       - name: Set up QEMU
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
+        if: ${{ needs.publication-preflight.outputs.ghcr_state == 'absent' }}
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         with:
           platforms: arm64
 
       - name: Set up Docker Buildx
+        if: ${{ needs.publication-preflight.outputs.ghcr_state == 'absent' }}
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - name: Log in to Docker Hub for exact verification
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'verify' }}
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_READ_TOKEN || secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to Docker Hub for publication
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to GHCR
+      - name: Log in to owned GHCR package
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate exact image metadata
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
+      - name: Generate owned image metadata
+        if: ${{ needs.publication-preflight.outputs.ghcr_state == 'absent' }}
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: |
-            ghcr.io/tbphp/gpt-load
-            tbphp/gpt-load
-          tags: |
-            type=raw,value=${{ needs.validate-tag.outputs.image_exact }}
+          images: ghcr.io/${{ github.repository }}
+          tags: type=raw,value=${{ needs.validate-tag.outputs.image_exact }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ github.ref_name }}
 
-      - name: Build and publish exact multi-platform images
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
+      - name: Build and publish exact owned multi-platform image
+        if: ${{ needs.publication-preflight.outputs.ghcr_state == 'absent' }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          # prebuilt 直接打包 build-binaries 已交叉编译好的产物，不在镜像内重复
-          # 编译 Go 与 Web；镜像内二进制与同名 native 发布产物是同一个文件。
           target: prebuilt
           platforms: linux/amd64,linux/arm64
           push: true
@@ -1066,36 +987,18 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
 
-      - name: Verify exact published images
-        shell: bash
-        run: |
-          set -euo pipefail
-          verify_exact_image() {
-            local image="$1"
-
-            .github/scripts/release-verify-image-revision.sh \
-              "${image}" "${GITHUB_SHA}" >/dev/null
-            .github/scripts/release-image-digest.sh "${image}"
-          }
-
-          ghcr_exact_digest="$(
-            verify_exact_image \
-              "ghcr.io/tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}"
-          )"
-          dockerhub_exact_digest="$(
-            verify_exact_image \
-              "tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}"
-          )"
-          test -n "${ghcr_exact_digest}"
-          test "${ghcr_exact_digest}" = "${dockerhub_exact_digest}"
+      - name: Verify exact owned GHCR image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ needs.validate-tag.outputs.image_exact }}
+        run: .github/scripts/release-verify-image-revision.sh "${IMAGE}" "${GITHUB_SHA}"
 
   publish-github:
     needs:
       - validate-tag
       - publication-preflight
+      - release-approval
       - publish-images
-    # 同上：显式条件只看直接 needs，避免默认条件把间接祖先的 skip 传播下来。
-    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publication-preflight.result == 'success' && needs.publish-images.result == 'success' }}
+    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publication-preflight.result == 'success' && needs.publish-images.result == 'success' && (needs.release-approval.result == 'success' || (needs.publication-preflight.outputs.write_mode == 'verify' && needs.release-approval.result == 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -1112,50 +1015,25 @@ jobs:
           name: release-assets
           path: release
 
-      # 上传步骤按 release/* 通配收集，这里的清单校验就是它的边界保证。
-      - name: Verify complete release asset set
-        run: .github/scripts/release-verify-assets.sh release
-
-      - name: Verify existing GitHub Release
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'verify' }}
+      - name: Verify existing GitHub draft
+        if: ${{ needs.publication-preflight.outputs.github_state == 'present' }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          metadata="$(
-            gh release view "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --json targetCommitish,isDraft,isPrerelease
-          )"
+          metadata="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --json targetCommitish,isDraft,isPrerelease)"
           test "$(jq -r '.targetCommitish' <<<"${metadata}")" = "${GITHUB_SHA}"
-          test "$(jq -r '.isDraft' <<<"${metadata}")" = "true"
+          test "$(jq -r '.isDraft' <<<"${metadata}")" = true
           test "$(jq -r '.isPrerelease' <<<"${metadata}")" = \
             "${{ needs.validate-tag.outputs.prerelease }}"
-
-          if latest_tag="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/releases/latest" \
-              --jq '.tag_name' 2>/tmp/latest-release.error
-          )"; then
-            test "${latest_tag}" != "${GITHUB_REF_NAME}"
-          elif ! grep -Eqi \
-            'HTTP 404|Not Found' \
-            /tmp/latest-release.error; then
-            cat /tmp/latest-release.error >&2
-            exit 1
-          fi
-
-          rm -rf existing-release
           mkdir existing-release
-          gh release download "${GITHUB_REF_NAME}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --dir existing-release
-          .github/scripts/release-verify-assets.sh \
-            existing-release release/SHA256SUMS
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --dir existing-release
+          .github/scripts/release-verify-assets.sh existing-release release/SHA256SUMS
 
-      - name: Create or update GitHub Release draft
-        if: ${{ needs.publication-preflight.outputs.write_mode == 'publish' }}
+      - name: Create GitHub Release draft
+        if: ${{ needs.publication-preflight.outputs.github_state == 'absent' }}
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           name: ${{ github.ref_name }}
@@ -1165,26 +1043,18 @@ jobs:
           make_latest: false
           generate_release_notes: true
           fail_on_unmatched_files: true
-          # 串行上传避免单个 runner 的并发连接中断拖垮整组资产；重试时保留已成功资产。
           preserve_order: true
           overwrite_files: false
-          # 目录内容已由上面的清单校验锁定为 .github/release-assets.txt 的全集。
           files: release/*
           body: |
-            2.x is a rewrite and is not compatible with 1.x data; start 2.x with an empty database and a newly provisioned master key in native vault custody or explicitly configured headless custody.
+            2.x is a rewrite and is not compatible with 1.x data. Start with an empty database and a newly provisioned master key in native vault custody or explicit age custody.
 
-            ---
-
-            2.x 是全新重写版本，与 1.x 数据不兼容；请使用全新数据库，以及保存在系统原生密钥库或明确配置的无头密钥存储中的全新主密钥部署 2.x。
+            2.x 与 1.x 数据不兼容；请使用全新数据库，并使用原生密钥库或显式 age 身份文件保护全新主密钥。
 
   post-publish-image-smoke:
-    # GHCR 与 Docker Hub 的 exact tag 已在 publish-images 断言为同一 digest，
-    # 因此完整运行时 smoke 只需跑一遍；Docker Hub 侧的可拉取性与 digest 一致性
-    # 由 post-publish-verify 覆盖。
     needs:
       - validate-tag
       - publish-images
-    # 同上：显式条件只看直接 needs，避免默认条件把间接祖先的 skip 传播下来。
     if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publish-images.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -1195,514 +1065,124 @@ jobs:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
+          echo "DOCKER_CONFIG=${docker_config}" >>"${GITHUB_ENV}"
 
       - name: Checkout tag commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Log in to GHCR for runtime smoke
+      - name: Log in to owned GHCR image
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run full runtime smoke for published exact image
+      - name: Run full runtime smoke for exact owned image
         shell: bash
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
-          RELEASE_SMOKE_SOURCE_IMAGE: ghcr.io/tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}
+          RELEASE_SMOKE_SOURCE_IMAGE: ghcr.io/${{ github.repository }}:${{ needs.validate-tag.outputs.image_exact }}
           RELEASE_SMOKE_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}-ghcr
-          # 同一 commit 的镜像已在 docker-smoke 扫描过，这里不重复扫描。
           RELEASE_SMOKE_SKIP_SCAN: "true"
         run: .github/scripts/release-docker-smoke.sh
 
   post-publish-verify:
     needs:
       - validate-tag
-      - publication-preflight
       - publish-github
       - publish-images
-    # 同上：显式条件只看直接 needs，避免默认条件把间接祖先的 skip 传播下来。
-    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publication-preflight.result == 'success' && needs.publish-github.result == 'success' && needs.publish-images.result == 'success' }}
+    if: ${{ !cancelled() && needs.validate-tag.result == 'success' && needs.publish-github.result == 'success' && needs.publish-images.result == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 20
     permissions:
-      # Draft Releases are visible only to identities with push access.
       contents: write
       packages: read
     steps:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
+          echo "DOCKER_CONFIG=${docker_config}" >>"${GITHUB_ENV}"
 
       - name: Checkout tag commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Download complete release assets
+      - name: Download trusted release assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-assets
           path: release
 
-      - name: Download and verify exact GitHub Release asset inventory
+      - name: Verify exact GitHub Release inventory
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p draft-release
-          gh release download "${GITHUB_REF_NAME}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --dir draft-release
-          # 以本次 run 的可信 SHA256SUMS 为准校验已上传的 draft 资产，
-          # 而不是相信 draft 自带的那一份。
-          .github/scripts/release-verify-assets.sh \
-            draft-release release/SHA256SUMS
-
-      - name: Verify GitHub Release channel metadata
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          metadata="$(
-            gh release view "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --json targetCommitish,isDraft,isPrerelease
-          )"
+          mkdir draft-release
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --dir draft-release
+          .github/scripts/release-verify-assets.sh draft-release release/SHA256SUMS
+          metadata="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --json targetCommitish,isDraft,isPrerelease)"
           test "$(jq -r '.targetCommitish' <<<"${metadata}")" = "${GITHUB_SHA}"
-          test "$(jq -r '.isDraft' <<<"${metadata}")" = "true"
+          test "$(jq -r '.isDraft' <<<"${metadata}")" = true
           test "$(jq -r '.isPrerelease' <<<"${metadata}")" = \
             "${{ needs.validate-tag.outputs.prerelease }}"
 
-          if latest_tag="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/releases/latest" \
-              --jq '.tag_name' 2>/tmp/latest-release.error
-          )"; then
-            test "${latest_tag}" != "${GITHUB_REF_NAME}"
-          elif ! grep -Eqi \
-            'HTTP 404|Not Found' \
-            /tmp/latest-release.error; then
-            cat /tmp/latest-release.error >&2
-            exit 1
-          fi
-
-      - name: Log in to GHCR for manifest verification
+      - name: Log in to owned GHCR image for verification
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub for manifest verification
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_READ_TOKEN || secrets.DOCKERHUB_TOKEN }}
-
-      - name: Verify published image manifests
-        shell: bash
-        run: |
-          set -euo pipefail
-          ghcr_exact_digest=
-          dockerhub_exact_digest=
-          for repository in ghcr.io/tbphp/gpt-load tbphp/gpt-load; do
-            exact="${repository}:${{ needs.validate-tag.outputs.image_exact }}"
-            .github/scripts/release-verify-image-revision.sh \
-              "${exact}" "${GITHUB_SHA}" >/dev/null
-            exact_digest="$(
-              .github/scripts/release-image-digest.sh "${exact}"
-            )"
-            test -n "${exact_digest}"
-            if [[ "${repository}" == ghcr.io/* ]]; then
-              ghcr_exact_digest="${exact_digest}"
-              latest_image="ghcr.io/tbphp/gpt-load:latest"
-              expected_latest_digest="${{ needs.publication-preflight.outputs.ghcr_latest_digest }}"
-            else
-              dockerhub_exact_digest="${exact_digest}"
-              latest_image="tbphp/gpt-load:latest"
-              expected_latest_digest="${{ needs.publication-preflight.outputs.dockerhub_latest_digest }}"
-            fi
-            latest_digest="$(.github/scripts/release-image-digest.sh "${latest_image}")"
-            test "${latest_digest}" = "${expected_latest_digest}"
-            test "${latest_digest}" != "${exact_digest}"
-
-          done
-          test "${ghcr_exact_digest}" = "${dockerhub_exact_digest}"
-
-      - name: Verify Docker Hub exact image is pullable
-        shell: bash
+      - name: Verify exact owned image revision
         env:
-          DOCKERHUB_EXACT_IMAGE: tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}
-        run: |
-          set -euo pipefail
-          # 完整运行时 smoke 只在 GHCR 侧跑一遍。manifest 校验只读取 config blob，
-          # 不保证 layer 已完整提交，这里补上 Docker Hub 侧的 layer 可达性证据。
-          docker pull --platform linux/amd64 "${DOCKERHUB_EXACT_IMAGE}"
-          test "$(
-            docker image inspect -f '{{.Config.User}}' "${DOCKERHUB_EXACT_IMAGE}"
-          )" = "10001:10001"
-
-  promote-image-channels:
-    needs:
-      - validate-tag
-      - publication-preflight
-      - post-publish-image-smoke
-      - post-publish-verify
-    if: >-
-      ${{
-        !cancelled() &&
-        needs.validate-tag.result == 'success' &&
-        needs.publication-preflight.result == 'success' &&
-        needs.post-publish-image-smoke.result == 'success' &&
-        needs.post-publish-verify.result == 'success'
-      }}
-    concurrency:
-      group: gpt-load-v2-image-channels
-      cancel-in-progress: false
-      queue: max
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      beta_current: ${{ steps.promote.outputs.beta_current }}
-      major_current: ${{ steps.promote.outputs.major_current }}
-    steps:
-      - name: Isolate Docker credentials
-        shell: bash
-        run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
-          docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
-
-      - name: Checkout tag commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Log in to GHCR for channel promotion
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub for channel promotion
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Promote verified image channels
-        id: promote
-        shell: bash
-        env:
-          RELEASE_VERSION: ${{ needs.validate-tag.outputs.version }}
-          IMAGE_EXACT: ${{ needs.validate-tag.outputs.image_exact }}
-          IMAGE_BETA: ${{ needs.validate-tag.outputs.image_beta }}
-          IMAGE_MAJOR: ${{ needs.validate-tag.outputs.image_major }}
-          PROMOTE_BETA: ${{ needs.validate-tag.outputs.channel_beta }}
-          PROMOTE_MAJOR: ${{ needs.validate-tag.outputs.promote_major }}
-          EXPECTED_REVISION: ${{ github.sha }}
-          EXPECTED_GHCR_LATEST: ${{ needs.publication-preflight.outputs.ghcr_latest_digest }}
-          EXPECTED_DOCKERHUB_LATEST: ${{ needs.publication-preflight.outputs.dockerhub_latest_digest }}
-        run: .github/scripts/release-promote-image-channels.sh
-
-  deploy-render:
-    name: Deploy Render
-    needs:
-      - validate-tag
-      - promote-image-channels
-    if: >-
-      ${{
-        !cancelled() &&
-        needs.validate-tag.result == 'success' &&
-        needs.promote-image-channels.result == 'success' &&
-        needs.promote-image-channels.outputs.major_current == 'true'
-      }}
-    concurrency:
-      group: gpt-load-render
-      cancel-in-progress: false
-    environment:
-      name: render
-      url: ${{ vars.RENDER_SERVICE_URL }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    env:
-      RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
-      RENDER_SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
-      RELEASE_VERSION: ${{ needs.validate-tag.outputs.version }}
-      IMAGE: ghcr.io/tbphp/gpt-load:${{ needs.validate-tag.outputs.image_exact }}
-      RENDER_CLI_VERSION: "2.25.0"
-      RENDER_CLI_SHA256: "3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd"
-    steps:
-      - name: Validate deployment inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "${RENDER_SERVICE_ID}" =~ ^srv-[a-z0-9]+$ ]]
-          [[ "${RENDER_SERVICE_URL}" =~ ^https://[^/?#]+/?$ ]]
-          [[ "${RELEASE_VERSION}" =~ ^v2\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
-          [[ "${IMAGE}" == "ghcr.io/tbphp/gpt-load:${RELEASE_VERSION#v}" ]]
-
-      - name: Install pinned Render CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="cli_${RENDER_CLI_VERSION}_linux_amd64.zip"
-          archive_path="${RUNNER_TEMP}/${archive}"
-          extract_dir="${RUNNER_TEMP}/render-cli-${RENDER_CLI_VERSION}"
-          url="https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/${archive}"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --retry 3 \
-            --retry-all-errors \
-            "${url}" \
-            --output "${archive_path}"
-          printf '%s  %s\n' \
-            "${RENDER_CLI_SHA256}" \
-            "${archive_path}" | sha256sum --check
-          mkdir -p "${extract_dir}"
-          unzip -q "${archive_path}" -d "${extract_dir}"
-          install \
-            -m 0755 \
-            "${extract_dir}/cli_v${RENDER_CLI_VERSION}" \
-            "${RUNNER_TEMP}/render"
-          printf '%s\n' "${RUNNER_TEMP}" >>"${GITHUB_PATH}"
-          "${RUNNER_TEMP}/render" --version
-
-      - name: Deploy exact image and wait until live
-        shell: bash
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          CI: "true"
-        run: |
-          set -euo pipefail
-          test -n "${RENDER_API_KEY}"
-          render deploys create \
-            "${RENDER_SERVICE_ID}" \
-            --image "${IMAGE}" \
-            --wait \
-            --confirm \
-            --output text
-
-      - name: Verify public health endpoint
-        shell: bash
-        run: |
-          set -euo pipefail
-          # render-health-verification:start
-          health_url="${RENDER_SERVICE_URL%/}/health"
-          deadline=$((SECONDS + 180))
-          while true; do
-            health_response=
-            if health_response="$(
-              curl \
-                --fail \
-                --silent \
-                --show-error \
-                --connect-timeout 5 \
-                --max-time 15 \
-                "${health_url}"
-            )" &&
-              jq -e \
-                --arg version "${RELEASE_VERSION}" \
-                '.status == "ok" and .version == $version' \
-                <<<"${health_response}" \
-                >/dev/null; then
-              break
-            fi
-            if ((SECONDS >= deadline)); then
-              printf 'Render health did not report version %s within 180 seconds\n' \
-                "${RELEASE_VERSION}" >&2
-              exit 1
-            fi
-            sleep 5
-          done
-          # render-health-verification:end
-
-      - name: Summarize deployment
-        shell: bash
-        run: |
-          {
-            printf '## Render deployment\n\n'
-            printf -- '- Image: `%s`\n' "${IMAGE}"
-            printf -- '- Service: `%s`\n' "${RENDER_SERVICE_ID}"
-            printf -- '- URL: %s\n' "${RENDER_SERVICE_URL}"
-          } >>"${GITHUB_STEP_SUMMARY}"
+          IMAGE: ghcr.io/${{ github.repository }}:${{ needs.validate-tag.outputs.image_exact }}
+        run: .github/scripts/release-verify-image-revision.sh "${IMAGE}" "${GITHUB_SHA}"
 
   reconcile-publication:
     if: ${{ always() }}
     needs:
       - validate-tag
       - publication-preflight
+      - release-approval
       - publish-images
       - publish-github
       - post-publish-image-smoke
       - post-publish-verify
-      - promote-image-channels
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
-      # Draft Releases are visible only to identities with push access.
-      contents: write
-      packages: read
+      contents: read
     steps:
-      - name: Isolate Docker credentials
-        shell: bash
-        run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
-          docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
-          echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
-
-      - name: Checkout tag commit for read-only reconciliation
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Log in to GHCR for read-only reconciliation
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub for read-only reconciliation
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_READ_TOKEN || secrets.DOCKERHUB_TOKEN }}
-
-      - name: Summarize exact publication inventory and job results
-        if: ${{ always() }}
-        continue-on-error: true
+      - name: Summarize owned publication gate results
         env:
-          GH_TOKEN: ${{ github.token }}
           PREFLIGHT_RESULT: ${{ needs.publication-preflight.result }}
+          APPROVAL_RESULT: ${{ needs.release-approval.result }}
           IMAGE_WRITER_RESULT: ${{ needs.publish-images.result }}
           GITHUB_WRITER_RESULT: ${{ needs.publish-github.result }}
           IMAGE_SMOKE_RESULT: ${{ needs.post-publish-image-smoke.result }}
-          VERIFY_POST_RESULT: ${{ needs.post-publish-verify.result }}
-          PROMOTION_RESULT: ${{ needs.promote-image-channels.result }}
-          IMAGE_EXACT: ${{ needs.validate-tag.outputs.image_exact }}
-          IMAGE_BETA: ${{ needs.validate-tag.outputs.image_beta }}
-          IMAGE_MAJOR: ${{ needs.validate-tag.outputs.image_major }}
-        shell: bash
+          VERIFY_RESULT: ${{ needs.post-publish-verify.result }}
         run: |
-          set +e
-          github_inventory="$(
-            gh release view "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --json targetCommitish,assets 2>&1
-          )"
-          if [[ $? -ne 0 ]]; then
-            github_inventory=absent-or-unavailable
-          fi
-
-          read_image_inventory() {
-            local image="$1"
-            local digest=
-            local revisions=
-            local status=0
-
-            if [[ ! -x .github/scripts/release-image-digest.sh ]] ||
-              [[ ! -x .github/scripts/release-verify-image-revision.sh ]]; then
-              printf 'unavailable'
-              return
-            fi
-            digest="$(.github/scripts/release-image-digest.sh "${image}" 2>/dev/null)"
-            if [[ $? -ne 0 ]]; then
-              printf 'unavailable'
-              return
-            fi
-            if [[ "${digest}" == "absent" ]]; then
-              printf 'absent'
-              return
-            fi
-            # 退出码 0/1 都带回可读的 revision 值，仅在无法读取清单时降级。
-            revisions="$(
-              .github/scripts/release-verify-image-revision.sh \
-                "${image}" "${GITHUB_SHA}" 2>/dev/null
-            )"
-            status=$?
-            if ((status > 1)) || [[ -z "${revisions}" ]]; then
-              revisions=revision-unavailable
-            fi
-            printf '%s/%s' "${digest}" "${revisions}"
-          }
-
-          ghcr_inventory="$(
-            read_image_inventory \
-              "ghcr.io/tbphp/gpt-load:${IMAGE_EXACT}"
-          )"
-          dockerhub_inventory="$(
-            read_image_inventory \
-              "tbphp/gpt-load:${IMAGE_EXACT}"
-          )"
-          ghcr_beta_inventory=not-applicable
-          dockerhub_beta_inventory=not-applicable
-          if [[ -n "${IMAGE_BETA}" ]]; then
-            ghcr_beta_inventory="$(
-              read_image_inventory "ghcr.io/tbphp/gpt-load:${IMAGE_BETA}"
-            )"
-            dockerhub_beta_inventory="$(
-              read_image_inventory "tbphp/gpt-load:${IMAGE_BETA}"
-            )"
-          fi
-          ghcr_major_inventory="$(
-            read_image_inventory "ghcr.io/tbphp/gpt-load:${IMAGE_MAJOR}"
-          )"
-          dockerhub_major_inventory="$(
-            read_image_inventory "tbphp/gpt-load:${IMAGE_MAJOR}"
-          )"
-
           {
-            printf '## Publication reconciliation\n\n'
+            printf '## Demerzel publication reconciliation\n\n'
             printf -- '- preflight: `%s`\n' "${PREFLIGHT_RESULT}"
-            printf -- '- image writer: `%s`\n' "${IMAGE_WRITER_RESULT}"
-            printf -- '- GitHub writer: `%s`\n' "${GITHUB_WRITER_RESULT}"
-            printf -- '- published image smoke: `%s`\n' "${IMAGE_SMOKE_RESULT}"
-            printf -- '- draft and image verification: `%s`\n' "${VERIFY_POST_RESULT}"
-            printf -- '- image channel promotion: `%s`\n' "${PROMOTION_RESULT}"
-            printf -- '- GitHub exact inventory: `%s`\n' "${github_inventory}"
-            printf -- '- GHCR exact inventory: `%s`\n' "${ghcr_inventory}"
-            printf -- '- Docker Hub exact inventory: `%s`\n' \
-              "${dockerhub_inventory}"
-            printf -- '- GHCR %s inventory: `%s`\n' "${IMAGE_BETA:-beta-not-applicable}" \
-              "${ghcr_beta_inventory}"
-            printf -- '- Docker Hub %s inventory: `%s`\n' "${IMAGE_BETA:-beta-not-applicable}" \
-              "${dockerhub_beta_inventory}"
-            printf -- '- GHCR %s inventory: `%s`\n' "${IMAGE_MAJOR}" \
-              "${ghcr_major_inventory}"
-            printf -- '- Docker Hub %s inventory: `%s`\n' "${IMAGE_MAJOR}" \
-              "${dockerhub_major_inventory}"
-            printf '\nmanual recovery: inspect the exact inventories and job logs; '
-            printf 'do not assume cross-system atomic rollback.\n'
+            printf -- '- protected/tag-specific approval: `%s`\n' "${APPROVAL_RESULT}"
+            printf -- '- owned GHCR exact image: `%s`\n' "${IMAGE_WRITER_RESULT}"
+            printf -- '- GitHub Release draft: `%s`\n' "${GITHUB_WRITER_RESULT}"
+            printf -- '- owned-image runtime smoke: `%s`\n' "${IMAGE_SMOKE_RESULT}"
+            printf -- '- post-publication verification: `%s`\n' "${VERIFY_RESULT}"
+            printf '\nOnly the exact-version image in `ghcr.io/a-mad-av8r/demerzel` is eligible for publication. No donor registry or managed deployment is a release target.\n'
           } >>"${GITHUB_STEP_SUMMARY}"
+
+
+
+
+
+
+

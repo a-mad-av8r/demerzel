@@ -9,12 +9,28 @@ import (
 	"testing"
 )
 
+func writeComposeAgeFixture(t *testing.T, projectDir string) string {
+	t.Helper()
+	path := filepath.Join(projectDir, "age-identity.txt")
+	if err := os.WriteFile(path, []byte("identity fixture"), 0o600); err != nil {
+		t.Fatalf("write temporary age identity: %v", err)
+	}
+	return path
+}
+
+func composeAgeEnvironment(identityPath string) string {
+	return "DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE=" + identityPath +
+		"\nDEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT=age1fixture\n"
+}
+
+
 func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 	t.Setenv("HOST", "")
 	t.Setenv("BIND_ADDRESS", "")
 	t.Setenv("OAUTH_CALLBACK_BIND_ADDRESS", "")
 
 	projectDir := t.TempDir()
+	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
 		filepath.Join(projectDir, "docker-compose.yml"),
 		[]byte(readRepositoryFile(t, "docker-compose.yml")),
@@ -22,7 +38,7 @@ func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 	); err != nil {
 		t.Fatalf("write temporary Compose file: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, ".env"), []byte("PORT=3001\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".env"), []byte("PORT=3001\n"+composeAgeEnvironment(identityPath)), 0o600); err != nil {
 		t.Fatalf("write temporary .env: %v", err)
 	}
 
@@ -53,7 +69,7 @@ func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 		t.Fatalf("decode docker compose config: %v\n%s", err, output)
 	}
 
-	service := resolved.Services["gpt-load"]
+	service := resolved.Services["demerzel"]
 	if service.Environment["PORT"] != "41234" {
 		t.Fatalf("resolved application PORT = %q, want shell override 41234", service.Environment["PORT"])
 	}
@@ -83,6 +99,7 @@ func TestComposeShellPortOverridesDotEnvEverywhere(t *testing.T) {
 
 func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T) {
 	projectDir := t.TempDir()
+	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
 		filepath.Join(projectDir, "docker-compose.yml"),
 		[]byte(readRepositoryFile(t, "docker-compose.yml")),
@@ -94,7 +111,8 @@ func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T
 	commandEnvironment := make([]string, 0, len(os.Environ()))
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
-		if key != "HOST" && key != "BIND_ADDRESS" && key != "OAUTH_CALLBACK_BIND_ADDRESS" {
+		if key != "HOST" && key != "BIND_ADDRESS" && key != "OAUTH_CALLBACK_BIND_ADDRESS" &&
+			!strings.HasPrefix(key, "DEMERZEL_ENCRYPTION_KEY_AGE_") && key != "DEMERZEL_VERSION" {
 			commandEnvironment = append(commandEnvironment, entry)
 		}
 	}
@@ -125,7 +143,11 @@ func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			environmentLines := []string{"HOST=192.0.2.10"}
+			environmentLines := []string{
+				"HOST=192.0.2.10",
+				"DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE=" + identityPath,
+				"DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT=age1fixture",
+			}
 			if testCase.bindAddress != "" {
 				environmentLines = append(environmentLines, "BIND_ADDRESS="+testCase.bindAddress)
 			}
@@ -165,7 +187,7 @@ func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T
 				t.Fatalf("decode docker compose config: %v\n%s", err, output)
 			}
 
-			service := resolved.Services["gpt-load"]
+			service := resolved.Services["demerzel"]
 			if service.Environment["HOST"] != "0.0.0.0" {
 				t.Fatalf("resolved application HOST = %q, want 0.0.0.0", service.Environment["HOST"])
 			}
@@ -214,8 +236,8 @@ func TestDockerfileFinalStageDeclaresNonRootPersistentRuntime(t *testing.T) {
 	}
 
 	orderedBeforeUser := []string{
-		"addgroup -S -g 10001 gpt-load",
-		"adduser -S -D -H -u 10001 -G gpt-load gpt-load",
+		"addgroup -S -g 10001 demerzel",
+		"adduser -S -D -H -u 10001 -G demerzel demerzel",
 		"mkdir -p /app/data",
 		"chown 10001:10001 /app/data",
 		"chmod 0700 /app/data",
@@ -341,6 +363,7 @@ func TestComposeBindsLoopbackAndConfiguresContainerAllInterfaces(t *testing.T) {
 	t.Setenv("PORT", "")
 
 	projectDir := t.TempDir()
+	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
 		filepath.Join(projectDir, "docker-compose.yml"),
 		[]byte(readRepositoryFile(t, "docker-compose.yml")),
@@ -348,7 +371,7 @@ func TestComposeBindsLoopbackAndConfiguresContainerAllInterfaces(t *testing.T) {
 	); err != nil {
 		t.Fatalf("write temporary Compose file: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, ".env"), nil, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".env"), []byte(composeAgeEnvironment(identityPath)), 0o600); err != nil {
 		t.Fatalf("write temporary .env: %v", err)
 	}
 
@@ -375,7 +398,7 @@ func TestComposeBindsLoopbackAndConfiguresContainerAllInterfaces(t *testing.T) {
 		t.Fatalf("decode docker compose config: %v\n%s", err, output)
 	}
 
-	service := resolved.Services["gpt-load"]
+	service := resolved.Services["demerzel"]
 	if service.Environment["HOST"] != "0.0.0.0" {
 		t.Fatalf("resolved application HOST = %q, want 0.0.0.0", service.Environment["HOST"])
 	}
@@ -403,6 +426,7 @@ func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testin
 	t.Setenv("PORT", "")
 
 	projectDir := t.TempDir()
+	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
 		filepath.Join(projectDir, "docker-compose.yml"),
 		[]byte(readRepositoryFile(t, "docker-compose.yml")),
@@ -410,7 +434,7 @@ func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testin
 	); err != nil {
 		t.Fatalf("write temporary Compose file: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, ".env"), nil, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".env"), []byte(composeAgeEnvironment(identityPath)), 0o600); err != nil {
 		t.Fatalf("write temporary .env: %v", err)
 	}
 
@@ -463,7 +487,7 @@ func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testin
 		if item.config.Name != item.projectName {
 			t.Fatalf("resolved project name = %q, want %q", item.config.Name, item.projectName)
 		}
-		service := item.config.Services["gpt-load"]
+		service := item.config.Services["demerzel"]
 		if service.ContainerName != "" {
 			t.Fatalf("resolved project %s fixes container_name to %q", item.projectName, service.ContainerName)
 		}
@@ -482,21 +506,23 @@ func TestComposeProjectsHaveIndependentNamesApplicationPortsAndVolumes(t *testin
 			service.Ports[3].HostIP != "127.0.0.1" {
 			t.Fatalf("resolved project %s ports = %#v", item.projectName, service.Ports)
 		}
-		wantVolume := item.projectName + "_gpt-load-data"
-		if got := item.config.Volumes["gpt-load-data"].Name; got != wantVolume {
+		wantVolume := item.projectName + "_demerzel-data"
+		if got := item.config.Volumes["demerzel-data"].Name; got != wantVolume {
 			t.Fatalf("resolved project %s volume = %q, want %q", item.projectName, got, wantVolume)
 		}
 	}
-	if first.Volumes["gpt-load-data"].Name == second.Volumes["gpt-load-data"].Name {
+	if first.Volumes["demerzel-data"].Name == second.Volumes["demerzel-data"].Name {
 		t.Fatal("different Compose projects resolve the same named volume")
 	}
 }
 
-func TestComposeResolvesNamedVolumeContainerPathsAndMajorChannelImage(t *testing.T) {
+func TestComposeUsesOwnedImageNamedDataVolumeAndExternalAgeIdentity(t *testing.T) {
 	t.Setenv("DATA_DIR", "/host/path/must-not-reach-container")
 	t.Setenv("DATABASE_DSN", "/host/database/must-not-reach-container.db")
+	t.Setenv("DEMERZEL_VERSION", "")
 
 	projectDir := t.TempDir()
+	identityPath := writeComposeAgeFixture(t, projectDir)
 	if err := os.WriteFile(
 		filepath.Join(projectDir, "docker-compose.yml"),
 		[]byte(readRepositoryFile(t, "docker-compose.yml")),
@@ -504,7 +530,8 @@ func TestComposeResolvesNamedVolumeContainerPathsAndMajorChannelImage(t *testing
 	); err != nil {
 		t.Fatalf("write temporary Compose file: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, ".env"), nil, 0o600); err != nil {
+	envFile := composeAgeEnvironment(identityPath)
+	if err := os.WriteFile(filepath.Join(projectDir, ".env"), []byte(envFile), 0o600); err != nil {
 		t.Fatalf("write temporary .env: %v", err)
 	}
 
@@ -521,13 +548,16 @@ func TestComposeResolvesNamedVolumeContainerPathsAndMajorChannelImage(t *testing
 		Services map[string]struct {
 			Image           string            `json:"image"`
 			Environment     map[string]string `json:"environment"`
+			User            string            `json:"user"`
+			UsernsMode      string            `json:"userns_mode"`
 			Privileged      bool              `json:"privileged"`
 			StopGracePeriod string            `json:"stop_grace_period"`
 			Healthcheck     map[string]any    `json:"healthcheck"`
 			Volumes         []struct {
-				Type   string `json:"type"`
-				Source string `json:"source"`
-				Target string `json:"target"`
+				Type     string `json:"type"`
+				Source   string `json:"source"`
+				Target   string `json:"target"`
+				ReadOnly bool   `json:"read_only"`
 			} `json:"volumes"`
 		} `json:"services"`
 		Volumes map[string]any `json:"volumes"`
@@ -536,42 +566,186 @@ func TestComposeResolvesNamedVolumeContainerPathsAndMajorChannelImage(t *testing
 		t.Fatalf("decode docker compose config: %v\n%s", err, output)
 	}
 
-	service, ok := resolved.Services["gpt-load"]
+	service, ok := resolved.Services["demerzel"]
 	if !ok {
-		t.Fatal("resolved Compose lacks gpt-load service")
+		t.Fatal("resolved Compose lacks Demerzel service")
 	}
-	if service.Image != "ghcr.io/tbphp/gpt-load:2" {
-		t.Fatalf("resolved image = %q, want ghcr.io/tbphp/gpt-load:2", service.Image)
+	if service.Image != "demerzel:local" {
+		t.Fatalf("resolved image = %q, want Demerzel-owned local image", service.Image)
 	}
 	if service.Environment["DATA_DIR"] != "/app/data" {
 		t.Fatalf("resolved DATA_DIR = %q, want /app/data", service.Environment["DATA_DIR"])
 	}
-	if databaseDSN, ok := service.Environment["DATABASE_DSN"]; ok {
-		t.Fatalf("resolved DATABASE_DSN = %q, want managed default to remain unset", databaseDSN)
+	if service.Environment["DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE"] != "/run/secrets/demerzel-age-identity" ||
+		service.Environment["DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT"] != "age1fixture" {
+		t.Fatalf("resolved age custody configuration = %#v", service.Environment)
+	}
+	if _, ok := service.Environment["DATABASE_DSN"]; ok {
+		t.Fatal("host DATABASE_DSN leaked into the container")
+	}
+	if service.User != "10001:10001" || service.UsernsMode != "keep-id:uid=10001,gid=10001" {
+		t.Fatalf("rootless runtime user mapping = %q/%q", service.User, service.UsernsMode)
 	}
 	if service.Privileged {
 		t.Fatal("resolved Compose enables privileged mode")
 	}
-	if service.StopGracePeriod != "15s" {
-		t.Fatalf("resolved stop_grace_period = %q, want 15s", service.StopGracePeriod)
+	if service.StopGracePeriod != "15s" || len(service.Healthcheck) == 0 {
+		t.Fatalf("resolved stop or health contract = %q/%#v", service.StopGracePeriod, service.Healthcheck)
 	}
-	if len(service.Healthcheck) == 0 {
-		t.Fatal("resolved Compose lacks a healthcheck")
+	if len(service.Volumes) != 2 {
+		t.Fatalf("resolved volume count = %d, want data volume and external identity mount", len(service.Volumes))
 	}
-	if len(service.Volumes) != 1 {
-		t.Fatalf("resolved volume count = %d, want 1", len(service.Volumes))
-	}
-	volume := service.Volumes[0]
-	if volume.Type != "volume" || volume.Source != "gpt-load-data" || volume.Target != "/app/data" {
-		t.Fatalf("resolved volume = %#v, want named gpt-load-data mounted at /app/data", volume)
-	}
-	if _, ok := resolved.Volumes["gpt-load-data"]; !ok {
-		t.Fatal("resolved Compose lacks top-level gpt-load-data volume")
-	}
+	dataVolume, identityMount := false, false
 	for _, volume := range service.Volumes {
-		if strings.Contains(volume.Source, "docker.sock") ||
-			strings.Contains(volume.Target, "docker.sock") {
-			t.Fatal("resolved Compose mounts the Docker socket")
+		if volume.Type == "volume" && volume.Source == "demerzel-data" &&
+			volume.Target == "/app/data" {
+			dataVolume = true
 		}
+		if volume.Type == "bind" && volume.Source == identityPath &&
+			volume.Target == "/run/secrets/demerzel-age-identity" && volume.ReadOnly {
+			identityMount = true
+		}
+		if strings.Contains(volume.Source, "docker.sock") || strings.Contains(volume.Target, "docker.sock") {
+			t.Fatal("resolved Compose mounts the container engine socket")
+		}
+	}
+	if !dataVolume || !identityMount {
+		t.Fatalf("resolved mounts do not separate persistent data from the read-only external age identity: %#v", service.Volumes)
+	}
+	if _, ok := resolved.Volumes["demerzel-data"]; !ok {
+		t.Fatal("resolved Compose lacks the named Demerzel data volume")
+	}
+}
+
+func TestInstallerUninstallPreservesDataUnlessExactPurgeConfirmation(t *testing.T) {
+	installer := filepath.Join(t.TempDir(), "install.sh")
+	if err := os.WriteFile(installer, []byte(readRepositoryFile(t, "packaging/install.sh")), 0o700); err != nil {
+		t.Fatalf("write temporary installer: %v", err)
+	}
+
+	home := t.TempDir()
+	prefix := filepath.Join(home, ".local", "opt", "demerzel")
+	dataDir := filepath.Join(home, ".demerzel")
+	identity := filepath.Join(home, ".config", "demerzel", "identity.txt")
+	if err := os.MkdirAll(prefix, 0o700); err != nil {
+		t.Fatalf("create install prefix: %v", err)
+	}
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		t.Fatalf("create data directory: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(identity), 0o700); err != nil {
+		t.Fatalf("create external identity directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "gpt-load.db"), []byte("state"), 0o600); err != nil {
+		t.Fatalf("write database sentinel: %v", err)
+	}
+	if err := os.WriteFile(identity, []byte("external identity"), 0o600); err != nil {
+		t.Fatalf("write identity sentinel: %v", err)
+	}
+
+	run := func(input string, args ...string) error {
+		t.Helper()
+		command := exec.Command("bash", append([]string{installer, "uninstall"}, args...)...)
+		command.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}
+		command.Stdin = strings.NewReader(input)
+		output, err := command.CombinedOutput()
+		if err != nil && input != "" {
+			t.Logf("uninstall rejected confirmation as expected: %s", output)
+		}
+		return err
+	}
+
+	if err := run("", "--prefix", prefix, "--data-dir", dataDir); err != nil {
+		t.Fatalf("default uninstall failed: %v", err)
+	}
+	if _, err := os.Stat(prefix); !os.IsNotExist(err) {
+		t.Fatalf("default uninstall kept the binary prefix: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "gpt-load.db")); err != nil {
+		t.Fatalf("default uninstall removed runtime data: %v", err)
+	}
+	if _, err := os.Stat(identity); err != nil {
+		t.Fatalf("default uninstall removed the external identity: %v", err)
+	}
+
+	if err := os.MkdirAll(prefix, 0o700); err != nil {
+		t.Fatalf("recreate binary prefix for purge test: %v", err)
+	}
+	if err := run("PURGE /wrong/path\n", "--prefix", prefix, "--data-dir", dataDir, "--purge"); err == nil {
+		t.Fatal("purge accepted a confirmation for another path")
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "gpt-load.db")); err != nil {
+		t.Fatalf("rejected purge removed runtime data: %v", err)
+	}
+	if err := run("PURGE "+dataDir+"\n", "--prefix", prefix, "--data-dir", dataDir, "--purge"); err != nil {
+		t.Fatalf("exactly confirmed purge failed: %v", err)
+	}
+	if _, err := os.Stat(dataDir); !os.IsNotExist(err) {
+		t.Fatalf("explicit purge kept the data directory: %v", err)
+	}
+	if _, err := os.Stat(identity); err != nil {
+		t.Fatalf("explicit data purge removed the external age identity: %v", err)
+	}
+}
+
+func TestPodmanVolumePurgeRequiresOwnedVolumeAndExactConfirmation(t *testing.T) {
+	if _, err := exec.LookPath("jq"); err != nil {
+		t.Skip("jq is required by the Podman volume ownership gate")
+	}
+	scratch := t.TempDir()
+	fakeBin := filepath.Join(scratch, "bin")
+	if err := os.MkdirAll(fakeBin, 0o700); err != nil {
+		t.Fatalf("create fake command directory: %v", err)
+	}
+	calls := filepath.Join(scratch, "podman-calls")
+	fakePodman := `#!/usr/bin/env sh
+set -eu
+case "$1:$2" in
+  volume:inspect) printf '%s\n' "$LABEL_JSON" ;;
+  volume:rm) printf '%s\n' "$3" >>"$PODMAN_CALLS" ;;
+  *) exit 2 ;;
+esac
+`
+	if err := os.WriteFile(filepath.Join(fakeBin, "podman"), []byte(fakePodman), 0o700); err != nil {
+		t.Fatalf("write fake Podman command: %v", err)
+	}
+	script := filepath.Join(scratch, "purge-volume.sh")
+	if err := os.WriteFile(script, []byte(readRepositoryFile(t, "packaging/purge-volume.sh")), 0o700); err != nil {
+		t.Fatalf("write volume purge script: %v", err)
+	}
+	run := func(labels, input string, args ...string) error {
+		t.Helper()
+		command := exec.Command("bash", append([]string{script}, args...)...)
+		command.Env = append(os.Environ(),
+			"PATH="+fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"),
+			"LABEL_JSON="+labels,
+			"PODMAN_CALLS="+calls,
+		)
+		command.Stdin = strings.NewReader(input)
+		return command.Run()
+	}
+	ownedLabels := `{"com.docker.compose.project":"review","com.docker.compose.volume":"demerzel-data"}`
+
+	if err := run(ownedLabels, "PURGE review_demerzel-data\n", "--project", "review"); err == nil {
+		t.Fatal("volume purge ran without the explicit --purge gate")
+	}
+	if err := run(`{"com.docker.compose.project":"other","com.docker.compose.volume":"demerzel-data"}`, "PURGE review_demerzel-data\n", "--project", "review", "--purge"); err == nil {
+		t.Fatal("volume purge accepted a volume owned by another Compose project")
+	}
+	if err := run(ownedLabels, "PURGE wrong-volume\n", "--project", "review", "--purge"); err == nil {
+		t.Fatal("volume purge accepted a mismatched typed confirmation")
+	}
+	if _, err := os.Stat(calls); !os.IsNotExist(err) {
+		t.Fatalf("rejected purge invoked Podman volume removal: %v", err)
+	}
+	if err := run(ownedLabels, "PURGE review_demerzel-data\n", "--project", "review", "--purge"); err != nil {
+		t.Fatalf("owner-confirmed Podman volume purge failed: %v", err)
+	}
+	removed, err := os.ReadFile(calls)
+	if err != nil {
+		t.Fatalf("read fake Podman removal record: %v", err)
+	}
+	if string(removed) != "review_demerzel-data\n" {
+		t.Fatalf("Podman removed %q, want only the owned data volume", removed)
 	}
 }

@@ -1,9 +1,22 @@
+name: demerzel
+
+x-podman:
+  in_pod: false
+
 services:
-  gpt-load:
-    image: ghcr.io/tbphp/gpt-load:2
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+  demerzel:
+    image: demerzel:${DEMERZEL_VERSION:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${DEMERZEL_BUILD_TARGET:-source-build}
+      args:
+        VERSION: ${DEMERZEL_VERSION:-2.0.0-dev}
+        DEMERZEL_TARGETARCH: ${DEMERZEL_TARGETARCH:-arm64}
+    user: "10001:10001"
+    userns_mode: "keep-id:uid=10001,gid=10001"
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "${BIND_ADDRESS:-${HOST:-127.0.0.1}}:${PORT:-3001}:${PORT:-3001}"
       - "${OAUTH_CALLBACK_BIND_ADDRESS:-${HOST:-127.0.0.1}}:1455:1455"
@@ -15,16 +28,22 @@ services:
       HOST: 0.0.0.0
       PORT: ${PORT:-3001}
       DATA_DIR: /app/data
-    restart: always
+      DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE: /run/secrets/demerzel-age-identity
+      DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT: ${DEMERZEL_ENCRYPTION_KEY_AGE_RECIPIENT:?Set the age recipient in .env}
+    restart: unless-stopped
     volumes:
-      - gpt-load-data:/app/data
+      - demerzel-data:/app/data
+      - type: bind
+        source: ${DEMERZEL_ENCRYPTION_KEY_AGE_IDENTITY_FILE:?Set the external age identity path in .env}
+        target: /run/secrets/demerzel-age-identity
+        read_only: true
     stop_grace_period: ${CONTAINER_STOP_GRACE_PERIOD:-15s}
     healthcheck:
-      test: wget -q --spider -T 10 -O /dev/null http://localhost:${PORT:-3001}/health
+      test: ["CMD-SHELL", "wget -q --spider -T 10 -O /dev/null http://localhost:${PORT:-3001}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
 volumes:
-  gpt-load-data:
+  demerzel-data:

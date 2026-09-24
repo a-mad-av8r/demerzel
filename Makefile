@@ -1,9 +1,12 @@
 .DEFAULT_GOAL := help
 
-APP := gpt-load
+APP := demerzel
 WEB_DIR := web
 GO ?= go
 PNPM ?= corepack pnpm
+
+PODMAN_COMPOSE ?= podman-compose
+PODMAN_USERNS ?= keep-id:uid=10001,gid=10001
 
 .PHONY: _web-deps
 _web-deps:
@@ -40,6 +43,26 @@ check: _web-deps ## Run source checks and build
 	$(GO) build -o $(APP) .
 	$(GO) test -count=1 . ./internal/...
 	git --no-pager diff --check
+
+.PHONY: container-build
+container-build: ## Build Demerzel with the rootless Podman Compose configuration
+	PODMAN_USERNS="$(PODMAN_USERNS)" $(PODMAN_COMPOSE) build
+
+.PHONY: container-up
+container-up: ## Build and start Demerzel; named-volume data survives container removal
+	PODMAN_USERNS="$(PODMAN_USERNS)" $(PODMAN_COMPOSE) up --build -d
+
+.PHONY: container-down
+container-down: ## Stop and remove Demerzel containers without deleting persistent data
+	$(PODMAN_COMPOSE) down
+
+.PHONY: container-purge
+container-purge: ## Explicitly confirm removal of the Compose-owned data volume
+	packaging/purge-volume.sh --purge
+
+.PHONY: local-artifact-smoke
+local-artifact-smoke: ## Exercise install, upgrade, rollback, and uninstall from generated release artifacts
+	packaging/local-smoke.sh "$(OLD_ARTIFACT_DIR)" "$(NEW_ARTIFACT_DIR)"
 
 .PHONY: help
 help: ## Display available targets

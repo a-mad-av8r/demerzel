@@ -47,8 +47,8 @@ WORKDIR /app
 RUN apk add --no-cache libcrypto3=3.5.8-r0 libssl3=3.5.8-r0 \
     && apk add --no-cache ca-certificates tzdata \
     && update-ca-certificates \
-    && addgroup -S -g 10001 gpt-load \
-    && adduser -S -D -H -u 10001 -G gpt-load gpt-load \
+    && addgroup -S -g 10001 demerzel \
+    && adduser -S -D -H -u 10001 -G demerzel demerzel \
     && mkdir -p /app/data \
     && chown 10001:10001 /app/data \
     && chmod 0700 /app/data
@@ -62,18 +62,21 @@ COPY LICENSES/BSD-3-Clause-age.txt /app/licenses/BSD-3-Clause-age.txt
 COPY LICENSES/Inno-Setup.txt /app/licenses/Inno-Setup.txt
 COPY LICENSES/MIT.txt /app/licenses/MIT.txt
 COPY LICENSES/MPL-2.0.txt /app/licenses/MPL-2.0.txt
+LABEL org.opencontainers.image.source="https://github.com/a-mad-av8r/demerzel"
+
 EXPOSE 3001 1455 54545 51121
 USER 10001:10001
 ENTRYPOINT ["/app/gpt-load"]
 
 
 # 发布路径：直接打包 build-binaries 已交叉编译好的二进制，不在镜像内重复编译。
-# 需要 build context 中存在 release/gpt-load-linux-<arch>。
+# The release prebuilt target packages a Demerzel-owned Linux release asset.
 FROM runtime AS prebuilt
 
 ARG TARGETARCH
-# GitHub Actions 的 artifact 不保留可执行位，必须在复制时显式恢复为 0755。
-COPY --chmod=0755 release/gpt-load-linux-${TARGETARCH} /app/gpt-load
+ARG DEMERZEL_TARGETARCH=${TARGETARCH}
+# GitHub Actions artifacts may lose the executable bit; restore it explicitly.
+COPY --chmod=0755 release/demerzel-linux-${DEMERZEL_TARGETARCH} /app/gpt-load
 
 
 # 默认 target：自包含的源码构建，供本地 `docker build .` 与用户自建使用。

@@ -40,7 +40,7 @@ func TestReleaseIsolatesDockerCredentials(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 	for _, job := range []string{
 		"docker-smoke", "prebuilt-image-smoke", "publication-preflight", "publish-images",
-		"post-publish-image-smoke", "post-publish-verify", "promote-image-channels", "reconcile-publication",
+		"post-publish-image-smoke", "post-publish-verify",
 	} {
 		block := workflowJobBlock(t, content, job)
 		setup := workflowStepBlock(t, block, "Isolate Docker credentials")
@@ -74,8 +74,8 @@ func TestReleaseUsesSelfHostedValidationAndHostedPublicationRunners(t *testing.T
 	}
 	for _, job := range []string{
 		"validate-tag", "verify-and-build-web", "package-metadata", "package-checksums", "docker-smoke",
-		"publication-preflight", "publish-images", "publish-github", "post-publish-image-smoke",
-		"post-publish-verify", "promote-image-channels", "deploy-render", "reconcile-publication",
+		"publication-preflight", "release-approval", "publish-images", "publish-github",
+		"post-publish-image-smoke", "post-publish-verify", "reconcile-publication",
 	} {
 		block := workflowJobBlock(t, content, job)
 		if !strings.Contains(block, "runs-on: ubuntu-24.04") {
@@ -105,10 +105,10 @@ func TestReleaseUsesSelfHostedValidationAndHostedPublicationRunners(t *testing.T
 		{
 			job: "native-artifact-smoke",
 			required: []string{
-				"runner: ubuntu-24.04\n            filename: gpt-load-linux-amd64",
-				"runner: ubuntu-24.04-arm\n            filename: gpt-load-linux-arm64",
-				"runner: macos-15-intel\n            filename: gpt-load-macos-amd64",
-				"runner: macos-15\n            filename: gpt-load-macos-arm64",
+				"runner: ubuntu-24.04\n            filename: demerzel-linux-amd64",
+				"runner: ubuntu-24.04-arm\n            filename: demerzel-linux-arm64",
+				"runner: macos-15-intel\n            filename: demerzel-macos-amd64",
+				"runner: macos-15\n            filename: demerzel-macos-arm64",
 				"runner: windows-2025\n            filename: gpt-load-windows-amd64.exe",
 			},
 		},
@@ -132,19 +132,15 @@ func TestReleaseUsesSelfHostedValidationAndHostedPublicationRunners(t *testing.T
 	if !strings.Contains(qemu, "platforms: arm64") {
 		t.Fatal("AMD64 hosted image publisher must enable ARM64 emulation for the other target")
 	}
-	publishGitHub := workflowStepBlock(t, workflowJobBlock(t, content, "publish-github"), "Create or update GitHub Release draft")
+	publishGitHub := workflowStepBlock(t, workflowJobBlock(t, content, "publish-github"), "Create GitHub Release draft")
 	for _, required := range []string{"preserve_order: true", "overwrite_files: false"} {
 		if !strings.Contains(publishGitHub, required) {
 			t.Errorf("GitHub Release asset upload does not contain %q", required)
 		}
 	}
-	deployRender := workflowJobBlock(t, content, "deploy-render")
-	for _, required := range []string{
-		"cli_${RENDER_CLI_VERSION}_linux_amd64.zip",
-		"3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd",
-	} {
-		if !strings.Contains(deployRender, required) {
-			t.Errorf("Render deployment does not contain %q", required)
-		}
+	approval := workflowJobBlock(t, content, "release-approval")
+	if !strings.Contains(approval, "name: demerzel-release") ||
+		!strings.Contains(approval, "vars.DEMERZEL_RELEASE_APPROVED_TAG") {
+		t.Fatal("publication lacks its protected environment and tag-specific approval gate")
 	}
 }
