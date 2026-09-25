@@ -129,4 +129,4 @@ The explicit standalone `uninstall --purge` operation removes only the app-owned
 
 ## Publication requirements
 
-The release workflow accepts strict SemVer `v2.*` tags, including valid prereleases. A release tag must point to a commit on `main` and pass the protected release approval. No signed GitHub release or Homebrew tap is published yet; treat the package commands above as unavailable until those external prerequisites exist. The planned version scheme is being tracked separately from the initial source publication.
+The release workflow accepts tags matching its `v2.*` pattern, including supported prereleases; build metadata is not accepted. A release tag must point to a commit on `main` and pass the protected release approval. No signed GitHub release or Homebrew tap is published yet; treat the package commands above as unavailable until those external prerequisites exist. The planned version scheme is being tracked separately from the initial source publication.

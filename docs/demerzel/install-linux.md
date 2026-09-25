@@ -141,4 +141,4 @@ Purge accepts only an app-owned `.demerzel` or `demerzel` directory and requires
 
 ## Platform and publication status
 
-The standalone native installer supports Linux amd64 and arm64. Windows custody and setup are separate from this guide. The release workflow accepts strict SemVer `v2.*` tags, including valid prereleases; each tag must point to a commit on `main` and pass the protected release approval. No signed public release is available yet.
+The standalone native installer supports Linux amd64 and arm64. Windows custody and setup are separate from this guide. The release workflow accepts tags matching its `v2.*` pattern, including supported prereleases; build metadata is not accepted. Each tag must point to a commit on `main` and pass the protected release approval. No signed public release is available yet.
