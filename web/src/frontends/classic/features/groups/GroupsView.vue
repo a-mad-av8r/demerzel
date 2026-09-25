@@ -84,8 +84,6 @@ const queryClient = useQueryClient()
 const togglingGroupIDs = ref(new Set<number>())
 const optimisticEnabled = ref(new Map<number, boolean>())
 
-// weight_manual 为 0 也判定 disabled，但接口限定 1~100，故 disabled 即已停用。
-// AppSwitch 纯受控，等请求走完才翻转会像卡住，故先本地置位。
 function groupEnabled(group: GroupCollectionItemDto): boolean {
   return optimisticEnabled.value.get(group.id) ?? group.status !== 'disabled'
 }
@@ -637,7 +635,6 @@ function connectionTypeBadgeClass(type: ConnectionType): string {
 }
 
 .groups-record-grid {
-  /* 状态列扩宽容纳开关，操作列去掉文案后收窄，总宽比改前更小。 */
   --ledger-record-list-grid: minmax(0, 1fr) 140px minmax(0, 1.55fr) 92px minmax(0, 1.25fr) 96px;
 }
 

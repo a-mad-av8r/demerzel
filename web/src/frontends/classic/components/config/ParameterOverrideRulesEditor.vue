@@ -39,14 +39,14 @@ import {
 
 type ParamOp = 'set' | 'remove'
 
-/** 一行参数动作。行序只是录入次序，不参与语义。 */
+/** A parameter action row. Order is input order only and has no semantic effect. */
 interface ParamRow {
   key: number
   op: ParamOp
   path: string
   valueText: string
   kind: ParameterValueKind
-  /** 用户动过类型列之后就不再跟随输入推断，否则一打字又被改回去。 */
+  /** Once a user changes the type, do not infer it from input again while typing. */
   kindPinned: boolean
 }
 
@@ -55,7 +55,7 @@ interface RuleRow {
   open: boolean
   protocol: string
   model: string
-  /** true 时 set 用整段 JSON 编辑，remove 仍是行。 */
+  /** When true, edit set as a complete JSON value; remove remains row-based. */
   json: boolean
   params: ParamRow[]
   setText: string
@@ -80,7 +80,7 @@ interface RuleSummary {
   overflow: number
 }
 
-/** 折叠行放不下太多摘要；超出的用 +N 兜住，避免静默裁切成看不见。 */
+/** A collapsed row cannot show every summary; use +N for overflow instead of silently hiding it. */
 const summaryLimit = 3
 
 const forbiddenRootFields = ['model', 'stream', 'store']
@@ -191,7 +191,7 @@ function tryParseSetText(text: string): Record<string, ParameterJSONValue> | und
   }
 }
 
-/** 刚加出来还没填的行：不标红、不阻止保存，序列化时直接忽略。 */
+/** A newly added incomplete row is neither an error nor a save blocker; omit it during serialisation. */
 function isBlankParam(param: ParamRow): boolean {
   if (param.path.trim()) return false
   return param.op === 'remove' || param.kind === 'null' || !param.valueText.trim()
@@ -228,7 +228,7 @@ function pathError(row: ParamRow, siblings: ParamRow[]): string {
     if (other.key === row.key) continue
     if (other.op === row.op && other.path === row.path)
       return t('group.settings.parameterOverrides.errors.pathDuplicate')
-    // 同为 set 时祖先与后代互斥：还原成嵌套对象会互相顶掉。
+    // Set operations on ancestors and descendants conflict because rebuilding a nested object overwrites one.
     if (row.op === 'set' && other.op === 'set' && parameterPathsCross(row.path, other.path))
       return t('group.settings.parameterOverrides.errors.pathAncestor')
   }
@@ -236,7 +236,7 @@ function pathError(row: ParamRow, siblings: ParamRow[]): string {
 }
 
 function valueError(row: ParamRow): string {
-  // 空值类型没有值可填；文本类型允许空字符串。
+  // Null has no value to enter; text permits an empty string.
   if (row.kind === 'null') return ''
   if (!row.valueText.trim() && row.kind !== 'text')
     return t('group.settings.parameterOverrides.errors.valueRequired')
@@ -320,7 +320,7 @@ function ruleInvalid(row: RuleRow): boolean {
   return Boolean(errors && (errors.model || errors.set || errors.action || errors.params.size > 0))
 }
 
-/** 设置与删除只在路径相交时才互相影响，这时后端固定先删后设。 */
+/** Set and remove affect each other only where paths overlap; the backend always removes before setting. */
 function pathsCrossing(row: RuleRow): boolean {
   const removes = row.params.filter(({ op }) => op === 'remove').map(({ path }) => path)
   if (removes.length === 0) return false
@@ -368,7 +368,7 @@ function buildSummary(row: RuleRow): SummaryChip[] {
   return chips
 }
 
-/** 摘要里的值去掉字符串引号，其余类型保留字面量。 */
+/** Remove string quotes in a summary value while retaining other literal forms. */
 function previewValue(value: ParameterJSONValue): string {
   return typeof value === 'string' ? value : formatValueText(value)
 }
@@ -441,7 +441,7 @@ function removeRule(index: number): void {
   rows.value.splice(index, 1)
 }
 
-/** 新增行追加末尾，切换动作原地不动：行序不参与语义，不该跳走。 */
+/** Append new rows; changing an action stays in place because row order has no semantic effect. */
 function addParam(row: RuleRow): void {
   row.params.push({
     key: newKey(),
@@ -737,7 +737,7 @@ const modelMatchCounts = computed(
                   class="parameter-rule__param"
                   :class="{ 'parameter-rule__param--drop': param.op === 'remove' }"
                 >
-                  <!-- JSON 视图下 set 归 textarea，行只可能是删除，下拉就成了死控件。 -->
+                  <!-- In JSON view, set belongs to the textarea and a row can only remove, making this a dead control. -->
                   <span v-if="row.json" class="parameter-rule__op-static">{{
                     t('group.settings.parameterOverrides.opRemove')
                   }}</span>
@@ -783,7 +783,7 @@ const modelMatchCounts = computed(
                         @update:model-value="setParamKind(param, $event)"
                       />
                     </span>
-                    <!-- 值控件跟着类型走：布尔只有两个取值，空值没有值可填。 -->
+                    <!-- The value control follows type: boolean has two values and null has none. -->
                     <span
                       v-if="param.kind === 'null'"
                       class="parameter-rule__value-none"
@@ -998,7 +998,7 @@ const modelMatchCounts = computed(
   color: var(--color-text-faint);
   font-weight: 400;
 }
-/* 摘要尾部：chips 收缩并裁切，+N 常驻可见，两种视口共用这一套。 */
+/* The summary tail shrinks and clips chips while +N remains visible in both viewports. */
 .parameter-rule__summary-tail {
   display: flex;
   min-width: 0;
@@ -1013,8 +1013,8 @@ const modelMatchCounts = computed(
   gap: 5px;
   overflow: hidden;
 }
-/* 单个 chip 设上限：一条很长的路径不该把同行其余摘要全挤出视野。
-   只有路径收缩并省略，前缀与值始终完整 —— 截断值会让摘要变成误导。 */
+/* Cap each chip so one long path cannot push every other summary out of view.
+   Only the path shrinks and truncates; keeping prefixes and values complete avoids misleading summaries. */
 .parameter-rule__chip {
   max-width: 250px;
 }
@@ -1048,7 +1048,7 @@ const modelMatchCounts = computed(
   gap: 1px;
   padding-right: 7px;
 }
-/* 排序与删除之间留出空隙：误点下移和误点删除的代价不对称。 */
+/* Separate sorting and deletion because accidentally moving and accidentally deleting have different costs. */
 .parameter-rule__tools-gap {
   width: var(--space-3);
 }
@@ -1124,7 +1124,7 @@ const modelMatchCounts = computed(
   border-radius: var(--radius-control);
   background: var(--color-border-subtle);
 }
-/* 动作 / 路径 / 类型 / 值 / 删除。类型与值定宽，路径吃掉剩余空间。 */
+/* Action / path / type / value / delete. Type and value have fixed widths; path takes the remaining space. */
 .parameter-rule__param {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 86px 176px auto;
@@ -1133,8 +1133,8 @@ const modelMatchCounts = computed(
   background: var(--color-surface);
   padding: 4px 5px 4px 6px;
 }
-/* 删除行沿用同一套列宽：路径框与设置行严格对齐，类型与值两列留空。
-   列对齐是这张表的主要价值，不能因为少两个控件就让路径框变长。 */
+/* Delete rows retain the same column widths so the path field aligns strictly with setting rows;
+   type and value columns remain empty because this alignment is the table's main value. */
 .parameter-rule__param--drop .parameter-rule__path-cell {
   grid-column: 2;
 }
@@ -1166,9 +1166,9 @@ const modelMatchCounts = computed(
   font-family: var(--font-mono);
   font-size: var(--text-sm);
 }
-/* 一行里的下拉、输入框与图标按钮统一到 --control-compact，避免互相错位。
-   表格单元格用填充式：静态靠底色表明可输入（白底表格上的浅灰格），
-   不铺静态边框以免一行里挤出四道框；hover 补边框，focus 与错误再加深。 */
+/* Align selects, inputs, and icon buttons in each row to --control-compact.
+   Table cells use filled controls: the background shows input capability without four static borders;
+   hover restores a border, while focus and errors strengthen it. */
 .parameter-rule__param .parameter-rule__input {
   border-color: transparent;
   background: var(--color-surface-sunken);
@@ -1180,8 +1180,7 @@ const modelMatchCounts = computed(
 .parameter-rule__param .parameter-rule__input[aria-invalid='true'] {
   border-color: var(--color-danger);
 }
-/* AppSelect 的根是 Fragment，class 会落到 trigger 且丢掉 scope 属性，
-   所以这三个下拉都自带包裹元素：定位与选择器才有可靠的落点。 */
+
 .parameter-rule__op,
 .parameter-rule__kind,
 .parameter-rule__bool {
@@ -1255,7 +1254,7 @@ const modelMatchCounts = computed(
   .parameter-rule__summary-tail {
     grid-area: 2 / 3;
   }
-  /* 独占一行时两端分布：填满行宽，且排序与删除相距最远。 */
+
   .parameter-rule__tools {
     justify-content: space-between;
     border-top: 1px solid var(--color-border-subtle);
@@ -1284,8 +1283,7 @@ const modelMatchCounts = computed(
   .parameter-rule__match-inputs {
     grid-template-columns: 1fr;
   }
-  /* 窄屏折成两行：动作与路径在上，类型与值缩进到路径左缘对齐，
-     值不会退回容器左边缘而与键名失去关联。删除行只有上面一行。 */
+
   .parameter-rule__param {
     grid-template-columns: 72px 84px minmax(0, 1fr) var(--control-compact);
     row-gap: 5px;

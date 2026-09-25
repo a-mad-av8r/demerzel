@@ -20,7 +20,6 @@ export function createSessionApiClient(deps: {
       getAuthKey: () => credential,
       getLocale: deps.getLocale,
       onUnauthorized: () => {
-        // 已退出或更换身份后，旧请求的 401 不得清除新会话。
         if (!options?.signal?.aborted && revision === session?.getRevision()) session?.clear()
       },
     })

@@ -1,5 +1,4 @@
 import { getPreferredFrontend } from '@shared/frontend/preference'
-import { getBrowserLocale } from '@shared/preferences/locale'
 
 async function bootstrap(): Promise<void> {
   const frontend = await getPreferredFrontend()
@@ -13,19 +12,9 @@ async function bootstrap(): Promise<void> {
 
 function showStartupFailure(): void {
   const labels = {
-    'zh-CN': {
-      message: '无法加载界面，请重试。',
-      retry: '重新加载',
-    },
-    'en-US': {
-      message: 'Unable to load the interface. Please retry.',
-      retry: 'Reload',
-    },
-    'ja-JP': {
-      message: '画面を読み込めません。再試行してください。',
-      retry: '再読み込み',
-    },
-  }[getBrowserLocale()]
+    message: 'Unable to load the interface. Please retry.',
+    retry: 'Reload',
+  }
   const root = document.getElementById('app')
   if (!root) return
   const message = document.createElement('p')

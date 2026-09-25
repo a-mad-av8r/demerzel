@@ -11,7 +11,7 @@ import (
 	"gpt-load/internal/protocol"
 )
 
-// OpenWebsocket 复用目标、凭据和代理合同，原生 WS 不进入 HTTP SDK 的重试链。
+// OpenWebsocket reuses target, credential, and proxy contracts; native WS does not enter the HTTP SDK retry chain.
 func (manager *RuntimeManager) OpenWebsocket(ctx context.Context, spec execution.AttemptSpec) (execution.WebsocketSession, execution.WebsocketResult) {
 	spec = withUserAgent(spec)
 	reject := func() (execution.WebsocketSession, execution.WebsocketResult) {

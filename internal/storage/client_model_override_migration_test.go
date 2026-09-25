@@ -60,7 +60,7 @@ func testClientModelOverrideMigration(t *testing.T, open func(*testing.T) *gorm.
 			if !db.Migrator().HasTable("client_model_overrides") {
 				t.Fatal("client model overrides table is missing")
 			}
-			modelNames := []string{"Model", "model", "模型🚀", "é", "é", strings.Repeat("模型", 600)}
+			modelNames := []string{"Model", "model", "☃☃🚀", "é", "é", strings.Repeat("☃☃", 600)}
 			for _, name := range modelNames {
 				identity := fmt.Sprintf("%x", sha256.Sum256([]byte(name)))
 				row := map[string]any{"model_hash": identity, "client_model": name, "overrides": `{"display_name":"Custom"}`}

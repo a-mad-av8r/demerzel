@@ -1,9 +1,9 @@
 **HOSTILE DESIGN REVIEW – DEMERZEL ARCHITECTURE**
 
-1. **Donor map & license hell**  
+1. **Donor map & licence concerns**
    * The base fork is **MIT** – fine.  
-   * **CLIProxyAPI** is MIT, **Bifrost** is Apache‑2.0. The two are *technically* compatible **only if you keep the Apache 2.0 notice** in every redistributed binary. The page claims a “MIT fork” – if you strip the Apache notice or re‑license the Bifrost bits as MIT, you’ll be in violation. The document never spells out the required license headers or a `NOTICE` file.  
-   * No mention of the required *state‑of‑modifications* clause of Apache‑2.0. The fork might inadvertently claim that the whole project is MIT, which is a license infringement.
+   * **CLIProxyAPI** is MIT, **Bifrost** is Apache-2.0. The two are *technically* compatible **only if you keep the Apache 2.0 notice** in every redistributed binary. The page claims a “MIT fork” — if you strip the Apache notice or relicense the Bifrost bits as MIT, you’ll be in violation. The document never spells out the required licence headers or a `NOTICE` file.
+   * No mention of the required *state-of-modifications* clause of Apache-2.0. The fork might inadvertently claim that the whole project is MIT, which is a licence infringement.
 
 2. **Two‑stage request path – model first, account second**  
    * The order is *argued* to be “right”, but the document glosses over a serious loophole: **model routing can dictate the pool**. If a model is only available in a single, expensive account, the policy arm (stage 2) will still have to pick that account, breaking the claim that “stage 2 is policy‑armored.”  
@@ -50,4 +50,4 @@
    * **High Availability** – No clustering or state sharing; a single node failure takes the gateway offline.  
    * **Legal & Compliance** – No mention of GDPR, data residency, or export controls for the LLM APIs used.  
 
-**Bottom line:** The architecture is *full of untested assumptions*, *license oversight*, *security gaps*, and *missing operational fundamentals*. If you ship this as a production‑grade gateway, you’ll get a broken, non‑compliant, and flaky system that will bite you hard when the first 429 arrives or the keychain is lost. Fix the license compliance first, then rebuild the failover logic, enforce the outbound‑edge rule, harden the vault, and add observability and concurrency safeguards before you consider calling it “production‑ready.”
+**Bottom line:** The architecture is *full of untested assumptions*, *licence oversight*, *security gaps*, and *missing operational fundamentals*. If you ship this as a production-grade gateway, you’ll get a broken, non-compliant, and flaky system that will bite you hard when the first 429 arrives or the keychain is lost. Fix the licence compliance first, then rebuild the failover logic, enforce the outbound-edge rule, harden the vault, and add observability and concurrency safeguards before you consider calling it “production-ready.”

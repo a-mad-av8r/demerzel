@@ -24,7 +24,7 @@ func (s *Server) HTTPModule() httproute.Module {
 		httproute.Route{
 			Name:     "web.asset.favicon",
 			Methods:  []string{http.MethodGet},
-			Path:     "/favicon.svg",
+			Path:     "/favicon.png",
 			Handlers: gin.HandlersChain{s.serveFavicon},
 		},
 		httproute.Route{
@@ -47,7 +47,7 @@ func (s *Server) HTTPModule() httproute.Module {
 		Auth:  httproute.AuthNone,
 		NamespacePrefixes: []string{
 			"/assets",
-			"/favicon.svg",
+			"/favicon.png",
 			"/theme-bootstrap.js",
 		},
 		Routes: routes,

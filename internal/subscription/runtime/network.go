@@ -35,7 +35,7 @@ func NetworkFromContext(ctx context.Context) (NetworkContext, bool) {
 }
 
 // HTTPClient builds one request-scoped client from the frozen network policy.
-// A missing NetworkContext preserves the caller's existing transport behavior.
+// A missing NetworkContext preserves the caller's existing transport behaviour.
 func HTTPClient(ctx context.Context) (*http.Client, error) {
 	network, ok := NetworkFromContext(ctx)
 	if !ok {

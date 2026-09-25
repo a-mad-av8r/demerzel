@@ -40,11 +40,6 @@ const { t } = useI18n()
   padding-top: 20px;
 }
 
-/*
- * 后端最多返回 4 个账号（homeSubscriptionAccountLimit），配合每列至少 232px：
- * 桌面宽度下正好排出 4 列，4 个账号天然一行放完，不会换行也不需要横向滚动；
- * 宽度不够（含移动端）时 auto-fill 自动减少列数，多出的账号才换到下一行。
- */
 .home-subscription-accounts__row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));

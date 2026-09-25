@@ -355,42 +355,35 @@ func TestDeleteGroupEndpointAuthenticationValidationNotFoundConflictAndSuccess(t
 	notFound := httptest.NewRecorder()
 	notFoundRequest := httptest.NewRequest(http.MethodDelete, "/api/groups/999", nil)
 	notFoundRequest.Header.Set("Authorization", "Bearer test-auth-key")
-	notFoundRequest.Header.Set("Accept-Language", "ja-JP")
+	notFoundRequest.Header.Set("Accept-Language", "*")
 	engine.ServeHTTP(notFound, notFoundRequest)
-	assertDeleteGroupEnvelope(t, notFound, http.StatusNotFound, "NOT_FOUND", "グループが存在しません")
+	assertDeleteGroupEnvelope(t, notFound, http.StatusNotFound, "NOT_FOUND", "Group not found")
 
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "分组仍被访问密钥引用"},
-		{language: "en-US", message: "The group is still referenced by access keys"},
-		{language: "ja-JP", message: "グループはアクセスキーから参照されています"},
-	} {
-		row := models.AccessKey{
-			Name:      "HTTP reference " + test.language,
-			KeyValue:  "cipher-http-" + test.language,
-			KeyHash:   "hash-http-" + test.language,
-			KeySuffix: "0005",
-			Status:    string(state.AccessKeyStatusActive),
-			Filters:   models.JSON(fmt.Sprintf(`{"groups":[%d]}`, groupID)),
-		}
-		if err := fixture.db.Create(&row).Error; err != nil {
-			t.Fatal(err)
-		}
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodDelete, path, nil)
-		request.Header.Set("Authorization", "Bearer test-auth-key")
-		request.Header.Set("Accept-Language", test.language)
-		engine.ServeHTTP(recorder, request)
-		assertDeleteGroupEnvelope(t, recorder, http.StatusConflict, "GROUP_IN_USE", test.message)
-		var cleanup models.AccessKey
-		if err := fixture.db.First(&cleanup, row.ID).Error; err != nil {
-			t.Fatal(err)
-		}
-		if err := fixture.db.Delete(&cleanup).Error; err != nil {
-			t.Fatal(err)
-		}
+	acceptLanguage := "*"
+	message := "The group is still referenced by access keys"
+	row := models.AccessKey{
+		Name:      "HTTP reference wildcard",
+		KeyValue:  "cipher-http-wildcard",
+		KeyHash:   "hash-http-wildcard",
+		KeySuffix: "0005",
+		Status:    string(state.AccessKeyStatusActive),
+		Filters:   models.JSON(fmt.Sprintf(`{"groups":[%d]}`, groupID)),
+	}
+	if err := fixture.db.Create(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodDelete, path, nil)
+	request.Header.Set("Authorization", "Bearer test-auth-key")
+	request.Header.Set("Accept-Language", acceptLanguage)
+	engine.ServeHTTP(recorder, request)
+	assertDeleteGroupEnvelope(t, recorder, http.StatusConflict, "GROUP_IN_USE", message)
+	var cleanup models.AccessKey
+	if err := fixture.db.First(&cleanup, row.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.db.Delete(&cleanup).Error; err != nil {
+		t.Fatal(err)
 	}
 
 	success := httptest.NewRecorder()
@@ -404,7 +397,7 @@ func TestDeleteGroupEndpointAuthenticationValidationNotFoundConflictAndSuccess(t
 	if err := json.Unmarshal(success.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if string(envelope["code"]) != "0" || string(envelope["message"]) != `"操作成功"` {
+	if string(envelope["code"]) != "0" || string(envelope["message"]) != `"Success"` {
 		t.Fatalf("success envelope = %s", success.Body.Bytes())
 	}
 	if _, exists := envelope["data"]; exists {

@@ -421,7 +421,7 @@ func TestFlushPassiveQuotaObservationsDiscardsOnIdentityGenerationMismatch(t *te
 	manager.RecordPassiveQuotaObservation(row.ID, entries[0].IdentityGeneration, 2000, []providerobservation.QuotaWindow{
 		{ID: "primary", Scope: "account", State: "available", Used: &used},
 	})
-	// 样本入队时仍属于当前目标，之后的目标切换由 flush 阶段再次拦截。
+	// The sample belonged to the current target when queued; the flush stage intercepts a later target change again.
 	entries[0].IdentityGeneration = 999999
 	if _, err := registry.ReconcileGroup(row.GroupID, entries); err != nil {
 		t.Fatal(err)

@@ -54,7 +54,6 @@ const weightInvalid = computed(
   () =>
     !/^\d+$/u.test(weight.value) ||
     Number(weight.value) > 100 ||
-    // 历史零权重可保持原值；新设置仍要求 1–100。
     (Number(weight.value) < 1 && Number(weight.value) !== saved.value?.weight),
 )
 const priceInvalid = computed(

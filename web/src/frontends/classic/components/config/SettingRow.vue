@@ -139,7 +139,7 @@ const emit = defineEmits<{ toggle: [] }>()
 
 .setting-row__cluster {
   display: flex;
-  /* 与控件实际高度对齐，折叠态和覆盖态才会完全等高。 */
+  /* Match control height so collapsed and overridden states align exactly. */
   min-height: 28px;
   flex-wrap: wrap;
   align-items: center;

@@ -14,7 +14,7 @@ type functionAllowlist struct {
 	names map[string]struct{}
 }
 
-// 只适配锁定 SDK 的目标转换器无法保留的工具选择；目标能原生表达白名单时保留完整工具列表。
+// Adapt only tool choices that a target converter in the locked SDK cannot retain; preserve the full tool list when the target can express the allow-list natively.
 func prepareConvertedToolConstraints(
 	clientProtocol protocol.Protocol,
 	providerKind channel.ProviderKind,

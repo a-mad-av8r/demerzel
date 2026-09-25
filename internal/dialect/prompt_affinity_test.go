@@ -158,7 +158,7 @@ func TestPromptAffinityPrefixRequiresInitialUserText(t *testing.T) {
 func TestPromptAffinityPrefixBoundsEachRoleWithoutBreakingUTF8(t *testing.T) {
 	t.Parallel()
 
-	longText := strings.Repeat("界", maxPromptAffinityRoleBytes)
+	longText := strings.Repeat("☃", maxPromptAffinityRoleBytes)
 	body, err := json.Marshal(map[string]any{
 		"messages": []map[string]string{
 			{"role": "system", "content": longText},

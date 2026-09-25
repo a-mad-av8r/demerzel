@@ -45,7 +45,7 @@ PODMAN_USERNS=keep-id:uid=10001,gid=10001 podman-compose up --build -d
 ```
 
 For a generated native release binary, select the small prebuilt runtime stage
-instead. The checkout supplies the Dockerfile and license files; the signed
+instead. The checkout supplies the Dockerfile and licence files; the signed
 artifact supplies the already-built Linux binary. Example for an arm64 Podman
 VM:
 

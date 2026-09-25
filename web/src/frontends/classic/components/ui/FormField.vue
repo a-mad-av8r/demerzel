@@ -13,7 +13,7 @@ const props = withDefaults(
     disabledReason?: string
     labelSuffix?: string
     size?: 'default' | 'compact'
-    /** 视觉隐藏 label，保留给辅助技术。用于列标签已由表头承担的密集表格。 */
+    /** Visually hidden label retained for assistive technology in dense tables whose headers already label columns. */
     labelHidden?: boolean
   }>(),
   {

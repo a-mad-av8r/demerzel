@@ -122,7 +122,7 @@ watch(
       data.overrides.serial_quota_reserve_percent ?? data.effective.serial_quota_reserve_percent,
     )
     proxyMode.value = data.proxy.mode
-    // display_url 可能脱敏；未编辑时不能把它作为代理凭据重新写回。
+
     proxyURL.value = ''
     headersMode.value = data.overrides.header_rules === undefined ? 'inherit' : 'custom'
     const value = data.overrides.header_rules ?? data.effective.header_rules
@@ -300,7 +300,7 @@ async function save(): Promise<void> {
     saving.value = false
   }
 }
-// 切换渠道是独立的高危写入：不进入统一草稿，保存后由后端回填参数。
+
 const channelsQuery = useQuery({
   queryKey: ['modern', 'group-channels'],
   queryFn: ({ signal }) => getGroupChannels(client, signal),
@@ -317,7 +317,7 @@ const switchConflict = ref<{ id: number; name: string }[]>()
 const switching = ref(false)
 const switchError = ref('')
 const busy = computed(() => saving.value || switching.value)
-// 地址按原样保留，但各渠道对地址格式的要求不同，切换时提醒复核。
+
 const keepsBaseURL = computed(() => Boolean((saved.value?.params.base_url ?? '').trim()))
 const pendingChannelName = computed(
   () => switchableChannels.value.find((item) => item.id === requestedChannel.value)?.name ?? '',
@@ -348,7 +348,7 @@ async function confirmChannelSwitch(): Promise<void> {
       controller.signal,
     )
     if (controller.signal.aborted) return
-    // 草稿此时与切换前一致（dirty 为真时不允许切换），watch 会用新数据重建。
+
     cache.setQueryData(groupSettingsKey(props.group.id), result)
     requestedChannel.value = ''
     switchConflict.value = undefined

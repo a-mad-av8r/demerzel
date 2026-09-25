@@ -262,7 +262,7 @@ func TestWebsocketStoredAndTemporaryOwnershipRemainSeparate(t *testing.T) {
 	server := httptest.NewServer(engine)
 	defer server.Close()
 	first := dialGatewayWebsocket(t, server.URL)
-	// 省略 store 沿用上游默认；真实预热不能由网关合成响应。
+	// Omitting store retains the upstream default; the gateway must not synthesise a response for a real prewarm.
 	_ = first.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"public","input":"warm","generate":false}`))
 	if _, _, err := first.ReadMessage(); err != nil {
 		t.Fatal(err)
@@ -1015,7 +1015,7 @@ func TestWebsocketDefaultLaneFIFOAndContinuation(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("first turn not sent")
 	}
-	// 本地无效的第二轮仍须排在第一轮终态之后。
+	// A locally invalid second turn must still follow the first turn's terminal state.
 	_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","input":"invalid"}`))
 	_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"public","input":"two","previous_response_id":"resp_1","store":false}`))
 	close(release)

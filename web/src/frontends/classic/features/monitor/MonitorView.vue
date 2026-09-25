@@ -95,7 +95,6 @@ const routeTimeFilters = computed(() =>
 )
 const resolvedTimeRange = ref<{ from_ms: number; to_ms: number; preset?: DateTimePreset }>()
 
-// 快捷范围只在进入页面、切换快捷项或显式刷新时解析，筛选和翻页共用同一区间。
 watch(
   () => {
     if (activeTab.value !== 'logs' && activeTab.value !== 'usage') return undefined
@@ -132,7 +131,7 @@ const timeDraft = ref<{ from: string; to: string; preset?: DateTimePreset }>({
 const timeValues = computed(() => {
   const draft = timeDraft.value
   const current = timeFilters.value
-  // 回拨时同一本地时间对应两个时刻，未改动的端点保留原始毫秒值。
+
   return {
     from:
       draft.from !== '' && draft.from === localDateTimeInput(current.from_ms)
@@ -197,7 +196,7 @@ function selectTab(value: string): void {
     if (usageTab.value?.navigationPending) return
     const report = usageTab.value?.navigationReport
     const filters = usageFilters.value
-    // 显式起止时间已经确定，报告不可用时仍可保持同一查询区间。
+
     const logRange = report ?? filters
     void router.push(
       monitorLocation(

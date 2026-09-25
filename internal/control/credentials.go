@@ -88,7 +88,7 @@ type CredentialItemResponse struct {
 	ConfiguredStatus        string                         `json:"configured_status"`
 	EffectiveStatus         string                         `json:"effective_status"`
 	Weight                  int                            `json:"weight"`
-	WeightManual            *int                           `json:"-"` // 仅新版展示投影使用，经典接口不增加字段。
+	WeightManual            *int                           `json:"-"` // Used only by the modern display projection; do not add it to the classic API.
 	RecentSuccessCount      uint64                         `json:"recent_success_count"`
 	RecentFailureCount      uint64                         `json:"recent_failure_count"`
 	ConsecutiveFailureCount uint64                         `json:"consecutive_failure_count"`
@@ -101,14 +101,14 @@ type CredentialItemResponse struct {
 	Proxy                   outboundproxy.View             `json:"proxy"`
 }
 
-// CredentialDailyUsageResponse 汇报固定 24 小时窗口内的上游尝试结果分布。
-// recent_success_count / recent_failure_count 来自 health 的 5 分钟内存窗口，
-// 是调度判定用的，重启即清零；这里的计数来自账号小时聚合，用于给人看。
+// CredentialDailyUsageResponse reports the distribution of upstream attempt outcomes within a fixed 24-hour window.
+// recent_success_count / recent_failure_count come from health's five-minute in-memory window
+// for scheduling decisions and reset on restart; these counts come from hourly account aggregates for display.
 type CredentialDailyUsageResponse struct {
 	WindowSeconds int64 `json:"window_seconds"`
 	SuccessCount  int64 `json:"success_count"`
 	FailureCount  int64 `json:"failure_count"`
-	// DataComplete 为 false 表示统计数据未覆盖完整窗口，计数偏低。
+	// DataComplete false means the statistical data does not cover the entire window, so counts may be low.
 	DataComplete bool `json:"data_complete"`
 }
 

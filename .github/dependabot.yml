@@ -1,9 +1,7 @@
-# 仓库已对所有 action 强制 SHA pin，上游补丁不会自动到达；由 Dependabot 提 PR
-# 更新 SHA 并同步刷新其后的版本注释，保持"可审计"与"能更新"同时成立。
+# The repository pins every action by SHA, so upstream patches do not arrive automatically; Dependabot opens PRs for them.
+# Update the SHA and the following version comment together, keeping dependencies auditable and updatable.
 #
-# 不要声明 target-branch。Dependabot 默认就针对默认分支（当前为 main），而一旦声明
-# target-branch，本文件对该 ecosystem 的配置就不再作用于 security update，
-# groups、labels 与 commit-message 会对安全更新 PR 全部失效。
+# Do not declare target-branch. Dependabot defaults to the default branch (currently main); declaring target-branch prevents this file's ecosystem configuration from applying to security updates, so groups, labels, and commit-message have no effect on security-update PRs.
 # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
 version: 2
 
@@ -18,7 +16,7 @@ updates:
     labels:
       - dependencies
     groups:
-      # 与下面两组保持一致：major 单独成 PR，便于评估破坏性变更。
+      # Keep this consistent with the two groups below: major upgrades get their own PRs so breaking changes can be assessed.
       github-actions-minor-and-patch:
         patterns:
           - "*"
@@ -36,7 +34,7 @@ updates:
     labels:
       - dependencies
     groups:
-      # major 升级单独成 PR，便于评估破坏性变更。
+      # Major upgrades get their own PRs so breaking changes can be assessed.
       go-minor-and-patch:
         patterns:
           - "*"
@@ -44,8 +42,7 @@ updates:
           - minor
           - patch
 
-  # third_party/cpaembedded 是独立 module，Dependabot 不会从根目录递归发现，
-  # 需显式声明；它经 replace 编译进主二进制，其依赖属于实际攻击面。
+  # third_party/cpaembedded is an independent module that Dependabot does not discover recursively from the repository root, so it must be declared explicitly. It is compiled into the main binary through replace, making its dependencies part of the real attack surface.
   - package-ecosystem: gomod
     directory: /third_party/cpaembedded
     schedule:

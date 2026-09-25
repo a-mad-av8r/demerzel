@@ -25,9 +25,9 @@ func TestPriceMultipliersSurvivePersistenceAndAllCostQueries(t *testing.T) {
 		finalTotal int64
 	}{
 		{"v6 frozen original and adjusted totals", 6, "0.8", "1.5", usage.Tokens{UncachedInput: 1000}, 2_000_000_000, 2_000_000, 2_000_000, 2_400_000},
-		// 原始两项各 0.6 nano，分别舍入为 1，合计 2 后乘 2，最终为 4。
+		// The original two 0.6 nano components each round to 1, total 2, then multiply by 2 to produce 4.
 		{"v6 rounds original lines before adjusting total", 6, "0.8", "2.5", usage.Tokens{UncachedInput: 1, Output: 1}, 600_000, 1, 2, 4},
-		// v5 各项 0.6 × 2 后舍入为 1，总计 2；读取时不得套用 v6 的总费公式。
+		// In v5, each 0.6 × 2 component rounds to 1 for a total of 2; reading must not apply the v6 total-cost formula.
 		{"v5 preserves historical line rounding", 5, "0.8", "2.5", usage.Tokens{UncachedInput: 1, Output: 1}, 600_000, 1, 0, 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestPriceMultipliersSurvivePersistenceAndAllCostQueries(t *testing.T) {
 			if err := service.writer.WriteBatch(t.Context(), []models.RequestLog{row}); err != nil {
 				t.Fatal(err)
 			}
-			// 重放同一请求不能重复累计已应用倍率的金额。
+			// Replaying the same request must not add an amount whose multiplier was already applied.
 			if err := service.writer.WriteBatch(t.Context(), []models.RequestLog{row}); err != nil {
 				t.Fatal(err)
 			}

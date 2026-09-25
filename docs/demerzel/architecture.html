@@ -55,9 +55,9 @@
 <div class="page">
 
 <h1>Demerzel — Architecture &amp; Design</h1>
-<p class="sub">Updated 2026-09-24 · repo <code>github.com/a-mad-av8r/demerzel</code> (fork of gpt-load v2 @1f615d83, MIT) · plan-of-record in kos-infra discovery track · Cortex contributor integration deferred during migration</p>
+<p class="sub">github.com/a-mad-av8r/demerzel · Fork of tbphp/gpt-load v2 @1f615d83 (MIT); third-party provenance is in <code>VENDORING.md</code>.</p>
 
-<p>Demerzel is a local-first LLM gateway: one endpoint on your laptop at <code>http://127.0.0.1:3001/v1</code>, with multiple accounts per provider. M1 hardens custody, outbound defaults and module seams. The M2 feature branch implements per-group serial failover and account CLI management, and stages verified installers without publishing them; model policy and additional connectors remain planned. This page maps the donor modules, runtime seams and gated team distribution path.</p>
+<p>Demerzel is a local-first LLM gateway for multiple accounts per provider. It separates account selection from model selection and includes per-group serial failover, encrypted credential storage with fail-closed custody, and OpenAI/Anthropic/Gemini protocol adapters. It does not require Cortex. The source installer and signed-release workflow are maintained in this repository.</p>
 
 <h2>1 · The five layers</h2>
 
@@ -122,7 +122,7 @@
       <div class="node ours">Jev + Custom-API connectors<small>first-party; custom gets SSRF guardrails (TLS verify, host/IP allowlist, admin-only create/test)</small></div>
     </div>
   </div>
-  <p class="muted" style="margin:12px 0 0">Ledger: <code>VENDORING.md</code> — one row per donor: repo, immutable commit, source paths, destination module, SPDX license, our modifications, retained notices.</p>
+  <p class="muted" style="margin:12px 0 0">Ledger: <code>VENDORING.md</code> — one row per donor: repo, immutable commit, source paths, destination module, SPDX licence identifier, our modifications, retained notices.</p>
 </div>
 
 <table>
@@ -195,8 +195,8 @@
 <div class="panel">
 <ul>
 <li><b>Existing contracts, not imagined plugins.</b> <code>encryption.Service</code>, <code>scheduler.CredentialSource</code>/<code>SelectionIterator</code>, and <code>execution.Executor</code> carry the swappable seams. Provider adapters are compiled-in (Bifrost/CPA already live under <code>internal/execution/</code>); swapping one means implementing its contract and shipping a new build. <a href="module-contracts.md">Full contract map</a>.</li>
-<li><b>Pinned commits + ledger.</b> VENDORING.md records donor, commit, paths, destination, license, modifications. Upgrading a donor = bump the pin + run that module's golden tests. Rebasing the gpt-load baseline is an explicit <code>git merge upstream/main</code> — never a silent package update.</li>
-<li><b>Bounded outbound behavior.</b> Idle boots must make no external call by default. Executors use outbound clients for provider requests; an explicit process opt-in enables automatic Models.dev sync, and authenticated operators may trigger catalog sync. The core has no GitHub update checker: only installer frontends discover signed releases. This is verified by offline boot, not asserted to be a network sandbox. <a href="module-contracts.md">Exact interface contracts</a>.</li>
+<li><b>Pinned commits + ledger.</b> VENDORING.md records donor, commit, paths, destination, licence, modifications. Upgrading a donor = bump the pin + run that module's golden tests. Rebasing the gpt-load baseline is an explicit <code>git merge upstream/main</code> — never a silent package update.</li>
+<li><b>Bounded outbound behaviour.</b> Idle boots must make no external call by default. Executors use outbound clients for provider requests; an explicit process opt-in enables automatic Models.dev sync, and authenticated operators may trigger catalogue sync. The core has no GitHub update checker: only installer frontends discover signed releases. This is verified by offline boot, not asserted to be a network sandbox. <a href="module-contracts.md">Exact interface contracts</a>.</li>
 <li><b>State and recovery.</b> Database data, the custody item or age identity/ciphertext, and <code>auth.key</code> when generated need coordinated, restore-proven backups. Native custody identity is bound to the canonical DATA_DIR path. <a href="key-custody.md">Recovery runbook and external-DB guard</a>.</li>
 </ul>
 </div>
@@ -206,7 +206,7 @@
 <div class="panel">
   <div class="grid4">
     <div class="node">Release CI<small>cross-build matrix · keyless signed manifest covering distributed assets · SBOM</small></div>
-    <div class="node">Homebrew formula (tap pending)<small><code>brew install a-mad-av8r/tap/demerzel</code> after private tap and signed release approval</small></div>
+    <div class="node">Homebrew formula (tap pending)<small><code>brew install a-mad-av8r/tap/demerzel</code> after a public tap and signed release approval</small></div>
     <div class="node">Signed GitHub artifacts<small>Linux installer and verifier · immutable versioned binaries · no <code>curl | sh</code></small></div>
     <div class="node">Rootless Podman<small>local owned image · persistent named volume · separately custodied age identity</small></div>
   </div>
@@ -230,7 +230,7 @@
 <li><b>M1 — fork + harden:</b> VENDORING.md ✔ · fail-closed master-key custody (Keychain/Secret Service/age) · replaceable Go seams · default-off Models.dev auto-sync · pinned deps. <i>Accept: baseline receipt reproduces; 60s idle = zero egress; backup/restore and cross-platform checks before release.</i></li>
 <li><b>M2 — account control plane + serial failover + Switchyard spike + installer staging:</b> registry UI/CLI · deterministic failover · signed-artifact and tap formula paths. <i>Accept: scripted-429 failover (persisted cursor, grace, bounded failback), honest spike report, and fail-closed installer/path-preservation checks. Real signed-artifact upgrade and rollback need M4 publication gates.</i></li>
 <li><b>M3 — providers:</b> clean-key first, subscription OAuth executors flagged per compliance. <i>Accept: golden transcripts + one live request per clean provider.</i></li>
-<li><b>M4 — publication and distribution hardening:</b> publish approved signed artifacts and the private tap, then verify service health, upgrade, rollback, uninstall and restore on darwin/arm64 and linux/amd64. <i>Never equate a prepared formula with a published package.</i></li>
+<li><b>M4 — publication and distribution hardening:</b> publish approved signed artifacts and a public tap, then verify service health, upgrade, rollback, uninstall and restore on darwin/arm64 and linux/amd64. <i>Never equate a prepared formula with a published package.</i></li>
 <li><b>M5 — our model-selection engine to production</b>, gated on M2 spike evidence.</li>
 </ul>
 </div>
@@ -244,7 +244,7 @@
 </ul>
 </div>
 
-<p class="muted" style="margin-top:28px">Plan-of-record detail (phases, acceptance criteria, risks) lives in kos-infra: <code>docs/kos-infra-adaptech/discovery/2026-09-21-llm-router-research.md</code> + <code>2026-09-22-llm-gateway-execution-plan.md</code>. This page is the architecture review artifact.</p>
+<p class="muted" style="margin-top:28px">Public interface contracts are documented in <a href="module-contracts.md">module-contracts.md</a> and credential recovery in <a href="key-custody.md">key-custody.md</a>.</p>
 
 </div>
 </body>

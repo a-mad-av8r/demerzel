@@ -384,7 +384,7 @@ func (handler *Handler) recordCredentialSuccess(ref state.CredentialRef, at time
 
 func (handler *Handler) mutateCredentialForTarget(ref state.CredentialRef, mutate func()) {
 	apply := func() {
-		// 与配置变更共用凭据锁，避免校验后再切换目标；同目标的令牌刷新不影响结果归属。
+		// Share the credential lock with configuration changes so the target cannot switch after validation; same-target token refresh does not affect result ownership.
 		current, exists := handler.registry.CredentialRef(ref.ID)
 		if !exists || current.GroupID != ref.GroupID || current.IdentityGeneration != ref.IdentityGeneration {
 			return
@@ -901,7 +901,7 @@ func (handler *Handler) executeAttempts(
 		observationsAvailable bool
 		err                   error
 	}
-	// 缓存仅属于本次请求；切换分组时释放旧结果，避免重试累积完整请求体。
+	// Cache belongs only to this request; release the old result when switching Groups to avoid retaining whole request bodies across retries.
 	var preparedGroupID uint
 	var cachedPrepared *preparedRequest
 	loggedOverrideFailures := make(map[uint]struct{})

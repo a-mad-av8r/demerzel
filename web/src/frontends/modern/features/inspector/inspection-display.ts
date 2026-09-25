@@ -6,7 +6,7 @@ export function groupWeight(group: InspectionGroup): number {
     0,
   )
 }
-// 同组多个模型目标共享凭据，每份凭据权重只累计一次。
+
 export function groupsWeight(groups: readonly InspectionGroup[]): number {
   const weights = new Map<number, number>()
   for (const group of groups) {

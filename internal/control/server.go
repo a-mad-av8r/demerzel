@@ -165,8 +165,8 @@ func (s *Server) handleCredentialImport(c *gin.Context, batch bool) {
 	multipartOverhead := int64(256 * 1024)
 	if batch {
 		fileLimit = importfile.MaxFileBytes
-		// 每个文件部件预留 4 KiB，容纳 UTF-8 文件名、MIME 头和 boundary。
-		// 表单字段另有 256 KiB 余量；文件内容总量仍在读取后独立校验。
+		// Reserve 4 KiB for each file part to accommodate UTF-8 filenames, MIME headers, and boundaries.
+		// Form fields have a separate 256 KiB allowance; total file content is still independently validated after reading.
 		multipartOverhead += int64(importfile.MaxEntries) * 4 * 1024
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, fileLimit+multipartOverhead)

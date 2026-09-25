@@ -446,7 +446,7 @@ async function syncQuota(row: CredentialRow): Promise<void> {
     )
     if (controller.signal.aborted) return
     if (!observation) throw new Error('Missing observation')
-    // 同步只更新该账号的观测数据，不覆盖其他并行操作，也不刷新整个列表。
+
     cache.setQueriesData<CredentialCollection>(
       { queryKey: groupCredentialsKey(props.group.id) },
       (data) =>

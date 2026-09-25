@@ -447,7 +447,7 @@ func codexBootstrapCapacityRejection(err error) bool {
 	if codexBootstrapOverload(codeValue) || codexBootstrapRateLimit(codeValue) || codexModelCapacityError(err) {
 		return true
 	}
-	// 仅在 ExecuteStream 返回首包前错误时调用；普通 server_error 不提供重试证据。
+	// Call only when ExecuteStream fails before its first chunk; an ordinary server_error provides no retry evidence.
 	return (strings.EqualFold(typeValue, "server_error") || strings.EqualFold(codeValue, "server_error")) &&
 		strings.Contains(strings.ToLower(err.Error()), "you can retry your request")
 }

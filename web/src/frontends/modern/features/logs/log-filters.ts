@@ -181,7 +181,7 @@ export function parseLogState(query: LocationQuery, admin: boolean): LogRouteSta
   const range = readTimeRange(query)
   for (const key of logFilterNames) {
     const raw = query[key]
-    // 用量排行按上游模型聚合；跨页带入时保留精确条件，不新增独立筛选控件。
+
     if (typeof raw === 'string' && raw.trim() && (admin || !internalLogFilters.includes(key)))
       filters[key] = raw.trim()
   }

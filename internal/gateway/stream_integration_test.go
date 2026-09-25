@@ -967,7 +967,7 @@ func newPartialStreamServer(calls *atomic.Int64, release <-chan struct{}) *httpt
 		_, _ = writer.Write([]byte("data: partial\n"))
 		writer.(http.Flusher).Flush()
 		calls.Add(1)
-		// 保持部分事件未结束，直到测试确认逻辑超时，再释放服务器完成清理。
+		// Leave partial events unfinished until the test confirms timeout handling, then release the server for cleanup.
 		<-release
 	}))
 }

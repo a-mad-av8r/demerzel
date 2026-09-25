@@ -7,7 +7,7 @@ suffix="${RELEASE_SMOKE_SUFFIX:-local-$$}"
 source_image="${RELEASE_SMOKE_SOURCE_IMAGE:-}"
 trivy_image="${RELEASE_SMOKE_TRIVY_IMAGE:-aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f}"
 skip_scan="${RELEASE_SMOKE_SKIP_SCAN:-false}"
-# 留空构建默认 target（源码自包含构建）；发布流程用 prebuilt 验证真正的打包路径。
+# An empty value builds the default target (the self-contained source build); the release workflow uses prebuilt to validate the actual packaging path.
 build_target="${RELEASE_SMOKE_BUILD_TARGET:-}"
 case "${build_target}" in
   "" | prebuilt | source-build) ;;
@@ -149,8 +149,7 @@ else
     -t "${image}" .
 fi
 smoke_stage="scan-image"
-# 发布后阶段拉取的是发布前已扫描过的同一 commit 镜像，重复扫描没有新信息，
-# 由调用方通过 RELEASE_SMOKE_SKIP_SCAN=true 显式跳过。
+# The post-publication stage pulls the same commit image that was scanned before publication, so scanning again adds no information. The caller skips it explicitly with RELEASE_SMOKE_SKIP_SCAN=true.
 scanned=true
 if [[ "${skip_scan}" == "true" ]]; then
   scanned=false
@@ -217,7 +216,7 @@ start_container() {
     --volume "${volume}:/app/data" \
     --env-file "${task_tmp}/smoke-secrets.env" \
     "${image}" >/dev/null
-  # Docker 原子分配可用端口；重建容器后也重新查询，避免多个 Runner 抢占端口。
+  # Docker atomically assigns an available port; query it again after recreating the container so multiple runners cannot contend for a port.
   local binding
   binding="$(docker port "${container}" 3001/tcp)"
   [[ "${binding}" =~ ^127\.0\.0\.1:[0-9]+$ ]]

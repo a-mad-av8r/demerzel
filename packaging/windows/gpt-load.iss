@@ -34,7 +34,6 @@ RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [CustomMessages]
 english.AuthKeyCaption=Management key
@@ -45,14 +44,6 @@ english.ServiceCommandFailed=Windows service command failed: %1 (exit code %2)
 english.UpgradeBackupFailed=Could not back up the existing GPT-Load executable to %1.
 english.InstallFailedCaption=GPT-Load setup could not be completed
 english.InstallFailedDescription=%1 Setup restored the previous GPT-Load program and service state where possible.
-chinesesimplified.AuthKeyCaption=管理密钥
-chinesesimplified.AuthKeyDescription=打开 GPT-Load 前请先保存此密钥。
-chinesesimplified.AuthKeySubCaption=请在 GPT-Load 登录页输入此 AUTH_KEY。密钥会继续安全保存在服务数据目录中。
-chinesesimplified.AuthKeyUnavailable=无法读取管理密钥。安装后请使用管理员权限打开 %1。
-chinesesimplified.ServiceCommandFailed=Windows 服务命令失败：%1（退出码 %2）
-chinesesimplified.UpgradeBackupFailed=无法将已有 GPT-Load 程序备份到 %1。
-chinesesimplified.InstallFailedCaption=无法完成 GPT-Load 安装
-chinesesimplified.InstallFailedDescription=%1 安装程序已尽力恢复此前的 GPT-Load 程序和服务状态。
 
 [Files]
 Source: "{#SourceBinary}"; DestDir: "{app}"; DestName: "gpt-load.exe"; Flags: ignoreversion

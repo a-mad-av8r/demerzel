@@ -52,7 +52,7 @@ const props = withDefaults(
 const model = defineModel<string>({ required: true })
 const { t } = useI18n()
 const open = ref(false)
-// 仅点击、输入或方向键打开；弹窗恢复焦点时保留已选标签，不自动进入空搜索态。
+
 const search = ref('')
 const remoteLoading = ref(false)
 const loading = computed(() => props.loading || remoteLoading.value)
@@ -110,7 +110,7 @@ function updateSearch(value: string): void {
   inputChanged = true
   keyboardBrowsing = false
   search.value = value
-  // 自定义模式直接保存输入；候选项只辅助定位，不要求再选择一次。
+
   if (props.allowCustom) model.value = value
 }
 function handleCustomKeydown(event: KeyboardEvent): void {
@@ -125,7 +125,6 @@ function handleCustomKeydown(event: KeyboardEvent): void {
     event.key === 'Enter' &&
     (!keyboardBrowsing || !combobox.value?.highlightedElement?.isConnected)
   ) {
-    // Reka 会自动高亮首项；只有主动使用方向键时，回车才采用该候选项。
     event.preventDefault()
     event.stopImmediatePropagation()
     open.value = false
@@ -137,7 +136,6 @@ function cancelRequest(): void {
   remoteLoading.value = false
 }
 function preventImplicitSubmit(event: KeyboardEvent): void {
-  // 选择交给 Reka；无结果或加载中按回车也不能误提交外层表单。
   if (!event.isComposing && event.keyCode !== 229) event.preventDefault()
 }
 async function load(): Promise<void> {

@@ -157,12 +157,12 @@ type Driver interface {
 	ClassifyRefreshFailure(error) RefreshFailureDecision
 }
 
-// RefreshIdentityMatcher 由身份包含可选字段的渠道实现；允许补全，但禁止已知身份丢失或变化。
+// RefreshIdentityMatcher is implemented by channels whose identity includes optional fields; it permits completion but forbids loss or change of known identity.
 type RefreshIdentityMatcher interface {
 	MatchesRefreshIdentity(current, refreshed Credential) bool
 }
 
-// RefreshPreservesIdentity 默认要求身份完全相同；可选字段的规则由渠道负责。
+// RefreshPreservesIdentity requires exactly matching identity by default; channels own rules for optional fields.
 func RefreshPreservesIdentity(driver Driver, current, refreshed Credential) bool {
 	if current.Identity() == "" || refreshed.Identity() == "" {
 		return false
@@ -295,7 +295,7 @@ type Runtime struct {
 	byChannel map[channel.ID]channelRuntime
 }
 
-// Implementations is the explicit composition-root input for subscription behavior.
+// Implementations is the explicit composition-root input for subscription behaviour.
 type Implementations struct {
 	Drivers            []Driver
 	ModelDiscoveries   []ModelDiscovery
@@ -519,7 +519,7 @@ func (runtime *Runtime) LocalCallback(channelID channel.ID) (LocalCallbackSpec, 
 
 // CanonicalCredential validates one channel-bound subscription credential and
 // returns an independent canonical representation. It is intentionally small
-// so startup loaders can depend on the behavior without importing this package.
+// so startup loaders can depend on the behaviour without importing this package.
 func (runtime *Runtime) CanonicalCredential(channelID channel.ID, raw []byte) ([]byte, error) {
 	driver, ok := runtime.Driver(channelID)
 	if !ok {

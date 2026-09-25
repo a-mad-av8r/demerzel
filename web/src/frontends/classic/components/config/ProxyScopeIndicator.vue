@@ -12,9 +12,9 @@ const props = withDefaults(defineProps<{ view: ProxyViewDto; clickable?: boolean
 const emit = defineEmits<{ activate: [] }>()
 const { t } = useI18n()
 
-// 只在凭据自己配置了代理（未沿用上一级）时提示，继承态不加视觉噪音。
+// Show an indicator only when the credential configures its own proxy rather than inheriting, avoiding visual noise.
 const own = computed(() => props.view.configured_mode !== 'inherit')
-// 只报类型，具体地址留给展开后的代理面板，避免在列表层面泄露/堆叠细节。
+// Report only the type; the expanded proxy panel owns the address to avoid exposing or crowding the list.
 const tooltip = computed(() => {
   const type = t(`common.proxy.mode.${props.view.configured_mode}`)
   return props.clickable
@@ -53,7 +53,7 @@ const tooltip = computed(() => {
   cursor: help;
 }
 
-/* 容器是固定 22×22 的 border-box，UA 默认内边距会挤变形图标。 */
+/* The container is a fixed 22×22 border-box; user-agent padding would squeeze the icon. */
 .proxy-scope-indicator--clickable {
   border: 0;
   padding: 0;

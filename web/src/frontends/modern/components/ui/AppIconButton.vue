@@ -14,10 +14,10 @@ withDefaults(
     variant?: ButtonVariant
     loading?: boolean
     disabled?: boolean
-    // 显式开启时保留展开状态的提示，默认在菜单打开时隐藏。
+
     tooltip?: boolean
   }>(),
-  // 保留“未指定”状态，避免 Vue 将省略的 Boolean prop 转成 false 而关闭提示。
+
   { size: 'md', variant: 'ghost', tooltip: undefined },
 )
 const { forwardRef } = useForwardExpose()

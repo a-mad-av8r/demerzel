@@ -1,8 +1,6 @@
-/* 新版视觉基础。公共视觉值只在此定义，页面与组件使用语义变量。 */
 :root {
   color-scheme: light dark;
 
-  /* 颜色：亮橙红搭配白色与中性灰；前景与背景成对维护。 */
   --modern-canvas: light-dark(#ffffff, #202020);
   --modern-sidebar: light-dark(#f0f0ed, #181818);
   --modern-surface: light-dark(#ffffff, #272727);
@@ -30,7 +28,7 @@
   --modern-warning-soft: light-dark(#fff8e8, #3b321f);
   --modern-info: light-dark(#377de2, #89b9ff);
   --modern-info-soft: light-dark(#edf5ff, #233247);
-  /* 用量图表的固定系列色，概览、构成与趋势保持一致。 */
+
   --modern-chart-input: light-dark(#527eb2, #96b9e4);
   --modern-chart-cache: light-dark(#318d91, #82ced0);
   --modern-chart-write: light-dark(#b38b46, #dfbd82);
@@ -63,8 +61,6 @@
     var(--modern-info-soft) 28%,
     var(--modern-surface)
   );
-  --modern-login-mascot-shadow: light-dark(rgb(90 39 16 / 24%), rgb(0 0 0 / 42%));
-  --modern-login-mascot-shadow-soft: light-dark(rgb(98 44 19 / 8%), rgb(0 0 0 / 16%));
   --modern-login-card-surface: color-mix(
     in srgb,
     var(--modern-accent-soft) 12%,
@@ -72,8 +68,7 @@
   );
   --modern-login-card-highlight: light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 5%));
   --modern-login-card-border: color-mix(in srgb, var(--modern-accent) 8%, var(--modern-border));
-  /* 模型卡卡头的晕染基色。用饱和色，实际浓度由径向渐变的混合比例决定，
-     与用量统计顶部卡片同一套手法（那里的 Token 卡用的也是这支蓝）。 */
+
   --modern-model-card-tint: var(--modern-chart-input);
   --modern-segmented-active-border: color-mix(
     in srgb,
@@ -86,7 +81,6 @@
     var(--modern-accent-soft)
   );
 
-  /* 协议身份色固定，不复用请求成功、失败等状态含义。 */
   --modern-protocol-completions: light-dark(#28734b, #88d0a5);
   --modern-protocol-responses: light-dark(#3564ae, #95baff);
   --modern-protocol-images: light-dark(#8752a8, #d0a7eb);
@@ -95,7 +89,6 @@
   --modern-protocol-anthropic: light-dark(#aa6132, #eeb38b);
   --modern-protocol-gemini: light-dark(#6154ad, #b9aff2);
 
-  /* 控件状态：按钮、字段与选择器共用边框、底色和焦点反馈。 */
   --modern-control-border: light-dark(#dcdcd6, #4a4a45);
   --modern-control-border-hover: light-dark(#bdbdb5, #707069);
   --modern-control-hover: color-mix(in srgb, var(--modern-accent-soft) 40%, var(--modern-surface));
@@ -108,7 +101,6 @@
   --modern-control-placeholder: light-dark(#85857d, #999991);
   --modern-switch-off: light-dark(#ccccc4, #62625b);
 
-  /* 字体：沿用系统字体，不增加远端字体请求。 */
   --modern-font-sans:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
@@ -129,7 +121,6 @@
   --modern-tracking-title: -0.035em;
   --modern-tracking-label: 0.04em;
 
-  /* 间距：以 4px 为主，2px / 6px 用于紧凑控件内部。 */
   --modern-space-0-5: 2px;
   --modern-space-1: 4px;
   --modern-space-1-5: 6px;
@@ -142,7 +133,6 @@
   --modern-space-10: 40px;
   --modern-space-12: 48px;
 
-  /* 边框、圆角和阴影。普通面板不使用阴影。 */
   --modern-line-width: 1px;
   --modern-focus-width: 2px;
   --modern-focus-offset: 2px;
@@ -163,7 +153,6 @@
     0 2px 8px light-dark(rgb(92 51 30 / 3%), rgb(0 0 0 / 10%)),
     inset 0 1px 0 var(--modern-login-card-highlight);
 
-  /* 控件与图标：尺寸由公共组件选择，不在调用处传像素。 */
   --modern-control-xxs: 24px;
   --modern-control-xs: 28px;
   --modern-control-sm: 32px;
@@ -211,7 +200,6 @@
   --modern-motion-loading: 1100ms;
   --modern-loading-overlay: color-mix(in srgb, var(--modern-surface) 78%, transparent);
 
-  /* 布局语义值；宽工作区不设全局最大宽度。 */
   --modern-viewport-min: 320px;
   --modern-sidebar-expanded: 232px;
   --modern-sidebar-collapsed: 72px;
@@ -242,7 +230,6 @@
   --modern-menu-max-height: 320px;
   --modern-tooltip-max-width: 320px;
 
-  /* 层级：壳层 < 遮罩 < 对话框 < 菜单 < 提示。 */
   --modern-layer-underlay: -1;
   --modern-layer-raised: 1;
   --modern-layer-header: 10;
@@ -256,20 +243,6 @@
   --modern-motion-fast: 140ms;
   --modern-motion-spin: 1s;
   --modern-motion-ease: ease;
-  --modern-mascot-inverse: #f5f5f2;
-  --modern-mascot-backdrop: var(--modern-sidebar);
-  --modern-mascot-stroke: 7px;
-  --modern-mascot-hover-delay: 320ms;
-  --modern-mascot-charge-duration: 560ms;
-  --modern-mascot-sniff-duration: 1250ms;
-  --modern-mascot-nudge-duration: 1400ms;
-  --modern-mascot-fold-duration: 800ms;
-  --modern-mascot-theme-duration: 1450ms;
-  --modern-mascot-cooldown: 2400ms;
-  --modern-login-mascot-breath-duration: 5.8s;
-  --modern-login-mascot-tail-duration: 4s;
-  --modern-login-mascot-blink-duration: 7s;
-  --modern-mascot-ease: cubic-bezier(0.22, 0.9, 0.24, 1);
   --modern-opacity-disabled: 0.55;
   --modern-opacity-quiet: 0.65;
 }
@@ -281,7 +254,6 @@
   color-scheme: dark;
 }
 
-/* CSS 媒体条件不能引用 var()；阈值与 app/breakpoints.ts 由样式检查共同约束。 */
 @media (min-width: 1700px) {
   :root {
     --modern-content-inset: 40px;

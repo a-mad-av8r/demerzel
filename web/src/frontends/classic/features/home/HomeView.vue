@@ -40,17 +40,15 @@ const { t } = useI18n()
 const isAccessKey = computed(() => session.state.principalType === 'access_key')
 const isAdmin = computed(() => session.state.principalType === 'admin')
 const baseQuery = useQuery(homeBaseQueryOptions(client))
-// 订阅账号包含完整管理身份和额度，只允许管理员发起查询；模板仍二次 gate，
-// 防止会话切换时短暂复用旧 Query 缓存。
+
 const subscriptionAccountsQuery = useQuery(homeSubscriptionAccountsQueryOptions(client, isAdmin))
-// /api/health 不在 AccessKey 白名单里，必须前端主动 gate，
-// 否则 AccessKey 用户首页会挂一个永远 403 的区块。首页不轮询，进页面拉一次即可。
+
 const healthQuery = useQuery(healthQueryOptions(client, undefined, () => !isAccessKey.value))
 const routeState = computed<HomeRouteState>(() => {
   const state = parseHomeRouteQuery(route.query)
   return isAccessKey.value ? { ...state, accessKeyID: undefined } : state
 })
-// 花费固定看近 30 天：首页不再提供时间旋钮，那个控件本身就是「我是仪表盘」的宣言。
+
 const statistics = useHomeStatisticsPresenter(client, { initialRange: '30d' })
 const serverClockOffsetMS = ref(0)
 const nowMS = ref(Date.now())
@@ -176,7 +174,6 @@ onBeforeUnmount(() => window.clearInterval(uptimeTimer))
           :uptime-now-ms="uptimeNowMS"
         />
 
-        <!-- 紧贴事实行：它是那句「X/Y 个凭据可用」的注解，隔开就变成孤立的红条。 -->
         <HomeAttention v-if="!isAccessKey" :health="healthQuery.data.value ?? null" />
 
         <HomeSubscriptionAccounts

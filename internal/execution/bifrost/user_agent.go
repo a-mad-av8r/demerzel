@@ -8,9 +8,9 @@ import (
 	"gpt-load/internal/platform/version"
 )
 
-// withUserAgent 仅为普通渠道补齐出站身份；订阅渠道由各自适配器处理。
+// withUserAgent fills outbound identity only for ordinary channels; subscription channels are handled by their own adapters.
 func withUserAgent(spec execution.AttemptSpec) execution.AttemptSpec {
-	// 系统或分组规则已先应用，保留其配置值或客户端原始身份。
+	// System or group rules are applied first; retain their configured value or the client's original identity.
 	if strings.TrimSpace(spec.Header.Get("User-Agent")) != "" {
 		return spec
 	}
@@ -18,7 +18,7 @@ func withUserAgent(spec execution.AttemptSpec) execution.AttemptSpec {
 	if spec.Header == nil {
 		spec.Header = make(http.Header)
 	}
-	// 没有有效 UA 时使用项目身份，包括规则明确删除或留空的情况。
+	// Use project identity when there is no valid UA, including cases where a rule explicitly removed or blanked it.
 	spec.Header.Set("User-Agent", "GPT-Load/"+version.Version)
 	return spec
 }

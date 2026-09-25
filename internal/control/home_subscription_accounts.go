@@ -176,7 +176,7 @@ func (s *Service) readHomeSubscriptionAccounts(
 		})
 	}
 
-	// 先按当前身份归并逐凭据的活动，再排序和截取，避免历史指纹拆分账号排名。
+	// Aggregate activity per credential by current identity before sorting and truncating, so historical fingerprints cannot split an account's ranking.
 	activityByKey := make(map[string]*homeSubscriptionAccountActivity)
 	for _, activity := range rows.activity {
 		key := keyByCredentialID[activity.CredentialID]

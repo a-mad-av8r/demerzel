@@ -8,7 +8,7 @@ import (
 	"gpt-load/internal/platform/epochms"
 )
 
-// ReadAccessKeyUsage 在调用方的读快照内批量汇总密钥用量，复用用量页的范围和金额校验。
+// ReadAccessKeyUsage aggregates key usage in batches within the caller's read snapshot, reusing the usage page's range and monetary validation.
 func ReadAccessKeyUsage(db *gorm.DB, query UsageQuery) (map[uint]UsageAggregate, error) {
 	if _, err := validateUsageQuery(query); err != nil {
 		return nil, err

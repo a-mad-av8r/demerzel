@@ -10,7 +10,7 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// 额度观测只服务于管理面展示，不影响调度可用性；首页仍需单独暴露额度快用完的凭据。
+// Quota observations serve management display only and do not affect scheduling availability; the home page still exposes credentials with nearly exhausted quota separately.
 func TestRuntimeHealthReportsLowQuotaCredentials(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)

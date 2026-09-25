@@ -293,8 +293,8 @@ func (e *claudeHTTPExecutor) executionContext(
 	})
 }
 
-// Claude 按官方 origin 选择原生 token count 与订阅协议；在传输边界替换目标，
-// 避免 CPA 将 API 代理误判成第三方 API Key 网关而切换为本地估算。
+// Claude selects native token counting and the subscription protocol by official origin; replacing the target at the transport boundary
+// prevents CPA from mistaking an API proxy for a third-party API-key gateway and switching to local estimates.
 type claudeAPIProxyRoundTripper struct {
 	base    http.RoundTripper
 	baseURL string

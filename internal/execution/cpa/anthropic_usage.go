@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 )
 
-// CPA 跨协议流在 message_start 中注入全部输入的本地估算，但 Anthropic 的
-// input_tokens 表示未缓存输入。用零占位，避免向客户端报告虚假的未缓存输入，
-// 或在中断时把本地估算当作已计费用量。原生 Anthropic 不经过此修正。
+// CPA cross-protocol streams inject a local estimate of all input into message_start, but Anthropic's
+// input_tokens represents uncached input. Use a zero placeholder to avoid reporting fictitious uncached input,
+// or treating a local estimate as billed usage after interruption. Native Anthropic does not use this correction.
 func normalizeConvertedAnthropicStartUsage(payload []byte) ([]byte, error) {
 	if !bytes.Contains(payload, []byte(`"message_start"`)) {
 		return payload, nil
 	}
-	// CPA 转换器以单行 JSON 生成 data 字段；一个 chunk 可以包含多个完整事件。
+	// The CPA converter produces single-line JSON data fields; one chunk can contain several complete events.
 	lines := bytes.SplitAfter(payload, []byte{'\n'})
 	for i, line := range lines {
 		if !bytes.HasPrefix(line, []byte("data:")) {

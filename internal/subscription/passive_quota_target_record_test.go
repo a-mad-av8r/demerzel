@@ -40,7 +40,7 @@ func TestRecordPassiveQuotaObservationPreservesNewTargetWhenOldResponseArrives(t
 		t.Fatal("new target observation was not queued")
 	}
 
-	// 旧请求可以晚于新请求返回，时间戳更新也不能替换当前目标已排队的样本。
+	// An old request can return after a newer one; updating its timestamp must not replace a sample queued for the current target.
 	manager.RecordPassiveQuotaObservation(row.ID, oldIdentity, 3000,
 		[]providerobservation.QuotaWindow{{ID: "primary", State: "exhausted"}})
 	if pending := manager.DirtyPassiveQuotaObservations(1); !reflect.DeepEqual(pending, current) {

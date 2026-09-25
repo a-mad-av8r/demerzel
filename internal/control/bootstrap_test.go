@@ -235,7 +235,7 @@ func TestEnsureInitialStateRollsBackAccessKeyWhenMarkerWriteFails(t *testing.T) 
 }
 
 func TestEnsureInitialStateDoesNotLogPlaintext(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	fixture := newServiceFixture(t)
 	randomBytes := bytes.Repeat([]byte{0xab}, 16)
 	fixture.service.random = bytes.NewReader(randomBytes)

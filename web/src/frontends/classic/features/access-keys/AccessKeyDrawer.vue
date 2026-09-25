@@ -676,7 +676,7 @@ async function reconcileEdit(): Promise<void> {
           outcome.resource_identity !== `access-key:${attempt.base.id}`
         )
           throw error
-        // 完成记录已过期时只读取当前状态，不能重新执行旧的密钥替换。
+
         latest = await findAccessKeyForReconciliation(
           client,
           attempt.base.id,

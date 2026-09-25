@@ -1,4 +1,3 @@
-/* 不支持精确宽度的浏览器，以及触屏、高对比度模式，保留原生滚动条。 */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--modern-scrollbar) transparent;
@@ -11,7 +10,6 @@
     }
 
     * {
-      /* 标准属性的非 auto 值会覆盖 WebKit 滚动条的精确尺寸与颜色。 */
       scrollbar-width: auto;
       scrollbar-color: var(--modern-scrollbar-color-auto);
     }

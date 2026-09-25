@@ -397,7 +397,7 @@ func validateModeScheduleUpdate(
 	if err != nil {
 		return fmt.Errorf("decode persisted model price: %w", app_errors.ErrInternalServer)
 	}
-	// Ultrafast 允许在目录尚无价格时手工配置；其他模式保留原有增删约束。
+	// Ultrafast permits manual configuration while the catalogue has no price; other modes retain their existing add/remove constraints.
 	for mode := range rule.ModeSchedules {
 		if _, exists := requested[mode]; !exists && mode != pricing.ModeUltrafast {
 			return fmt.Errorf("model price mode schedule set cannot be changed: %w", app_errors.ErrValidation)

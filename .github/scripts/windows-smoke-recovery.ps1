@@ -1,7 +1,7 @@
 function Enter-WindowsSmoke {
   param([string]$InstallDir, [string]$ConfigDir)
 
-  # 固定服务名只能由一个 smoke 使用；进程退出后系统自动释放互斥锁。
+  # Only one smoke test can use the fixed service name; the system releases the mutex when its process exits.
   $mutex = [System.Threading.Mutex]::new($false, "Global\GPTLoad-Windows-Smoke")
   $acquired = $false
   try {
@@ -27,7 +27,7 @@ function Enter-WindowsSmoke {
         $owners += @{ Name = $name; Token = $token }
       }
     }
-    # 无标记时保留现场，让调用方的原有 preflight 拒绝真实安装。
+    # Without a marker, leave the state intact so the caller's existing preflight rejects a real installation.
     if ($owners.Count -eq 0) { return $mutex }
     $owner = $owners[0]
     foreach ($other in $owners) {
@@ -37,7 +37,7 @@ function Enter-WindowsSmoke {
     }
     $installer = $owner.Name -eq '.installer-smoke-owner'
     if ($installer) {
-      # 安装器会删除、重建安装目录；其归属凭据保存在卸载时保留的 ProgramData。
+      # The installer removes and recreates its installation directory; its ownership proof is stored in ProgramData, which survives uninstallation.
       $proof = Join-Path $ConfigDir 'data/installer-smoke-failure.txt'
       if (-not (Test-Path -LiteralPath $proof) -or
           ((Get-Content -LiteralPath $proof -Raw).Trim() -ne $owner.Token)) {
@@ -70,7 +70,7 @@ function Enter-WindowsSmoke {
       if ($LASTEXITCODE -ne 0) { throw "failed to remove stale Windows smoke service" }
     }
 
-    # 只回收已确认归属的固定目标，不扫描或清理其他任务、服务和目录。
+    # Reclaim only fixed targets with confirmed ownership; never scan or clean up other tasks, services, or directories.
     if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
     if ($installer) {
       $paths = @(
@@ -82,7 +82,7 @@ function Enter-WindowsSmoke {
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
       }
     }
-    # 最后删除归属标记所在目录；中途失败时保留下一次恢复所需的证据。
+    # Remove the ownership-marker directory last; on intermediate failure, retain the evidence needed for the next recovery.
     if (Test-Path -LiteralPath $ConfigDir) { Remove-Item -LiteralPath $ConfigDir -Recurse -Force }
     return $mutex
   } catch {

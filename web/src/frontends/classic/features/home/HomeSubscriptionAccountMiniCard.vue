@@ -33,8 +33,6 @@ type UnifiedStatus =
 type CardTone = 'success' | 'warning' | 'danger' | 'neutral'
 type ResetCreditDotTone = 'default' | 'warning' | 'danger'
 
-// 与分组详情页 SubscriptionAccountCard 同步：重置卡到期档位用真实时钟而非一次性
-// Date.now()，避免首页长时间停留在前台时点阵颜色停留在打开时刻。
 const nowMs = ref(Date.now())
 let clockTimer: number | undefined
 
@@ -67,8 +65,6 @@ function quotaWindowDuration(window: CredentialQuotaWindowDto): number {
     : Number.MAX_SAFE_INTEGER
 }
 
-// 按 scope + 周期排序全部窗口；焦点数字与状态判断都必须看完整列表，
-// 只有底部分段带需要限制展示数量（见下方 quotaWindows）。
 const sortedQuotaWindows = computed(() =>
   [...(snapshot.value?.quota_windows ?? [])].sort((left, right) => {
     const scopeDifference =
@@ -79,8 +75,6 @@ const sortedQuotaWindows = computed(() =>
   }),
 )
 
-// 分段带最多展示 4 条；若焦点窗口（见下方 lead）因排序被挤到第 5 位之后，
-// 仍强制并入前排，保证大号数字与分段带指向同一个窗口，而不是各说各话。
 const quotaWindows = computed(() => {
   const capped = sortedQuotaWindows.value.slice(0, 4)
   const leadWindow = lead.value?.window
@@ -109,9 +103,6 @@ const unifiedStatus = computed<UnifiedStatus>(() => {
   return 'available'
 })
 
-// 同一账号可能被多个分组共用；分组数 > 1 时可用性以「当前有几个分组能调度到它」为准。
-// 分组详情页 SubscriptionAccountCard 原本也有同名聚合口径，但那条路径只在 readonly
-// 模式下触发，首页改用本组件后已成为死代码并被清理，这里是唯一仍生效的实现。
 const showAggregateAvailability = computed(
   () =>
     props.account.group_count > 1 &&
@@ -150,8 +141,6 @@ const displayDisabled = computed(
   () => !showAggregateAvailability.value && unifiedStatus.value === 'disabled',
 )
 
-// 单分组且状态正常时不显示状态角标：首页只在有异常，或聚合可用性值得一提时才发声，
-// 呼应 HomeAttention「没有要处理的事就整块不渲染」的克制原则。
 const showStatusChip = computed(
   () => showAggregateAvailability.value || unifiedStatus.value !== 'available',
 )
@@ -174,8 +163,6 @@ function quotaFillStyle(window: CredentialQuotaWindowDto): Record<string, string
   return value === undefined ? {} : { width: `${value}%` }
 }
 
-// 与分组详情页 quotaWindowPeriodLabel 完全一致：日/时之外还兜底分钟与秒，
-// 避免非整日整时的窗口（例如 30 分钟）拿不到任何周期文案。
 function quotaWindowPeriodLabel(seconds: number | undefined): string {
   if (seconds === undefined || !Number.isSafeInteger(seconds) || seconds <= 0) return ''
   const day = 24 * 60 * 60
@@ -205,8 +192,6 @@ function translatedQuotaLabel(labelKey: CredentialQuotaLabelKey, fallback: strin
   return te(key) ? t(key) : fallback
 }
 
-// 与分组详情页 quotaWindowLabel 完全一致：label_key 为 oauth_apps 时保留周期后缀
-// （例如「OAuth 应用 · 7d」），否则不同周期的同类窗口会显示成完全相同的文案。
 function quotaWindowLabel(window: CredentialQuotaWindowDto): string {
   const period = quotaWindowPeriodLabel(window.window_seconds)
   if (period && window.scope === 'account') return period
@@ -277,8 +262,6 @@ function quotaWindowNeedsRefresh(window: CredentialQuotaWindowDto): boolean {
   return window.reset_at_ms !== undefined && window.reset_at_ms <= nowMs.value
 }
 
-// 与分组详情页 quotaPeriodTooltip 完全一致：给出周期起止，周期已结束但数据未刷新时
-// 换成「待刷新」提示——而不是一句可能已经过期的相对时间。
 function quotaPeriodTooltip(window: CredentialQuotaWindowDto): string | undefined {
   const resetAtMS = window.reset_at_ms
   if (resetAtMS === undefined) return undefined
@@ -304,9 +287,6 @@ function quotaTooltip(window: CredentialQuotaWindowDto): string {
 const quotaResetPrefix = computed(() => t('group.credentials.subscription.quotaResetPrefix'))
 const quotaResetSuffix = computed(() => t('group.credentials.subscription.quotaResetSuffix'))
 
-// 焦点窗口：明确耗尽的窗口优先，即使上游没有提供百分比；否则在全部窗口（而非
-// 展示截断后的 quotaWindows）中选择剩余百分比最低者。这样状态角标、窗口名称与
-// 重置时间始终指向同一条真正受限的额度窗口。
 const lead = computed<
   { window: CredentialQuotaWindowDto; percent: number | undefined } | undefined
 >(() => {
@@ -336,7 +316,6 @@ const hasResetCredits = computed(
     resetCreditsAvailable.value > 0,
 )
 
-// 点阵最多画 5 个，避免账号数多、卡片窄时被点阵撑爆；确切张数留给 tooltip 与读屏文本。
 const resetCreditDots = computed(() =>
   Array.from({ length: Math.min(resetCreditsAvailable.value, 5) }, (_, index) => {
     const expiresAtMS = availableResetCreditDetails.value[index]?.expires_at_ms
@@ -364,7 +343,6 @@ function resetCreditExpiryLabel(credit: (typeof resetCredits.value)[number]): st
   return formatLocalInstant(credit.expires_at_ms, locale.value)
 }
 
-// 与分组详情页一致：一枚 tooltip 覆盖全部重置卡（标题 + 逐张到期时间），而不是逐点悬浮。
 const resetCreditsTooltip = computed(() => {
   const lines = availableResetCreditDetails.value.length
     ? availableResetCreditDetails.value.map((credit, index) =>
@@ -648,8 +626,6 @@ const resetCreditsTooltip = computed(() => {
   white-space: nowrap;
 }
 
-/* 与分组详情页 SubscriptionAccountCard 的配额条同一套强调色（oklch，单值适配明暗），
-   而非通用状态语义色——这三个数值代表的是额度剩余量，不是运行状态。 */
 .home-subscription-mini__num--success {
   color: oklch(70% 0.16 158);
 }
@@ -739,8 +715,6 @@ const resetCreditsTooltip = computed(() => {
   cursor: help;
 }
 
-/* 与分组详情页 SubscriptionAccountCard 的配额条同一套颜色值（quota--success/warning/
-   danger），保持首页摘要与分组详情页对同一份额度数据的视觉表达一致。 */
 .home-subscription-mini__seg--success {
   --seg-track: light-dark(#dcfeea, #112b21);
   --seg-fill: oklch(70% 0.16 158);

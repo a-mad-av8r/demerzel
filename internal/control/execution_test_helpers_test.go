@@ -13,7 +13,7 @@ import (
 )
 
 // controlHTTPExecutor is a narrow test double for control/data-plane publication
-// tests. Provider protocol behavior is covered by the production Bifrost adapter
+// tests. Provider protocol behaviour is covered by the production Bifrost adapter
 // tests; this double only proves that a frozen channel target and credential are
 // visible atomically to the gateway.
 type controlHTTPExecutor struct {

@@ -15,7 +15,7 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// 按当前解析的真实身份去重，不使用记录 ID 或历史持久化身份指纹。
+// Deduplicate by the currently parsed real identity, not record IDs or historical persisted identity fingerprints.
 type ModernCredentialOption struct {
 	Key       string `json:"key"`
 	ChannelID string `json:"channel_id"`

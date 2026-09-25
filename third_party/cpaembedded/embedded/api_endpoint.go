@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// ResolveAPIEndpoint 将订阅 API 代理根地址与官方端点的原生路径组合。
-// 空根地址保留官方端点；自定义根地址的路径前缀不会被替换或猜测性裁剪。
+// ResolveAPIEndpoint combines the subscription API proxy root URL with the native path of an official endpoint.
+// An empty root retains the official endpoint; a custom root path prefix is neither replaced nor heuristically trimmed.
 func ResolveAPIEndpoint(apiRoot, officialURL string) (string, error) {
 	apiRoot = strings.TrimSpace(apiRoot)
 	if apiRoot == "" {

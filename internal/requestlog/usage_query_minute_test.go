@@ -197,7 +197,7 @@ func TestQueryUsageMinuteFiltersFinalAttributionAndAccessKey(t *testing.T) {
 	if err := db.Create(&rows).Error; err != nil {
 		t.Fatal(err)
 	}
-	// 先前尝试既不能匹配最终归属筛选，也不能让同一请求被重复计数。
+	// Earlier attempts cannot match final-attribution filters or cause the same request to be counted twice.
 	for index := range rows {
 		attempts := []models.RequestLogAttempt{
 			{RequestID: rows[index].ID, Sequence: 1, CompletedAtMS: rows[index].CompletedAtMS, GroupID: 99, CredentialID: 99, ChannelID: "gemini", UpstreamModel: "earlier-model", FailureCategory: "rate_limited", Action: "retry"},

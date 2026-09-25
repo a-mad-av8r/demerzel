@@ -32,7 +32,7 @@ export async function bootstrap(): Promise<void> {
   }
   const localStorage = getBrowserStorage('localStorage')
   const sessionStorage = getBrowserStorage('sessionStorage')
-  const appI18n = await createAppI18n(localStorage, navigator.languages, navigator.language)
+  const appI18n = await createAppI18n()
   const importRecovery = createImportRecoveryService({
     storage: getBrowserStorage('sessionStorage'),
     now: Date.now,
@@ -91,7 +91,7 @@ export async function bootstrap(): Promise<void> {
     queryClient,
     onClear: () => {
       clearEphemeralState()
-      // 经典版会话结束后重新执行入口选择，认证页始终回到新版。
+      // Re-run frontend selection after a classic session ends; authentication always returns to modern.
       window.location.replace(window.location.href)
     },
     validate: (key, globalUnauthorized, signal) =>

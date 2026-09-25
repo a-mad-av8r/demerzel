@@ -351,8 +351,8 @@ func (s *Service) replayResetCreditOperation(
 }
 
 func resetCreditRequestDigest(groupID, credentialID uint, identityFingerprint, baseURL string) [sha256.Size]byte {
-	// 自定义地址启用前的操作只使用官方端点，官方模式保留 v1 摘要以兼容旧记录。
-	// 自定义目标使用独立摘要，规范化后的完整路径也参与匹配，禁止跨目标复用。
+	// Operations predating custom addresses use only the official endpoint; official mode retains the v1 digest for compatibility with old records.
+	// Custom targets use a distinct digest containing the complete normalised path, preventing reuse across targets.
 	if baseURL != "" {
 		return sha256.Sum256([]byte(fmt.Sprintf(
 			"gpt-load/credential-reset/v2/%d/%d/%s/%s",

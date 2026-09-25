@@ -131,7 +131,7 @@ type HeaderRules struct {
 	Remove []string
 }
 
-// ConfiguredNames 标记显式设置或移除的字段，区分规则与客户端原始请求头。
+// ConfiguredNames marks explicitly set or removed fields, distinguishing rules from original client request headers.
 func (rules HeaderRules) ConfiguredNames() []string {
 	if len(rules.Set)+len(rules.Remove) == 0 {
 		return nil
@@ -386,7 +386,7 @@ func appendExecutionTargets(
 	if !ok {
 		return fmt.Errorf("compile group %d channel: unknown channel %q", group.ID, group.ChannelID)
 	}
-	// 模型配置是分组进入数据面调度的统一门槛；无模型资源请求也不能绕过。
+	// Model configuration is the common gateway for a Group to enter data-plane scheduling; model-free resource requests cannot bypass it.
 	if len(group.Models) == 0 {
 		return nil
 	}

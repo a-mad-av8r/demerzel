@@ -241,8 +241,6 @@ watch(
   { deep: true, immediate: true },
 )
 
-// 深链首屏：分区渲染前 selectSection 的滚动会静默失败，且路由的 scrollBehavior 会把页面重置到
-// 顶部并打断平滑滚动。等内容挂载后再用即时滚动补一次定位。
 const initialSectionSettled = ref(false)
 watch(
   () => Boolean(base.value && draft.value),
@@ -251,7 +249,7 @@ watch(
     initialSectionSettled.value = true
     void nextTick(() => {
       const target = sectionID(routeSection.value)
-      // 路由切页会把滚动位置重置到顶部，重试一次以覆盖这次重置。
+
       selectSection(target, 'auto')
       window.setTimeout(() => selectSection(target, 'auto'), 120)
     })

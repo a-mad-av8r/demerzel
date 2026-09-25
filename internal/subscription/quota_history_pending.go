@@ -33,7 +33,7 @@ type quotaHistoryObservation struct {
 	windows      []providerobservation.QuotaWindow
 }
 
-// 未知来源先保存完整观测。该账号的待解析观测清空之前，新观测也不能越过它们采样。
+// First retain complete observations from unknown sources. Until this account's pending resolution is cleared, newer observations cannot sample past them.
 func (pending *passiveQuotaPending) recordHistoryLocked(groupID, credentialID uint, identity uint64, at int64, windows []providerobservation.QuotaWindow) {
 	if at < 0 {
 		return
@@ -65,7 +65,7 @@ func (pending *passiveQuotaPending) recordHistoryLocked(groupID, credentialID ui
 	pending.historyObservationCount++
 }
 
-// 只补充身份和展示元数据，百分比、周期和重置时间始终保留该次响应的实际值。
+// Complete only identity and display metadata; percentages, periods, and reset time always retain values actually returned by that response.
 func normalizeQuotaHistoryWindows(windows, sources []providerobservation.QuotaWindow) ([]providerobservation.QuotaWindow, bool) {
 	normalized := append([]providerobservation.QuotaWindow(nil), windows...)
 	complete := true
@@ -134,7 +134,7 @@ func (pending *passiveQuotaPending) discardHistoryObservationsLocked(key quotaHi
 	delete(pending.historyRetryAt, key)
 }
 
-// 数据库解析在后台完成；同一账号积累的观测在一个内存锁内按时间处理完再开放直接采样。
+// Database resolution completes in the background; process observations accumulated for one account by time under one memory lock before allowing direct sampling.
 func (manager *CredentialManager) resolveQuotaHistoryObservations(ctx context.Context) error {
 	for _, key := range manager.passiveQuota.historyObservationCredentials(passiveQuotaFlushBatchSize) {
 		ref, current := manager.registry.CredentialRef(key.credentialID)
@@ -173,7 +173,7 @@ func (manager *CredentialManager) resolveQuotaHistoryObservations(ctx context.Co
 			}
 			normalized, complete := normalizeQuotaHistoryWindows(observation.windows, snapshot.QuotaWindows)
 			if !complete {
-				// 同一事件的副本必须一起解析；后续观测也不能越过这个时间点。
+				// Copies from the same event must resolve together; later observations cannot pass this point either.
 				processed = index
 				break
 			}

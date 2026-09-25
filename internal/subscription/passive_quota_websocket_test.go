@@ -128,7 +128,7 @@ func TestCapturedHTTPAndWebsocketQuotasAgreeAfterMatching(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 故意留下旧的普通额度，验证 WS 能匹配普通窗口，又不会被 Spark 覆盖。
+	// Deliberately retain old ordinary quota to verify WS matches its window without Spark overwriting it.
 	var baseline providerobservation.Snapshot
 	if err := json.Unmarshal(raw, &baseline); err != nil {
 		t.Fatal(err)
@@ -343,7 +343,7 @@ func TestWebsocketQuotaPairCoalescesWithoutRedatingHandshake(t *testing.T) {
 		*dirty[0].Preceding.Windows[0].Used != 12 || dirty[0].ObservedAtMS != 3000 || *dirty[0].Windows[0].Used != 30 {
 		t.Fatalf("coalescing lost the handshake time or retained caller pointers: %#v", dirty)
 	}
-	// HTTP 继续整份替换，不继承另一请求留下的握手样本。
+	// HTTP continues to replace the whole snapshot and does not inherit a handshake sample left by another request.
 	manager.RecordPassiveQuotaObservation(7, 100, 4000, []providerobservation.QuotaWindow{{ID: "http"}})
 	dirty = manager.DirtyPassiveQuotaObservations(1)
 	if len(dirty) != 1 || dirty[0].Preceding != nil || len(dirty[0].Windows) != 1 || dirty[0].Windows[0].ID != "http" {

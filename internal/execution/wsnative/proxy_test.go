@@ -69,7 +69,7 @@ func TestWebsocketProxyModes(t *testing.T) {
 		runProxyTurn(t, target, outboundproxy.Effective{Config: outboundproxy.Config{Mode: outboundproxy.ModeCustom, URL: httpProxy.URL}, Source: outboundproxy.SourceGroup})
 	})
 	t.Run("environment", func(t *testing.T) {
-		// net/http 缓存环境代理；隔离子进程避免与其他测试的首次读取互相影响。
+		// net/http caches environment proxies; isolate a subprocess so its first read cannot affect other tests.
 		cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestWebsocketProxyModes$")
 		for _, entry := range os.Environ() {
 			key, _, _ := strings.Cut(entry, "=")

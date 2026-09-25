@@ -60,7 +60,7 @@ func TestSubscriptionTargetChangeDoesNotJoinOrPersistOldObservation(t *testing.T
 	for _, oldFails := range []bool{false, true} {
 		t.Run(map[bool]string{false: "old success", true: "old failure"}[oldFails], func(t *testing.T) {
 			fixture, groupID, credentialID := newSubscriptionCredentialFixture(t)
-			// 放开全局观测并发上限，只验证相同凭据在不同目标下的合并边界。
+			// Remove the global observation-concurrency limit; verify only the coalescing boundary for the same credential across different targets.
 			fixture.service.observationSemaphore = make(chan struct{}, 2)
 			started, release := make(chan struct{}), make(chan struct{})
 			released := false

@@ -662,7 +662,7 @@ func TestValidationWorkerCoordinatesConditionalRecoveryAndStatsReset(t *testing.
 }
 
 func TestValidationWorkerLogsSuccessfulRecovery(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	var logs bytes.Buffer
 	logger := logrus.StandardLogger()
 	previousOutput, previousFormatter, previousLevel := logger.Out, logger.Formatter, logger.GetLevel()
@@ -1049,7 +1049,7 @@ func TestValidationWorkerPublicationBoundaryBlocksPublishThroughRecoverAndReset(
 }
 
 func TestValidationSignatureMismatchLogDoesNotLeakSensitiveInputs(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	var logs bytes.Buffer
 	logger := logrus.StandardLogger()
 	previousOutput, previousFormatter, previousLevel := logger.Out, logger.Formatter, logger.GetLevel()
@@ -1250,7 +1250,7 @@ func TestValidationWorkerDoesNotRecoverDisabledOrReplacedKeyRef(t *testing.T) {
 }
 
 func TestValidationWorkerFailureLogUsesSafeStructuredFields(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	var logs bytes.Buffer
 	logger := logrus.StandardLogger()
 	previousOutput, previousFormatter, previousLevel := logger.Out, logger.Formatter, logger.GetLevel()

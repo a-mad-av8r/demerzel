@@ -33,7 +33,7 @@ function sc.exe {
   $script:deletes++
   $global:LASTEXITCODE = 0
 }
-# Windows 系统目录与注册表只在真实 smoke 中使用；此测试只操作临时目录。
+# Windows system directories and the registry are used only in real smoke tests; this test operates solely in temporary directories.
 function Test-Path {
   [CmdletBinding()] param([string]$LiteralPath)
   if (-not $LiteralPath.StartsWith($env:TEST_ROOT)) { return $false }
@@ -80,7 +80,7 @@ foreach ($case in @('unmarked', 'invalid', 'mismatch', 'foreign-service', 'servi
 }
 if ($script:stops -ne 1 -or $script:deletes -ne 1) { throw 'stopped or deleted an unowned service' }
 
-# 第二个进程不能清理第一个进程仍在使用的安装目录。
+# A second process cannot clean up an installation directory still used by the first process.
 $script:record = $null
 $root = Join-Path $env:TEST_ROOT 'busy'
 $lock = Enter-WindowsSmoke -InstallDir $root -ConfigDir $root
@@ -100,7 +100,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'active smoke was not protected' }
 } finally { $lock.ReleaseMutex(); $lock.Dispose() }
 
-# 在初始化的每条完整语句后模拟强制中断：固定目录只能以完整状态出现。
+# Simulate forced interruption after each complete initialisation statement: the fixed directory must appear only in a complete state.
 $source = [IO.File]::ReadAllText($env:INSTALLER_SCRIPT)
 $start = $source.IndexOf('  [System.IO.File]::WriteAllText($installOwnerMarker, $installOwnerToken)')
 $end = $source.IndexOf('  $listener =', $start)

@@ -40,7 +40,7 @@ func TestCodexIdentityUsesUserClaimsWithoutChangingCanonical(t *testing.T) {
 		{"invalid token", "e30.!.signature", "access", "workspace"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			// 固定旧格式的字段顺序，身份推导不得改变 canonical 字节或持久化派生字段。
+			// Fix legacy field order; identity derivation must not change canonical bytes or persisted derived fields.
 			raw := []byte(fmt.Sprintf(`{"type":"codex"%s,"access_token":%q,"refresh_token":"refresh","account_id":"workspace","email":"owner@example.com"}`, identityTestIDTokenField(test.idToken), test.accessToken))
 			credential, err := newCodexDriver().Parse(raw)
 			if err != nil {

@@ -327,12 +327,10 @@ function finalGroupName(): string | null {
 
 const copyControllers = useAbortControllerPool()
 
-// 订阅账号展示的就是完整邮箱，直接复制即可；密钥展示的是掩码，需取真值。
 const revealsCredential = computed(
   () => channelDefinition(log.value?.channel_id)?.connection.type === 'api_key',
 )
 
-// 密钥的 reveal 被订阅渠道拒绝，故仅密钥类走这条取值路径。
 async function resolveCredentialCopyValue(): Promise<string> {
   const record = log.value
   if (!record || record.group_id === null || record.credential_id === null) return ''

@@ -483,7 +483,7 @@ func validateMappedUsageDistribution(
 	}
 	costMatches := strconv.FormatInt(cost, 10) == summary.EstimatedCostNanoUSD
 	if distribution.Dimension == requestlog.UsageDistributionDimensionGroup {
-		// 自动判断费用属于访问密钥和决策模型，不归属回答 Group；Group 分布可以少于全局费用。
+		// Automatic-decision costs belong to access keys and decision models, not answer Groups; Group distribution can be lower than global costs.
 		summaryCost, err := strconv.ParseInt(summary.EstimatedCostNanoUSD, 10, 64)
 		costMatches = err == nil && cost <= summaryCost
 	}

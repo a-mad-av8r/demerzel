@@ -18,7 +18,7 @@ import (
 // TestExternalDatabaseReservedIdentifierQueries verifies that runtime query
 // scopes quote table and column names which are reserved by supported drivers.
 func TestExternalDatabaseReservedIdentifierQueries(t *testing.T) {
-	// 不标记 t.Parallel()：依赖 GPT_LOAD_DATABASE_TEST_DSN 的共享外部数据库。
+	// Do not call t.Parallel(): this test relies on the shared external database configured by GPT_LOAD_DATABASE_TEST_DSN.
 	dsn := strings.TrimSpace(os.Getenv("GPT_LOAD_DATABASE_TEST_DSN"))
 	if dsn == "" {
 		t.Skip("GPT_LOAD_DATABASE_TEST_DSN is not set")
@@ -39,7 +39,7 @@ func TestExternalDatabaseReservedIdentifierQueries(t *testing.T) {
 // retained-rule two-phase period move obeys the real MySQL/PostgreSQL unique
 // index while preserving IDs and resetting each changed revision.
 func TestExternalDatabaseAccessKeyCostLimitPeriodPermutation(t *testing.T) {
-	// 不标记 t.Parallel()：依赖 GPT_LOAD_DATABASE_TEST_DSN 的共享外部数据库，并发执行有唯一索引冲突等正确性风险。
+	// Do not call t.Parallel(): this test relies on the shared external database configured by GPT_LOAD_DATABASE_TEST_DSN, where concurrency risks unique-index conflicts and correctness failures.
 	dsn := strings.TrimSpace(os.Getenv("GPT_LOAD_DATABASE_TEST_DSN"))
 	if dsn == "" {
 		t.Skip("GPT_LOAD_DATABASE_TEST_DSN is not set")
@@ -57,7 +57,7 @@ func TestExternalDatabaseAccessKeyCostLimitPeriodPermutation(t *testing.T) {
 // global model price, and removing the final reference cleans only the
 // automatic row.
 func TestExternalDatabaseGroupPriceReconciliation(t *testing.T) {
-	// 不标记 t.Parallel()：依赖 GPT_LOAD_DATABASE_TEST_DSN 的共享外部数据库，并发执行有唯一索引冲突等正确性风险。
+	// Do not call t.Parallel(): this test relies on the shared external database configured by GPT_LOAD_DATABASE_TEST_DSN, where concurrency risks unique-index conflicts and correctness failures.
 	dsn := strings.TrimSpace(os.Getenv("GPT_LOAD_DATABASE_TEST_DSN"))
 	if dsn == "" {
 		t.Skip("GPT_LOAD_DATABASE_TEST_DSN is not set")

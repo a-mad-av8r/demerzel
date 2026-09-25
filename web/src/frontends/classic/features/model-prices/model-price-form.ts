@@ -13,7 +13,6 @@ export type ModelPriceSlotDraft = Record<ModelPriceField, string>
 export type ModelPriceSlotErrors = Partial<Record<ModelPriceField, 'invalid_price'>>
 
 export interface ModelPriceTierDraft {
-  /** 本地稳定 key，仅用于 v-for 与错误定位，不随阈值编辑变化。 */
   key: string
   threshold: string
   slots: ModelPriceSlotDraft
@@ -105,11 +104,6 @@ function parseThreshold(raw: string): number | undefined {
   return parsed > maximumSafeIntegerBig ? undefined : Number(raw)
 }
 
-/**
- * 展示排序用途：空值或非法输入排到最后，避免尚未填写的新档位打断已有顺序。
- * 与提交前的严格校验（parseThreshold）分开，这里只用于让编辑区的行序
- * 和后端优先级（数组升序）、派生说明的排序保持一致。
- */
 export function tierDisplayOrder(threshold: string): number {
   const trimmed = threshold.trim()
   if (trimmed === '') return Number.POSITIVE_INFINITY
@@ -230,7 +224,6 @@ export function buildModelPriceRequest(
   }
 }
 
-/** 是否处于「用户主动清空」状态；基础价格和全部 Tier 都没有任何价格。 */
 export function modelPriceDraftIsAllNull(draft: ModelPriceDraft): boolean {
   return (
     slotsAllEmpty(draft.base) &&

@@ -14,11 +14,11 @@ const MaxGroupUsageBatchSize = 100
 
 type GroupUsageReport struct {
 	Items map[uint]UsageAggregate
-	// 边界明细可能超出保留时间时，不能把缺失数据当作完整的零用量。
+	// Boundary details can fall outside retention, so missing data must not be treated as complete zero usage.
 	DataComplete bool
 }
 
-// QueryGroupUsage 只汇总当前页的分组，复用精确窗口和最终请求归属，不计算趋势或排行榜。
+// QueryGroupUsage aggregates only the current page's groups, reusing the exact window and final request attribution without calculating trends or leaderboards.
 func (service *Service) QueryGroupUsage(ctx context.Context, groupIDs []uint, fromMS, toMS int64) (GroupUsageReport, error) {
 	if service == nil || service.db == nil {
 		return GroupUsageReport{}, fmt.Errorf("query group usage: database is nil")
@@ -44,7 +44,7 @@ func (service *Service) QueryGroupUsage(ctx context.Context, groupIDs []uint, fr
 		Mode: dbtx.ReadSnapshot, CleanupTimeout: usageRollbackTimeout,
 		Operation: "group usage read transaction",
 	}, func(connection *gorm.DB) error {
-		// 分组条件下推至三个来源，避免先读取所有分组的边界明细再过滤。
+		// Push group conditions into all three sources to avoid reading boundary details for every group before filtering.
 		scope := usageWindowScope(connection, input, groupIDs...)
 		if err := validateUsageIntegrity(scope.Session(&gorm.Session{}), 0); err != nil {
 			return err

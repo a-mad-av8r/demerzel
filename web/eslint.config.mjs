@@ -28,12 +28,12 @@ export default defineConfigWithVueTs(
         {
           selector:
             'Property[key.name=/^(refetchInterval|refetchIntervalInBackground|refetchOnWindowFocus|refetchOnReconnect|refetchOnMount)$/]',
-          message: '新版禁止定时轮询；刷新策略统一由 app/query.ts 管理，不在页面覆盖。',
+          message: 'Modern frontend pages must not poll; app/query.ts owns the refresh strategy.',
         },
         {
           selector:
             'Property[key.value=/^(refetchInterval|refetchIntervalInBackground|refetchOnWindowFocus|refetchOnReconnect|refetchOnMount)$/]',
-          message: '新版禁止定时轮询；刷新策略统一由 app/query.ts 管理，不在页面覆盖。',
+          message: 'Modern frontend pages must not poll; app/query.ts owns the refresh strategy.',
         },
       ],
     },
@@ -59,7 +59,8 @@ export default defineConfigWithVueTs(
                 'TooltipRoot',
                 'TooltipContent',
               ],
-              message: '复用 modern/components 中的公共浮层、菜单和提示组件。',
+              message:
+                'Reuse shared overlays, menus, and notices from modern/components rather than duplicating them.',
             },
           ],
         },

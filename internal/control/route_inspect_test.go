@@ -210,7 +210,7 @@ func TestRouteInspectEndpointRejectsMalformedAndInvalidRequests(t *testing.T) {
 		{
 			name: "model exceeds UTF-8 byte limit",
 			body: `{"protocol":"openai-completions","external_model":"` +
-				strings.Repeat("a", 253) + `猫","access_key_id":1}`,
+				strings.Repeat("a", 253) + `☃","access_key_id":1}`,
 			wantCode: app_errors.ErrValidation.Code,
 		},
 		{

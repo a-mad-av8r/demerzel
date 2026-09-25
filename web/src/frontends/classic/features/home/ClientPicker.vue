@@ -41,10 +41,6 @@ function label(entry: GatewayClient): string {
   return t(`home.ledger.connection.clients.${entry.id}`)
 }
 
-/**
- * cc-switch 没有自己的固定协议（取决于目标应用），所以只对声明了
- * requiredProtocol 的客户端判定，不会误伤。
- */
 function unsupported(entry: GatewayClient): boolean {
   return Boolean(entry.requiredProtocol && !props.protocols.includes(entry.requiredProtocol))
 }
@@ -60,7 +56,6 @@ const matches = computed(() => {
   )
 })
 
-/** 可用的按类型分组在前，此密钥用不了的统一沉到最后一组。 */
 const sections = computed(() => {
   const available = matches.value.filter((entry) => !unsupported(entry))
   const blocked = matches.value.filter((entry) => unsupported(entry))
@@ -81,7 +76,6 @@ const sections = computed(() => {
   return result
 })
 
-/** 拍平一份用于方向键导航，顺序与渲染顺序一致。 */
 const flat = computed(() => sections.value.flatMap((section) => section.entries))
 
 watch(flat, () => (activeIndex.value = 0))
@@ -105,7 +99,6 @@ function choose(entry: GatewayClient): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  // AppSearchInput 把监听器转发到外层容器，清除按钮上的按键也会冒泡到这里。
   if (!(event.target instanceof HTMLInputElement)) return
   if (event.key === 'ArrowDown') {
     event.preventDefault()
@@ -209,10 +202,6 @@ function onKeydown(event: KeyboardEvent): void {
   opacity: 0.55;
 }
 
-/*
- * 品牌 SVG 是 1em 见方，字母标兜底默认 min-width 1.7em——两者混排时宽度不同，
- * 名称就会一行左一行右。统一钉死图标槽宽度，所有名称严格对齐。
- */
 .client-picker__trigger :deep(.channel-icon) {
   width: 18px;
   min-width: 18px;
@@ -301,7 +290,6 @@ function onKeydown(event: KeyboardEvent): void {
   font-weight: 600;
 }
 
-/* 不用 disabled 拦：那样键盘和读屏都到不了，也看不到原因。 */
 .client-picker__option--blocked {
   opacity: 0.5;
 }

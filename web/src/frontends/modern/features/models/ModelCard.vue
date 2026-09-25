@@ -30,7 +30,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ open: [source?: number]; settings: [] }>()
 const { t, n, locale } = useI18n()
-// 协议在同一批模型上重复度接近 100%，折成一行中性摘要，悬浮再看全量列表。
+
 const protocolsLabel = computed(() =>
   props.model.protocols.map((value) => protocolLabel(value, t)).join('\n'),
 )
@@ -38,10 +38,7 @@ const groupCount = computed(() => modelGroupCount(props.model))
 function price(source: ModelSource, field: PriceField): string {
   return modelUnitPrice(source.price.prices[field], locale.value)
 }
-// 表头与来源行是两个独立网格，用 max-content 会各算各的导致列错位。
-// 这里按本卡最长的价格算出一个共享列宽，两边引用同一个值才能对齐。
-// 不能用 ch：它相对元素自身字号，表头 11px 与数据行的字号会解析成两个不同的宽度。
-// 0.63 是等宽数字单字符宽度相对字号的上界，乘固定字号 token 得到绝对宽度。
+
 const priceWidth = computed(() => {
   const longest = props.model.sources.reduce(
     (width, source) =>
@@ -50,7 +47,7 @@ const priceWidth = computed(() => {
   )
   return `calc(${longest} * 0.63 * var(--modern-font-size-small))`
 })
-// 只展开第一个分组：绝大多数来源只关联一个，展开两个会在窄列里换行、把行高撑乱。
+
 function visibleGroups(source: ModelSource) {
   return source.groups.slice(0, 1)
 }
@@ -101,7 +98,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
         @click="emit('settings')"
       />
     </header>
-    <!-- 列宽在窄屏下有下限，超出卡片宽度时横向滚动而不是把标签挤到换行。 -->
+
     <div class="modern-model-card-table" :style="{ '--modern-model-price-width': priceWidth }">
       <div class="modern-model-row modern-model-row--head" aria-hidden="true">
         <span>{{ t('modelManager.sourceUnit') }}</span>
@@ -213,8 +210,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
   border-color: var(--modern-segmented-active-border);
   box-shadow: var(--modern-shadow-control);
 }
-/* 自右上角发散的椭圆晕染，向左下淡出——与用量统计顶部卡片同一套手法。
-   线性渐变在 15:1 的扁盒子里只会变成一条生硬的色带。 */
+
 .modern-model-card-heading {
   position: relative;
   isolation: isolate;
@@ -239,7 +235,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
   content: '';
   pointer-events: none;
 }
-/* 把后面三项统计推到右侧，模型名独占左端。 */
+
 .modern-model-card-name {
   margin-inline-end: auto;
   min-width: 0;
@@ -259,31 +255,27 @@ function hiddenGroupsLabel(source: ModelSource): string {
   flex: none;
   align-self: center;
 }
-/* 摘要读成一句而不是三个孤立标签。 */
+
 .modern-model-card-meta + .modern-model-card-meta::before {
   content: '·';
   margin-inline-end: var(--modern-space-2);
   color: var(--modern-control-placeholder);
 }
-/* 列宽有下限，卡片窄于内容时整体横向滚动，而不是挤压换行。 */
+
 .modern-model-card-table {
-  /* 实际值由模板按本卡最长价格注入，这里只提供兜底。 */
   --modern-model-price-width: 0px;
   overflow-x: auto;
 }
-/* 表头与来源行共用同一套列定义：来源 / 分组 / 4 个价格 / 计价方式 / 操作，
-   多来源时价格天然对齐可比，这是这页配价工作的核心诉求。 */
+
 .modern-model-row {
   display: grid;
-  /* 价格单位是「美元 / 百万 Tokens」，可能出现 9 位小数，写死宽度会让数字溢出压到
-     隔壁列。列宽取本卡最长价格（见 priceWidth），超出卡宽时交给外层横向滚动。 */
+
   grid-template-columns:
     minmax(140px, 1.4fr) 88px repeat(4, max(56px, var(--modern-model-price-width))) 72px
     var(--modern-control-xs);
   align-items: center;
   gap: var(--modern-space-1-5);
-  /* 除首列外所有轨道都是定值，min-content 即「轨道最小总和」：
-     横向滚动时行的底色与分隔线才会延伸到完整宽度，而不是在容器右边缘断掉。 */
+
   min-width: min-content;
   padding-inline: var(--modern-space-4);
 }
@@ -308,8 +300,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 用网格而不是 flex-wrap：渠道名一长，wrap 会把图标、名称、档位各自甩到新行，
-   单元格从 24px 涨到 87px。这里图标恒定在第一列，文字只在第二列内部换行。 */
+
 .modern-model-source-name {
   display: grid;
   grid-template-columns: var(--modern-channel-sm) minmax(0, 1fr);
@@ -328,7 +319,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
   flex: none;
   color: var(--modern-control-placeholder);
 }
-/* 两行内容合计 39.4px，压在行的 40px 下限内，有无上游模型的行才能等高。 */
+
 .modern-model-source-upstream {
   grid-column: 2;
   color: var(--modern-muted);
@@ -336,7 +327,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
   font-size: var(--modern-font-size-caption);
   line-height: var(--modern-leading-compact);
 }
-/* 不换行：分组一多就折行会把行高撑乱，超出的交给 +N 提示。 */
+
 .modern-model-source-groups {
   display: flex;
   align-items: center;
@@ -360,7 +351,7 @@ function hiddenGroupsLabel(source: ModelSource): string {
 .modern-model-source-price.is-empty {
   color: var(--modern-control-placeholder);
 }
-/* 待计价是徽章、其余是纯文字，给统一高度免得这一列的基线上下跳。 */
+
 .modern-model-source-method {
   display: flex;
   min-width: 0;

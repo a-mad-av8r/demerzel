@@ -27,8 +27,8 @@ const (
 	defaultCodexWSMaxBytes    = 10 << 20
 )
 
-// CodexWSSessionOptions 固定调用者已选择的身份、API 代理根地址和出站代理。
-// ProxyURL 传入现有代理策略选定的 direct 或代理 URL，不读取环境代理。
+// CodexWSSessionOptions holds the credential, API proxy root URL, and outbound proxy selected by the caller.
+// ProxyURL receives the direct or proxy URL selected by the existing proxy policy; it does not read environment proxy settings.
 type CodexWSSessionOptions struct {
 	CredentialID    string
 	Credential      CodexCredential
@@ -38,12 +38,12 @@ type CodexWSSessionOptions struct {
 	MaxRequestBytes int
 	MaxEventBytes   int
 	Headers         http.Header
-	// ObserveHeaders 在事件之前交付握手头，在结束前交付失败响应头。
-	// 回调须及时返回，不等待本轮结束。
+	// ObserveHeaders delivers handshake headers before events and failed-response headers before termination.
+	// The callback must return promptly and must not wait for the turn to finish.
 	ObserveHeaders func(http.Header, time.Time)
 }
 
-// CodexWSTurnResult 只描述本轮执行，不执行健康、额度或日志记账。
+// CodexWSTurnResult describes only the current turn; it does not perform health, quota, or log accounting.
 type CodexWSTurnResult struct {
 	ResponseID       string
 	Status           string
@@ -53,8 +53,8 @@ type CodexWSTurnResult struct {
 	DispatchState    string
 }
 
-// CodexWSError 的文本不包含上游响应、凭据、地址或代理密码。
-// UpstreamType、UpstreamCode、HTTPStatus 和 RetryAfter 仅提供调用者所需的错误分类证据。
+// CodexWSError text contains no upstream responses, credentials, addresses, or proxy passwords.
+// UpstreamType, UpstreamCode, HTTPStatus, and RetryAfter provide only the error-classification evidence required by the caller.
 type CodexWSError struct {
 	Code          string
 	UpstreamType  string
@@ -72,7 +72,7 @@ func codexWSError(code string) *CodexWSError {
 	return &CodexWSError{Code: code, DispatchState: CodexWSNotSent}
 }
 
-// CodexWSSession 是由调用者独占的 Codex 上游会话。
+// CodexWSSession is a caller-exclusive Codex upstream session.
 type CodexWSSession struct {
 	auth              *cliproxyauth.Auth
 	inner             *internalexecutor.CodexWebsocketsExecutor
@@ -91,7 +91,7 @@ type CodexWSSession struct {
 	closeErr          error
 }
 
-// NewCodexWSSession 只创建句柄，不建连、不刷新 token，也不保留 refresh token。
+// NewCodexWSSession only creates a handle; it does not connect, refresh tokens, or retain the refresh token.
 func NewCodexWSSession(options CodexWSSessionOptions) (*CodexWSSession, error) {
 	if strings.TrimSpace(options.CredentialID) == "" || validateCredential(options.Credential) != nil {
 		return nil, codexWSError("invalid_session_options")
@@ -127,7 +127,7 @@ func NewCodexWSSession(options CodexWSSessionOptions) (*CodexWSSession, error) {
 	session := &CodexWSSession{
 		auth: auth, id: codexWSSessionIDPrefix + uuid.NewString(), options: options, closeDone: make(chan struct{}),
 		inner: internalexecutor.NewCodexWebsocketsExecutor(&internalconfig.Config{
-			// 不启用 SDK 的启动缓冲，确保 ExecuteStream 先返回握手，再交付原生事件。
+			// Disable SDK startup buffering so ExecuteStream returns the handshake before native events are delivered.
 			Codex: internalconfig.CodexConfig{ModelLevelCooling: true, StreamBootstrapBuffering: false},
 		}),
 	}
@@ -135,9 +135,9 @@ func NewCodexWSSession(options CodexWSSessionOptions) (*CodexWSSession, error) {
 	return session, nil
 }
 
-// ExecuteTurn 同步执行一轮；emit 按原始上游事件顺序调用，不积累聊天历史。
-// emit 可为 nil；非空回调须及时返回并响应 ctx，不能在回调中等待本轮结束。
-// 事件大小检查发生在 SDK 读取之后，不是 SDK 原始帧读取的内存上限。
+// ExecuteTurn synchronously executes one turn; emit is invoked in native upstream event order and chat history is not accumulated.
+// emit may be nil; non-nil callbacks must return promptly, respond to ctx, and must not wait for the turn to finish.
+// Event size is checked after the SDK reads; it is not a memory limit for raw SDK frame reads.
 func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessage, emit func(context.Context, json.RawMessage) error) (CodexWSTurnResult, error) {
 	result := CodexWSTurnResult{DispatchState: CodexWSNotSent}
 	if s == nil {
@@ -169,7 +169,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 	var turnCtx context.Context
 	var cancel context.CancelFunc
 	if _, bounded := ctx.Deadline(); bounded {
-		// 网关每轮的 deadline 是业务期限；创建时的默认值不能截断后续配置上调。
+		// The gateway deadline for each turn is the business deadline; the creation-time default must not limit later configuration increases.
 		turnCtx, cancel = context.WithCancel(ctx)
 	} else {
 		turnCtx, cancel = context.WithTimeout(ctx, s.options.TurnTimeout)
@@ -187,7 +187,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 		s.mu.Lock()
 		closed := s.closed
 		s.mu.Unlock()
-		// 关闭与 SDK 创建会话竞态时，仍清理本调用留下的空登记。
+		// Even if closing races with SDK session creation, clean up the empty registration left by this invocation.
 		if closed {
 			s.inner.CloseExecutionSession(s.id)
 		}
@@ -196,8 +196,8 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 		s.mu.Unlock()
 	}()
 	turnCtx = cliproxyexecutor.WithUpstreamAttemptTracker(turnCtx)
-	// Gorilla 的 Upgrade 读取只设置 deadline；捕获尚未绑定 lifecycle 的连接，
-	// 使主动取消也能中止 TLS/WS 握手，而不必等待握手超时。
+	// Gorilla's Upgrade reader sets only a deadline; capture connections not yet bound to the lifecycle
+	// so proactive cancellation ends TLS/WS handshakes without waiting for the handshake timeout.
 	turnCtx = httptrace.WithClientTrace(turnCtx, &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) { s.trackDialConnection(info.Conn) },
 	})
@@ -216,7 +216,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 		Metadata:           map[string]any{cliproxyexecutor.ExecutionSessionMetadataKey: s.id},
 		ExecutionLifecycle: s.resource,
 		WebSocketResponseObserver: func(ctx context.Context, event cliproxyexecutor.WebSocketResponseEvent) {
-			// SDK 的读取协程可先于 ExecuteStream 返回运行；握手交接完成前不交付事件。
+			// The SDK reading goroutine can run before ExecuteStream returns; do not deliver events until the handshake hand-off completes.
 			<-headersReady
 			observation.observe(ctx, event)
 		},
@@ -232,7 +232,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 	}
 	close(headersReady)
 	if stream != nil {
-		// 原生 JSON 由 observer 交付。排空 SDK 的转换输出，确保单轮收尾完成。
+		// Native JSON is delivered through the observer. Drain the SDK conversion output to ensure full turn cleanup.
 		for chunk := range stream.Chunks {
 			if chunk.Err != nil && executionErr == nil {
 				executionErr = chunk.Err
@@ -255,7 +255,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 		return result, codexWSContextError(turnCtx.Err(), result.DispatchState)
 	}
 	if executionErr != nil {
-		// 连接 deadline 可能先于 context 定时器触发，仍须保留超时分类。
+		// The connection deadline may fire before the context timer; retain timeout categorisation.
 		var timeout net.Error
 		if errors.As(executionErr, &timeout) && timeout.Timeout() {
 			s.invalidate(true)
@@ -278,7 +278,7 @@ func (s *CodexWSSession) ExecuteTurn(ctx context.Context, payload json.RawMessag
 				}
 			}
 		}
-		// SDK 请求预处理失败且未接触上游时，不破坏已有连接。
+		// Keep the existing connection intact when SDK request preprocessing fails without reaching the upstream.
 		if cliproxyexecutor.UpstreamAttempted(turnCtx) || cliproxyexecutor.IsUpstreamWebsocketReplayRequired(executionErr) {
 			s.invalidate(true)
 		}
@@ -341,7 +341,7 @@ func (s *CodexWSSession) validateRequest(payload []byte) (string, string, error)
 	if raw, ok := root["previous_response_id"]; ok && json.Unmarshal(raw, &previous) != nil {
 		return "", "", codexWSError("invalid_request")
 	}
-	// 首版仅支持原生单轮生成，不静默丢弃多流或后台执行语义。
+	// The initial version supports only native single-turn generation; it does not silently drop multi-stream or background-execution semantics.
 	for _, key := range []string{"type", "stream_id", "conversation"} {
 		if _, ok := root[key]; ok {
 			return "", "", codexWSError("unsupported_request")
@@ -356,7 +356,7 @@ func (s *CodexWSSession) validateRequest(payload []byte) (string, string, error)
 	return model, previous, nil
 }
 
-// Done 在本 Session 失效或关闭后通知调用者。
+// Done notifies the caller when this Session becomes invalid or closes.
 func (s *CodexWSSession) Done() <-chan struct{} {
 	if s == nil || s.closeDone == nil {
 		closed := make(chan struct{})
@@ -366,7 +366,7 @@ func (s *CodexWSSession) Done() <-chan struct{} {
 	return s.closeDone
 }
 
-// Close 可从事件回调调用；它关闭连接并取消本轮，ExecuteTurn 随后退出。
+// Close may be called from an event callback; it closes the connection and cancels the current turn, after which ExecuteTurn returns.
 func (s *CodexWSSession) Close() error {
 	if s == nil {
 		return nil
@@ -433,7 +433,7 @@ func (s *CodexWSSession) invalidate(cancelActive bool) {
 
 type codexWSResource struct{ session *CodexWSSession }
 
-// Bind 只接受第一条连接；SDK 重拨后再次绑定时，在第二次业务发送前拒绝。
+// Bind accepts only the first connection; if the SDK redials and binds again, reject it before the second business send.
 func (resource *codexWSResource) Bind(closeConnection func() error) error {
 	s := resource.session
 	s.mu.Lock()
@@ -520,7 +520,7 @@ func (o *codexWSTurnObservation) observe(ctx context.Context, event cliproxyexec
 			fail("event_consumer_failed")
 		}
 	}
-	// 先释放已失败的会话；让 SDK 继续返回原始错误分类，而非在断连日志里输出错误正文。
+	// Release the failed session first so the SDK returns the original error classification rather than logging the error body during disconnect.
 	if o.result.Status == "failed" || o.result.Status == "incomplete" || (envelope.Type == "response.done" && o.result.Status != "completed") {
 		o.failSession()
 	}

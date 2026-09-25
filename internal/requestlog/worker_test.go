@@ -129,7 +129,7 @@ func TestServiceFlushesAtBatchSizeAndDelayInFIFOOrder(t *testing.T) {
 	service.Emit(testEvent("delay-1"))
 	service.Emit(testEvent("delay-2"))
 	secondTimer := receiveValue(t, timers.created)
-	// 等两条事件均被 worker 取走，再触发刷盘，避免队列与定时器同时就绪。
+	// Wait until the worker has taken both events before flushing, so the queue and timer cannot become ready simultaneously.
 	deadline := time.Now().Add(5 * time.Second)
 	for len(service.queue) != 0 {
 		if time.Now().After(deadline) {

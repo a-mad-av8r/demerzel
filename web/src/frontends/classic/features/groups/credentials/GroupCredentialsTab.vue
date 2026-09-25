@@ -154,7 +154,7 @@ const fullActionTarget = ref<FullCredentialAction>()
 const connectionStages = ref<CredentialStage[]>([])
 const connectionImportState = ref({ busy: false, hasResults: false })
 const connectOperationKey = ref<string>()
-// 抽屉打开时列表区被遮住，连接失败的提示必须落在抽屉内部才看得见。
+
 const connectFeedback = ref('')
 const connectionInspectionPending = ref(false)
 const inspectedConnectionSignature = ref('')
@@ -199,8 +199,7 @@ const batchBusy = computed(() =>
 const singleBusy = computed(() =>
   [...pendingOperations.value].some((key) => !key.startsWith('batch:')),
 )
-// 抽屉只关心自己那一次写入。用页面级 singleBusy 会让任意一行在忙时把抽屉
-// 整个锁死，连关闭按钮都点不动。
+
 const connectBusy = computed(() =>
   [...pendingOperations.value].some((key) => key.endsWith(':connect')),
 )
@@ -257,7 +256,7 @@ const credentialTestRestorePending = computed(() =>
         operation(credentialTestTarget.value.credential_id, 'test-restore'),
       ),
 )
-// restore_proof 仅在父级请求状态中持有，不传给展示组件或渲染到 DOM。
+
 const credentialTestDialogResult = computed(() => {
   const result = credentialTestResult.value
   if (result === undefined) return undefined
@@ -415,7 +414,7 @@ function setExpanded(id: number, expanded: boolean): void {
   const next = new Set(routeState.value.expandedCredentialIDs)
   if (expanded) next.add(id)
   else next.delete(id)
-  // 收起时一并关掉权重编辑，避免下次展开直接落在遗留的编辑态里。
+
   const weightCredentialID =
     !expanded && routeState.value.weightCredentialID === id
       ? undefined
@@ -426,7 +425,7 @@ function setExpanded(id: number, expanded: boolean): void {
     weightCredentialID,
   })
 }
-// 权重列的值可点：一次操作完成“展开 + 进入编辑”，让折叠区里的设置被发现。
+
 function openWeightEditor(id: number): void {
   const expanded = new Set(routeState.value.expandedCredentialIDs)
   expanded.add(id)
@@ -1083,8 +1082,6 @@ async function inspectConnectionStages(signature: string, stageIDs: string[]): P
   }
 }
 
-// 浏览器授权沿用全部就绪后自动连接；文件导入先显示完整结果，等待用户点击连接。
-// 导入期间不检查或写入中间结果，完成后仍提前标出重复账号。
 watch(
   [connectionStages, connectionImportState],
   ([stages, importState]) => {
@@ -1114,7 +1111,6 @@ watch(
   { deep: true },
 )
 
-// 抽屉自己管理焦点与滚动，这里只负责重置暂存状态。
 function openConnectionWorkspace(): void {
   resetConnectionInspection()
   connectionStages.value = []
@@ -2096,7 +2092,7 @@ async function runBatch(
   gap: var(--space-3);
   padding: var(--space-4) 0;
 }
-/* 状态列容纳凭据状态与模型冷却两个标记，避免挤占相邻信息列。 */
+
 .group-credential-record-grid {
   --ledger-record-list-record-min-height: 52px;
   --ledger-record-list-record-padding: 8px 0;

@@ -741,7 +741,7 @@ func (s *Service) restoreCredentialBatchRuntime(group models.Group, entries []st
 		if !s.registry.ClearModelCooldowns(entry.ID) {
 			return nil, dbRegistryMismatch(mismatchMissingRegistry, group.ID, entry.ID)
 		}
-		// 只修改健康字段，保留并发发布的订阅额度与授权状态。
+		// Change only health fields, retaining concurrently published subscription quota and authorisation state.
 		if (bucket == healthBucketCooldown || bucket == healthBucketBlacklisted) && !s.registry.RestoreRuntimeState(entry.ID) {
 			return nil, dbRegistryMismatch(mismatchMissingRegistry, group.ID, entry.ID)
 		}

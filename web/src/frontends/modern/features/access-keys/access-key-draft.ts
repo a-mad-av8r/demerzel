@@ -77,7 +77,7 @@ export function normalizeDecimal(value: string): string {
 }
 function periodSeconds(rule: RuleDraft): number {
   const seconds = Number(rule.period) * periodUnits[rule.unit as keyof typeof periodUnits]
-  // 小时小数换算可能产生浮点尾差，不改变已有规则的整秒时长。
+
   const rounded = Math.round(seconds)
   return Math.abs(seconds - rounded) < 0.0000001 ? rounded : seconds
 }

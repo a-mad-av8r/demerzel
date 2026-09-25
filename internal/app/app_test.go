@@ -394,7 +394,7 @@ func TestNewEngineRecoversWithoutLoggingCredentials(t *testing.T) {
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/panic?token=query-secret", nil)
-	request.Header.Set("Authorization", "Bearer authorization-secret")
+	request.Header.Set("Authorization", "Bearer authorisation-secret")
 	request.Header.Set("X-Api-Key", "x-api-key-secret")
 	request.Header.Set("Api-Key", "api-key-secret")
 	request.Header.Set("X-Goog-Api-Key", "google-api-key-secret")
@@ -422,7 +422,7 @@ func TestNewEngineRecoversWithoutLoggingCredentials(t *testing.T) {
 	for _, secret := range []string{
 		"panic-secret",
 		"query-secret",
-		"authorization-secret",
+		"authorisation-secret",
 		"x-api-key-secret",
 		"api-key-secret",
 		"google-api-key-secret",

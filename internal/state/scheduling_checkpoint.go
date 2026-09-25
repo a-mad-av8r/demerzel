@@ -103,7 +103,7 @@ func (s *SchedulingState) CaptureCheckpoint() SchedulingCheckpoint {
 	return checkpoint
 }
 
-// RestoreCheckpoint 在加载最新配置后调用；失配成员按新成员入场，不能单独归零追补旧历史。
+// RestoreCheckpoint runs after loading latest configuration; mismatched members enter as new members and cannot independently zero out old-history compensation.
 func (s *SchedulingState) RestoreCheckpoint(checkpoint SchedulingCheckpoint) int {
 	if checkpoint.Version != 1 || checkpoint.Sequence == ^uint64(0) || checkpoint.Watermark.Whole == ^uint64(0) {
 		return 0

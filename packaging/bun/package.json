@@ -1,0 +1,37 @@
+{
+  "name": "@amadmalik/demerzel",
+  "version": "2.0.0",
+  "description": "Bun-compatible launcher for the signed Demerzel Go gateway",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "demerzel": "./bin/demerzel.mjs"
+  },
+  "files": [
+    "bin/demerzel.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a-mad-av8r/demerzel.git",
+    "directory": "packaging/bun"
+  },
+  "bugs": {
+    "url": "https://github.com/a-mad-av8r/demerzel/issues"
+  },
+  "homepage": "https://github.com/a-mad-av8r/demerzel#readme"
+}

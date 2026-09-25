@@ -980,7 +980,7 @@ func credentialLabelFor(labels map[uint]string, credentialID *uint) string {
 	if credentialID == nil {
 		return ""
 	}
-	// 保持既有响应结构：未知或不可读标识用占位，只有确认不存在才留空。
+	// Retain the existing response shape: use a placeholder for unknown or unreadable identifiers, and leave it empty only when absence is confirmed.
 	if labels == nil {
 		return "—"
 	}
@@ -991,7 +991,7 @@ func credentialLabelFor(labels map[uint]string, credentialID *uint) string {
 	return label
 }
 
-// 一页日志里的凭据数远小于条数：同一个号会被反复使用，去重后通常只剩几个。
+// A page of logs has far fewer credentials than entries: one account is reused repeatedly, so deduplication usually leaves only a few.
 func requestLogCredentialIDs(records []requestlog.Record) []uint {
 	ids := make([]uint, 0, len(records))
 	for _, record := range records {
@@ -1575,10 +1575,10 @@ func mapRequestLogUsageCost(record requestlog.Record) (requestLogUsageCostRespon
 	return result, nil
 }
 
-// CredentialLabels 把凭据 ID 翻译成可读标识：API 密钥给掩码，订阅账号给邮箱掩码。
-// 密文常驻凭据注册表，整个过程不读数据库；只按持久身份判断存在，不按运行状态过滤。
-// 已存在但标识无法解析的凭据保留空值，只有注册表中不存在的凭据才省略。
-// 入参允许重复，每个 ID 至多解密一次；nil 结果表示关联信息尚不可查询，而非删除。
+// CredentialLabels translates credential IDs into readable labels: API keys use masks, subscription accounts use masked emails.
+// Ciphertexts remain in the credential registry, so this never reads the database; determine existence only from persisted identity, not runtime state.
+// Preserve empty values for existing credentials whose labels cannot be parsed; omit only credentials absent from the registry.
+// Inputs may repeat, but decrypt each ID at most once; a nil result means linked information is not yet queryable, not that it was deleted.
 func (s *Service) CredentialLabels(credentialIDs []uint) map[uint]string {
 	if s == nil || s.manager == nil || s.registry == nil || s.encryption == nil || len(credentialIDs) == 0 {
 		return nil
@@ -1617,7 +1617,7 @@ func (s *Service) CredentialLabels(credentialIDs []uint) map[uint]string {
 	return labels
 }
 
-// 与凭据列表一致：订阅账号给完整邮箱（本就在管理面明示），API 密钥给掩码。
+// Consistent with the credential list: subscription accounts use full emails (already disclosed in management), API keys use masks.
 func (s *Service) credentialLabel(
 	ciphertext string,
 	channelID channel.ID,

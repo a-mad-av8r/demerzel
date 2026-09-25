@@ -181,7 +181,7 @@ func (s *Service) refreshCredentialObservationForTarget(
 	}
 }
 
-// 调用方持有 writeMu，确保目标变更与观测结果发布按顺序发生。
+// The caller holds writeMu, ensuring target changes and observation publication occur in order.
 func (s *Service) observationFlightCurrent(groupID, credentialID uint, flight *observationFlight) bool {
 	s.observationMu.Lock()
 	defer s.observationMu.Unlock()
@@ -284,7 +284,7 @@ func (s *Service) refreshCredentialObservationOnce(
 			true,
 		)
 		if err != nil {
-			// 凭据管理器在取得 mutation 锁后再次核对目标，覆盖前置检查后的切换。
+			// After acquiring the mutation lock, the credential manager checks the target again to cover a switch after the preliminary check.
 			s.writeMu.RLock()
 			defer s.writeMu.RUnlock()
 			if !s.observationFlightCurrent(groupID, credentialID, flight) {
@@ -303,7 +303,7 @@ func (s *Service) refreshCredentialObservationOnce(
 		authRefreshVersion = &version
 		observation, observeErr = s.observeSubscriptionAccount(observeContext, channelID, preparedCredential, target)
 	}
-	// 网络请求期间允许编辑分组；迟到结果不得写入新目标的观测或运行态。
+	// Permit group edits during the network request; a late result must not write observations or runtime state for the new target.
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	if !s.observationFlightCurrent(groupID, credentialID, flight) {
@@ -758,7 +758,7 @@ func providerQuotaWindows(windows []ObservationQuotaWindow) []providerobservatio
 	return result
 }
 
-// credentialDailyUsageWindow 是账号卡上「近 24 小时成功/失败」的窗口长度。
+// credentialDailyUsageWindow is the duration of the “successful/failed in the last 24 hours” window on an account card.
 const credentialDailyUsageWindow = 24 * time.Hour
 
 func (s *Service) enrichCredentialActivities(
@@ -778,7 +778,7 @@ func (s *Service) enrichCredentialActivities(
 	s.enrichCredentialActivityIDs(ctx, items, credentialIDs)
 }
 
-// 共用真实活动聚合；调用方限定本页凭据，避免逐个查询或扫描全部账号。
+// Use the real shared activity aggregate; callers scope it to this page's credentials to avoid per-credential queries or scanning all accounts.
 func (s *Service) enrichCredentialActivityIDs(ctx context.Context, items []CredentialItemResponse, credentialIDs []uint) {
 	if s == nil || s.credentialActivity == nil || len(credentialIDs) == 0 {
 		return

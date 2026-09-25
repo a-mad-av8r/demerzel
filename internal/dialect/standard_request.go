@@ -8,7 +8,7 @@ import (
 	"gpt-load/internal/protocol"
 )
 
-// InspectStandardRequest 使用路由检查简化表单约定的无状态请求结构推导路由元数据。
+// InspectStandardRequest derives routing metadata from the stateless request structure used by simplified-form conventions.
 func InspectStandardRequest(
 	clientProtocol protocol.Protocol,
 	model string,

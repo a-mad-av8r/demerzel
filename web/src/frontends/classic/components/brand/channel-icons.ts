@@ -1,6 +1,6 @@
-// 渠道（上游服务商）与客户端（下游接入方）的图标来源相同、渲染方式相同，
-// 只是分目录存放，所以合并成一张注册表。两边不得出现同名文件：
-// 需要复用同一个品牌时（Claude Code 用 claude），直接引用渠道那份。
+// Channels (upstream providers) and clients (downstream consumers) share icon sources and rendering,
+// but live in separate directories, so they use one registry. Names must be unique across both:
+// when reusing a brand (Claude Code uses claude), reference the channel icon directly.
 const rawIcons = {
   ...import.meta.glob('../../assets/channels/*.svg', {
     eager: true,

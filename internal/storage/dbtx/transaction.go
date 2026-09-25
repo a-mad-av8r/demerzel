@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Mode controls the transaction behavior selected by the database driver.
+// Mode controls the transaction behaviour selected by the database driver.
 type Mode uint8
 
 const (
@@ -73,7 +73,7 @@ func IsInfrastructure(err error) bool {
 // Capabilities describes the transaction statements required by a driver.
 // The read modes deliberately establish one stable snapshot for all reads in
 // a report, while SQLite retains its deferred snapshot and immediate write
-// behavior.
+// behaviour.
 type Capabilities struct {
 	Driver     string
 	WriteBegin BeginMode
@@ -254,7 +254,7 @@ func (capabilities Capabilities) beginStatements(mode Mode) ([]string, error) {
 	switch beginMode {
 	case BeginStandard:
 		// SQLite BEGIN is its deferred transaction form and retains the
-		// existing read-snapshot behavior without exposing DEFERRED SQL to
+		// existing read-snapshot behaviour without exposing DEFERRED SQL to
 		// every caller.
 		return []string{"BEGIN"}, nil
 	case BeginSQLiteImmediate:

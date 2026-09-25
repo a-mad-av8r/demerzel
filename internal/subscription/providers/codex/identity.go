@@ -18,11 +18,11 @@ func (*codexDriver) MatchesRefreshIdentity(current, refreshed subscriptionruntim
 		return false
 	}
 	beforeUser, afterUser := credentialUserID(before), credentialUserID(after)
-	// 旧凭据允许补全身份，但不能把已经确认的用户降级为未知用户。
+	// An old credential may complete identity, but a confirmed user cannot be downgraded to unknown.
 	return beforeUser == "" || beforeUser == afterUser
 }
 
-// 身份只从既有令牌派生，不能改变参与持久化内容指纹计算的 canonical JSON。
+// Derive identity only from existing tokens without changing canonical JSON used to calculate the persisted-content fingerprint.
 func credentialIdentity(value Credential) string {
 	accountID := strings.TrimSpace(value.AccountID)
 	if userID := credentialUserID(value); userID != "" {
@@ -40,7 +40,7 @@ func credentialUserID(value Credential) string {
 	return ""
 }
 
-// 不能让旧 ID token 掩盖实际用于请求的新 access token 所属用户。
+// An old ID token must not obscure the user belonging to the new access token actually used for requests.
 func validateCredentialIdentity(value Credential) error {
 	idUser, accessUser := tokenUserID(value.IDToken), tokenUserID(value.AccessToken)
 	if idUser != "" && accessUser != "" && idUser != accessUser {
@@ -49,7 +49,7 @@ func validateCredentialIdentity(value Credential) error {
 	return nil
 }
 
-// JWT 仅用于读取已持有凭据的身份元数据，不作为签名或登录认证。
+// JWT is used only to read identity metadata from a held credential, never for signature or login authentication.
 func tokenUserID(token string) string {
 	parts := strings.Split(strings.TrimSpace(token), ".")
 	if len(parts) != 3 {

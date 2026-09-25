@@ -33,8 +33,8 @@ func finishConvertedPreparation(spec execution.AttemptSpec, providerKind channel
 	if chatFallback {
 		dropsTools, newlyAllowed := chatFallbackToolCompatibility(prepared.responsesRequest)
 		needsToolHistoryCheck = needsToolHistoryCheck || newlyAllowed
-		// Compatible 保持 SDK 的尽力转换行为：不支持的工具及选择可被过滤，
-		// 不因此拒绝整个请求；普通函数白名单仍由前面的准备阶段适配。
+		// Compatible preserves the SDK's best-effort conversion: unsupported tools and choices can be filtered
+		// rather than rejecting the entire request; ordinary-function allow-lists are still adapted by the preparation stage.
 		if dropsTools && providerKind != channel.ProviderOpenAICompatible {
 			failure := notSentConversionFailure(execution.ErrorCodeCriticalSemanticLoss, "Chat conversion cannot preserve requested tools or tool choice")
 			return preparedAttempt{}, &failure
@@ -55,13 +55,13 @@ func finishConvertedPreparation(spec execution.AttemptSpec, providerKind channel
 	preserved := true
 	switch providerKind {
 	case channel.ProviderGemini, channel.ProviderAWSBedrock:
-		// 这些现有转换器只能把中途系统指令前移或变成用户文本。
+		// These existing converters can only move mid-conversation system instructions earlier or turn them into user text.
 		preserved = false
 	case channel.ProviderGoogleVertex:
-		// Vertex 的非 Claude/Gemini 模型使用 OpenAI wire，可以原位保留系统消息。
+		// Vertex's non-Claude/Gemini models use the OpenAI wire format, preserving system messages in place.
 		preserved = vertexChat
 	case channel.ProviderAnthropic:
-		// 仅对此输入形状复用 SDK 的 ModelCaps 和实际位置规则，避免复制模型表或近似工具分组。
+		// Reuse the locked SDK's ModelCaps and actual placement rules only for this input shape, avoiding copied model tables or approximate tool grouping.
 		ctx := schemas.NewBifrostContext(context.Background(), schemas.NoDeadline)
 		defer ctx.Cancel()
 		var request *anthropic.AnthropicMessageRequest
@@ -99,8 +99,8 @@ func preserveResponsesGlobalInstructions(request *schemas.BifrostResponsesReques
 	if request == nil || request.Params == nil || request.Params.Instructions == nil || *request.Params.Instructions == "" {
 		return
 	}
-	// 这些 SDK 转换器优先使用 input 内的 system，可能覆盖并存的 instructions。
-	// 将全局指令放在输入前端，让同一转换器按顺序处理，并避免重复发送。
+	// These SDK converters prioritise system within input and may override concurrent instructions.
+	// Put global instructions at the front of input so the same converter processes them in order without sending duplicates.
 	request.Input = append([]schemas.ResponsesMessage{{
 		Type:    schemas.Ptr(schemas.ResponsesMessageTypeMessage),
 		Role:    schemas.Ptr(schemas.ResponsesInputMessageRoleSystem),
@@ -120,7 +120,7 @@ func deepSeekConversionDisablesThinking(request *schemas.BifrostResponsesRequest
 		return false
 	}
 	chat := request.ToChatRequest()
-	// 对齐锁定 SDK 的 requiresDeepSeekThinkingDisabled，仅阻断显式开启思考的冲突输入。
+	// Align with the locked SDK's requiresDeepSeekThinkingDisabled: block only conflicting inputs that explicitly enable reasoning.
 	if choice := chat.Params.ToolChoice; choice != nil {
 		var kind schemas.ChatToolChoiceType
 		if choice.ChatToolChoiceStr != nil {

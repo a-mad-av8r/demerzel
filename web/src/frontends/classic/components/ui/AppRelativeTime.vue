@@ -13,11 +13,11 @@ const props = withDefaults(
     emptyLabel: string
     timeZone?: string
     /**
-     * hint：用统一的 AppTooltip 展示精确时间点，并加虚线下划线与 help 光标提示可悬停。
-     * 关闭时退回原生 title，供不需要额外视觉噪音的密集表格使用。
+     * hint: show the exact timestamp in AppTooltip with a dashed underline and help cursor.
+     * When disabled, use native title for dense tables that need less visual noise.
      */
     hint?: boolean
-    /** 自定义 hint 内容；未提供时仍展示该时间点的完整本地时间。 */
+    /** Custom hint content; when omitted, show the timestamp's complete local time. */
     tooltipContent?: string
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left'
   }>(),

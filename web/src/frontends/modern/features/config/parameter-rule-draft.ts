@@ -57,7 +57,6 @@ function decimalKey(literal: string): string {
   return `${match[1]}${trailing ? digits.slice(0, -trailing) : digits}e${exponent - fraction.length + trailing}`
 }
 
-// 与旧版相同：数字必须能经过浏览器 JSON 往返，不能静默舍入后保存。
 function assertNumbers(source: string): void {
   let index = 0
   while (index < source.length) {
@@ -123,9 +122,7 @@ export function parameterValue(action: ParameterActionDraft): unknown {
       try {
         const value: unknown = JSON.parse(text)
         if (typeof value === 'string') return value
-      } catch {
-        /* 不完整引号按普通文本保留。 */
-      }
+      } catch {}
     }
     return action.text
   }
@@ -146,7 +143,7 @@ export function parameterValue(action: ParameterActionDraft): unknown {
 
 function formatParameterText(value: unknown): string {
   if (typeof value !== 'string') return JSON.stringify(value) ?? ''
-  // 为容易被自动识别为其他类型的字符串保留引号，切换视图不改变值的类型。
+
   return !value ||
     value.trim() !== value ||
     /[\u0000-\u001f]/u.test(value) ||
@@ -303,7 +300,6 @@ export function inspectParameterRule(rule: ParameterRuleDraft): ParameterRuleRes
     const setActions = filled.filter((action) => action.operation === 'set')
     result.canSwitch = setActions.every((action) => !result.fields.has(action.key))
     if (result.canSwitch) {
-      // 无原型对象让 __proto__ 等名称也能作为普通 JSON 键安全编辑。
       const set: Record<string, unknown> = Object.create(null)
       for (const action of setActions) {
         const segments = decodePath(action.path, 'set')!

@@ -182,7 +182,7 @@ func Extract(value protocol.Protocol, body []byte) (TaskState, string) {
 		return state, "task_missing"
 	}
 	state.CurrentTask = messages[latest].Text
-	// 给其他证据和 JSON 包装预留预算；只裁剪决策副本，保留任务头尾。
+	// Reserve budget for other evidence and JSON wrapping; trim only the decision copy while retaining the task's beginning and end.
 	const taskBudget = MaxStateBytes - maxClientInstructionBytes - maxRecentConversationBytes - maxRecentToolBytes - 512
 	if size(messages[latest]) > taskBudget {
 		fitted, ok := fitTextMessage(messages[latest], taskBudget)
@@ -214,7 +214,7 @@ func Extract(value protocol.Protocol, body []byte) (TaskState, string) {
 	if truncated {
 		state.ContextTruncated = true
 	}
-	// 序列化一次后按删除项的编码大小扣减，长工具循环不会反复编码整段历史。
+	// Serialise once, then subtract each removed item's encoded size so long tool loops do not repeatedly encode the whole history.
 	encodedSize := size(state)
 	removeSize := func(message TextMessage, count int) {
 		encodedSize -= size(message)

@@ -262,7 +262,7 @@ function ruleTone(rule: AccessKeyCostLimitRuleStatusDto): 'success' | 'warning' 
   display: grid;
   gap: 14px;
   margin-top: var(--space-4);
-  /* 同上：只留上边线，避免和下一个板块的上边线撞成两条。 */
+
   border-top: 1px solid var(--color-border-subtle);
   padding: 18px 0;
 }

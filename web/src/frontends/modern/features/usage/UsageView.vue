@@ -234,7 +234,6 @@ function applyDate(): void {
     ? { preset: preset.value }
     : { from_ms: String(start.getTime()), to_ms: String(end.getTime()) }
   if (JSON.stringify(range) === JSON.stringify(state.value.range)) {
-    // 再次点击当前快捷日期，也要按当前时间重新查询。
     void query.refetch()
   } else {
     state.value = { ...state.value, range }
@@ -665,7 +664,7 @@ const bucketLabel = computed(() => {
     gap: var(--modern-space-2);
   }
 }
-/* 排行按实际内容宽度换列，展开侧栏时也能保留足够的名称空间。 */
+
 @container usage-sources (max-width: 1080px) {
   .modern-usage-ranks {
     grid-template-columns: repeat(2, minmax(0, 1fr));

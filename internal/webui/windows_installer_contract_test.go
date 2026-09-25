@@ -75,31 +75,15 @@ func TestWindowsInstallerInstallsServiceWithoutAResidentWrapper(t *testing.T) {
 	}
 }
 
-func TestWindowsInstallerPinsLanguageAndInstallationDirectory(t *testing.T) {
+func TestWindowsInstallerPinsInstallationDirectory(t *testing.T) {
 	installer := readRepositoryFile(t, "packaging/windows/gpt-load.iss")
 	for _, required := range []string{
 		`DefaultDirName={autopf}\GPT-Load`,
 		"DisableDirPage=yes",
 		"UsePreviousAppDir=no",
-		`MessagesFile: "ChineseSimplified.isl"`,
 	} {
 		if !strings.Contains(installer, required) {
 			t.Fatalf("Windows installer does not contain fixed installation contract %q", required)
-		}
-	}
-	if strings.Contains(installer, `compiler:Languages\ChineseSimplified.isl`) {
-		t.Fatal("Windows installer still depends on an optional compiler language file")
-	}
-
-	language := readRepositoryFile(t, "packaging/windows/ChineseSimplified.isl")
-	for _, required := range []string{
-		"6ef32198ef1f7b7b375cd4b6b90896c2a58eb4c2",
-		"[LangOptions]",
-		"LanguageName=简体中文",
-		"LanguageID=$0804",
-	} {
-		if !strings.Contains(language, required) {
-			t.Fatalf("vendored Simplified Chinese language file does not contain %q", required)
 		}
 	}
 }

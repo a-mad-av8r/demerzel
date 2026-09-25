@@ -1,7 +1,7 @@
 import { numberFormatter } from '@modern/components/ui/intl-formatters'
 export function formatCompactNumber(value: number, locale: string): string {
   void locale
-  return numberFormatter('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  return numberFormatter('en-GB', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 }
 
 export function formatRemainingDuration(milliseconds: number, locale: string): string {
@@ -43,6 +43,6 @@ export function formatNanoUSD(
     maximumFractionDigits: fractionDigits,
   })
   if (amount > 0n && amount < scale) return `<${formatter.format(1 / unit)}`
-  // 先按展示精度完成整数舍入，再转换到展示用 Number，避免原始纳美元直接丢失精度。
+  // Round to the display precision before converting to a display Number to avoid losing precision.
   return formatter.format(Number((amount + scale / 2n) / scale) / unit)
 }

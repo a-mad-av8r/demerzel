@@ -232,7 +232,7 @@ const advancedFilterKeys: readonly (keyof RequestLogFilters)[] = [
   'cost_min_nano_usd',
   'cost_max_nano_usd',
 ]
-// appliedFilters 已按当前身份收窄，标签只展示其中有值的条件。
+
 const appliedChips = computed(() => {
   const filters = appliedFilters.value
   const values: Array<{ key: string; label: string }> = []
@@ -271,7 +271,6 @@ watch(filterSignature, () => {
   pageTransitionOrigin.value = null
 })
 
-// 时间和分页变化不丢弃常用搜索栏中尚未应用的条件。
 watch(
   () => JSON.stringify(createLogFilterDraft(appliedFilters.value)),
   () => {
@@ -410,7 +409,6 @@ async function commitFilters(filters: AppliedLogFilters): Promise<void> {
   )
 }
 
-// 就地收窄而非跳转：排查时要看的是同一维度的其他请求，且目标可能已删。
 async function filterByGroup(groupID: number): Promise<void> {
   await commitFilters({ ...appliedFilters.value, group_id: groupID })
 }
@@ -439,7 +437,6 @@ async function commitRefreshedFilters(filters: AppliedLogFilters): Promise<void>
   if (filterCommitPending.value) return
   filterCommitPending.value = true
   try {
-    // 时间、筛选和游标分步更新期间不查询，避免请求中间状态。
     await nextTick()
     const preset = filters.preset
     if (preset) {
@@ -456,7 +453,7 @@ async function commitRefreshedFilters(filters: AppliedLogFilters): Promise<void>
     filterCommitPending.value = false
   }
   await nextTick()
-  // 查询条件未变化时也刷新；已自动发出的请求直接复用。
+
   await logsQuery.refetch({ cancelRefetch: false })
 }
 
@@ -576,7 +573,6 @@ function accessKeyLabel(log: RequestLogItemDto): string {
   })
 }
 
-// 分组名靠 options 反查：查询就绪后仍找不到，才能断定分组已被删除。
 function groupDeleted(log: RequestLogItemDto): boolean {
   return log.group_id !== null && groupsQuery.isSuccess.value && groupName(log) === null
 }
@@ -1103,7 +1099,6 @@ function costLabel(log: RequestLogItemDto): string {
 }
 
 .logs-list {
-  /* 时间定长、Token/耗时/成本按实际内容重算，压出的宽度装下新增的密钥列。 */
   --ledger-record-list-grid: 96px minmax(96px, 0.62fr) minmax(132px, 0.86fr) minmax(180px, 1.2fr)
     96px minmax(76px, 0.42fr) minmax(104px, 0.6fr) 100px 34px;
   --ledger-record-list-column-gap: 16px;

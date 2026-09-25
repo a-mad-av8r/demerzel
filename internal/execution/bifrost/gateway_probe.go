@@ -17,7 +17,7 @@ import (
 	"gpt-load/internal/protocol"
 )
 
-// 原生网关 Probe 复用透传，避开 SDK typed request 在取消时的 Model 读写竞争。
+// The native gateway Probe reuses passthrough to avoid Model read/write races in SDK typed requests during cancellation.
 func prepareGatewayProtocolProbe(
 	spec execution.AttemptSpec,
 	resolved channel.ResolvedTarget,
@@ -119,7 +119,7 @@ func validGatewayProtocolProbeResponse(selected protocol.Protocol, body []byte) 
 	}
 }
 
-// 仅校验协议结构，不要求生成文本非空，保留低输出预算下的合法响应。
+// Validate protocol structure only; do not require non-empty generated text, preserving valid responses under low output budgets.
 func validGatewayProbeTypedItems(selected protocol.Protocol, items []json.RawMessage) bool {
 	for _, item := range items {
 		fields, err := decodeNativeJSONObject(item)
@@ -171,7 +171,7 @@ func validGatewayProbeAnthropicItem(item json.RawMessage, fields map[string]json
 }
 
 func validGatewayProbeResponsesItem(item json.RawMessage, fields map[string]json.RawMessage) bool {
-	// 只解析所需投影，不把 SDK 的跨协议中间模型当作原生工具响应合同。
+	// Parse only the projection required; do not treat the SDK's cross-protocol intermediate model as the native tool-response contract.
 	var output struct {
 		Type schemas.ResponsesMessageType `json:"type"`
 	}

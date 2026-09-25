@@ -6,7 +6,7 @@ import (
 	"gpt-load/internal/state"
 )
 
-// ChargeReplay 为已允许的显式同凭据重放取得名额，不放松普通重试的 tried 去重。
+// ChargeReplay reserves a slot for an allowed explicit same-credential replay without relaxing tried deduplication for ordinary retries.
 func (iterator *Iterator) ChargeReplay(selection Selection, ref state.CredentialRef) bool {
 	if ref.ID != selection.CredentialID || ref.GroupID != selection.GroupID {
 		return false
@@ -45,7 +45,7 @@ func (iterator *Iterator) ChargeReplay(selection Selection, ref state.Credential
 	return charged
 }
 
-// selectCredential 只操作内存；真实 Registry 调用方同时持有凭据读锁。
+// selectCredential operates only in memory; actual Registry callers hold the credential read lock concurrently.
 func (iterator *Iterator) selectCredential(
 	candidates []weightedCredential,
 	preferred uint,
@@ -97,7 +97,7 @@ func (iterator *Iterator) selectCredential(
 			return
 		}
 
-		// 同批成员共用已有成员的领先进度，不能继承落后成员的历史欠额。
+		// Members in the same batch share the leading progress of existing members and cannot inherit a lagging member's historical debt.
 		for _, candidate := range eligible {
 			member := ledger.Members[candidate.meta.ID]
 			if member.Pending && (!ledger.GroupsKnown || ledger.Groups[member.GroupID]) {
@@ -176,7 +176,7 @@ func (iterator *Iterator) selectCredential(
 		if ledger.LastMember != member.ID {
 			ledger.LastMember, ledger.Consecutive = member.ID, 1
 		} else if ledger.Consecutive < 99+state.MaxWeight*state.MaxWeight {
-			// 超过所有合法阈值后无需继续增长；亲和和单候选仍可持续分配。
+			// Once all legal thresholds are exceeded, do not continue growing; affinity and a single candidate can still be allocated.
 			ledger.Consecutive++
 		}
 		selected, found = first, true

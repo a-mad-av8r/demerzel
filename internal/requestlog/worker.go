@@ -413,7 +413,7 @@ func buildUsageAggregationJournals(
 ) ([]models.UsageAggregationJournal, error) {
 	journals := make([]models.UsageAggregationJournal, 0, len(rows))
 	for _, row := range rows {
-		// 未转发请求和独立搜索只保留日志明细，不参与模型用量聚合。
+		// Unforwarded requests and independent searches retain only log details and do not participate in model-usage aggregation.
 		if row.AttemptCount == 0 || row.Operation == string(execution.OperationWebSearch) {
 			continue
 		}

@@ -88,7 +88,7 @@ export interface HomeStatistics {
   series: HomeTrendPoint[]
 }
 export const homeStatisticsKey = ['modern', 'home', 'statistics'] as const
-/* 首页只要 24 小时的请求量与失败数；排行留给用量统计页，不在这里重复一份。 */
+
 export async function getHomeStatistics(
   client: ApiClient,
   signal: AbortSignal,

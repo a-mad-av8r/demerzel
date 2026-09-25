@@ -168,7 +168,7 @@ func TestListGroupCollectionQueryDoesNotSearchPersistedModelIDOrAlias(t *testing
 func TestGroupCollectionQueryFiltersUnicodeInsensitiveFieldsWithoutModels(t *testing.T) {
 	t.Parallel()
 	records := []groupCollectionRecord{
-		groupCollectionQueryRecord(1, "München", GroupCollectionStatusAvailable, "https://muenchen.example.net/v1", []protocol.Protocol{protocol.OpenAICompletions}, 7, 100),
+		groupCollectionQueryRecord(1, "Á", GroupCollectionStatusAvailable, "https://unicode.example.net/v1", []protocol.Protocol{protocol.OpenAICompletions}, 7, 100),
 		groupCollectionQueryRecord(2, "URL only", GroupCollectionStatusUnavailable, "https://Api.Example.Net/v1", []protocol.Protocol{protocol.Gemini}, 3, 200),
 		groupCollectionQueryRecord(3, "Protocol only", GroupCollectionStatusDisabled, "https://other.example.net/v1", []protocol.Protocol{protocol.Anthropic}, 99, 300),
 	}
@@ -178,7 +178,7 @@ func TestGroupCollectionQueryFiltersUnicodeInsensitiveFieldsWithoutModels(t *tes
 		query string
 		want  []uint
 	}{
-		{name: "Unicode name", query: "MÜN", want: []uint{1}},
+		{name: "Unicode name", query: "á", want: []uint{1}},
 		{name: "URL", query: "api.example.net", want: []uint{2}},
 		{name: "protocol", query: "ANTHROPIC", want: []uint{3}},
 		{name: "does not search models", query: "model-not-in-record", want: []uint{}},
@@ -195,17 +195,17 @@ func TestGroupCollectionQueryFiltersUnicodeInsensitiveFieldsWithoutModels(t *tes
 	}
 }
 
-func TestGroupCollectionQueryMatchesUnicodeSimpleFoldAndSortsWithIt(t *testing.T) {
+func TestGroupCollectionQueryMatchesUnicodeSimpleFoldAndUsesRawNameTieBreak(t *testing.T) {
 	t.Parallel()
 	records := []groupCollectionRecord{
-		groupCollectionQueryRecord(2, "ΟΣ", GroupCollectionStatusAvailable, "https://two.example/v1", nil, 1, 100),
-		groupCollectionQueryRecord(1, "ος", GroupCollectionStatusAvailable, "https://one.example/v1", nil, 1, 100),
+		groupCollectionQueryRecord(2, "K", GroupCollectionStatusAvailable, "https://two.example/v1", nil, 1, 100),
+		groupCollectionQueryRecord(1, "k", GroupCollectionStatusAvailable, "https://one.example/v1", nil, 1, 100),
 	}
 
 	matched := queryGroupCollectionRecords(1_700, records, GroupCollectionQuery{
-		Query: "ος", Sort: GroupCollectionSortName, Page: 1, PageSize: 20,
+		Query: "k", Sort: GroupCollectionSortName, Page: 1, PageSize: 20,
 	})
-	if got, want := groupCollectionItemIDs(matched.Items), []uint{2, 1}; !reflect.DeepEqual(got, want) {
+	if got, want := groupCollectionItemIDs(matched.Items), []uint{1, 2}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("simple-fold query item IDs = %#v, want %#v", got, want)
 	}
 }
@@ -263,7 +263,7 @@ func TestGroupCollectionQueryUsesFixedSortsWithIDTieBreak(t *testing.T) {
 	records := []groupCollectionRecord{
 		groupCollectionQueryRecord(5, "Bravo", GroupCollectionStatusAvailable, "https://five.example/v1", nil, 3, 500),
 		groupCollectionQueryRecord(4, "bravo", GroupCollectionStatusAvailable, "https://four.example/v1", nil, 3, 400),
-		groupCollectionQueryRecord(3, "Álpha", GroupCollectionStatusUnavailable, "https://three.example/v1", nil, 9, 300),
+		groupCollectionQueryRecord(3, "☃", GroupCollectionStatusUnavailable, "https://three.example/v1", nil, 9, 300),
 		groupCollectionQueryRecord(2, "Alpha", GroupCollectionStatusUnavailable, "https://two.example/v1", nil, 9, 200),
 		groupCollectionQueryRecord(1, "Zero", GroupCollectionStatusDisabled, "https://one.example/v1", nil, 1, 100),
 	}

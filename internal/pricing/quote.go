@@ -32,7 +32,7 @@ func (table *Table) QuoteForMode(identity Identity, result usage.Result, mode Mo
 	return quote
 }
 
-// QuoteForModeWithMultipliers 在原计价完成后统一调整请求总费用。
+// QuoteForModeWithMultipliers adjusts the request's total cost uniformly after original pricing completes.
 func (table *Table) QuoteForModeWithMultipliers(identity Identity, result usage.Result, mode Mode, multipliers PriceMultipliers) (Quote, *Receipt) {
 	if !multipliers.Group.Valid() || !multipliers.AccessKey.Valid() {
 		return unavailableQuote(), nil

@@ -197,7 +197,7 @@ func compileMatch(raw json.RawMessage) (compiledMatch, error) {
 // Empty reports whether no rule can be applied.
 func (rules Rules) Empty() bool { return len(rules.entries) == 0 }
 
-// ValidateResponsesContinuation 用于管理面保存；不改变历史配置的 Compile 行为。
+// ValidateResponsesContinuation is for control-plane saves and does not change Compile behaviour for historical configurations.
 func (rules Rules) ValidateResponsesContinuation() error {
 	for _, entry := range rules.entries {
 		if entry.clientProtocol == "" || entry.clientProtocol == protocol.OpenAIResponses {
@@ -221,7 +221,7 @@ func (entry rule) validateResponsesContinuation(object *requestValue) error {
 				if err := object.load(); err != nil {
 					return err
 				}
-				// 旧规则删除不存在的字段不改变路由；保存配置时仍严格拒绝。
+				// An old rule deleting an absent field does not change routing, but saving configuration still rejects it strictly.
 				if object.currentField(path[0]).raw == nil {
 					continue
 				}
@@ -294,7 +294,7 @@ func (rules Rules) Apply(
 			return nil, false, err
 		}
 	}
-	// 先计算最终长度，再精确分配一次；不为中间规则结果保留完整请求体。
+	// Calculate final length first, then allocate exactly once; do not retain complete request bodies for intermediate rule results.
 	var measured requestOutput
 	if err := object.write(&measured); err != nil {
 		return nil, false, fmt.Errorf("encode overridden request body: %w", err)

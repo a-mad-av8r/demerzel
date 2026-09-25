@@ -4,6 +4,8 @@ export type GatewayClientID =
   | 'cc-switch'
   | 'new-api'
   | 'codex'
+  | 'omp'
+  | 'openkai'
   | 'gemini-cli'
   | 'nextchat'
   | 'cherry-studio'
@@ -22,13 +24,13 @@ export type GatewayClientKind =
   | 'commandLine'
   | 'general'
 
-/** 目录里的分组，比 kind 粗，避免九个客户端分出八个组。 */
+/** Client groups are broader than client kinds to keep navigation compact. */
 export type GatewayClientGroup = 'commandLine' | 'desktop' | 'web'
 
 /**
- * snippet：客户端有真实的配置文件或可粘贴的文本产物。
- * fields：客户端只有图形设置界面，用户是在表单里逐项填写；把这些值渲染成
- *   代码块会让人去找一个并不存在的配置文件。
+ * Snippet clients have a real configuration file or importable text.
+ * Field clients are configured in a GUI, so their values are shown separately
+ * rather than presented as a file that does not exist.
  */
 export type ClientConfigKind = 'snippet' | 'fields'
 
@@ -42,17 +44,18 @@ export interface GatewayClient {
   id: GatewayClientID
   kind: GatewayClientKind
   configKind: ClientConfigKind
-  /** 接入步骤条数，文案键为 steps.<id>.s1 … sN。 */
+  /** Number of connection steps; message keys use steps.<id>.s1 … sN. */
   steps: number
   /**
-   * web/src/frontends/classic/assets/clients 或 channels 下的图标名。缺文件时 ChannelIcon
-   * 自动回退到 mark 字母标，与渠道图标同一套机制。
+   * Icon name in the classic client or channel assets. ChannelIcon falls back
+   * to the mark when no matching file exists.
    */
   icon: string
   mark: string
-  /** 搜索时除名称外还能命中的别名。 */
+  /** Search terms supplement the client name during filtering. */
   searchTerms: readonly string[]
   requiredProtocol?: AccessProtocol
+  requiresModel?: boolean
   quickImport?: boolean
 }
 
@@ -74,7 +77,7 @@ export type CCSwitchTargetID = 'codex' | 'claude' | 'gemini' | 'opencode'
 
 export interface CCSwitchTarget {
   id: CCSwitchTargetID
-  /** 与客户端图标同一套机制：缺文件时回退到 mark 字母标。 */
+  /** Uses the shared client-icon fallback from icon to mark. */
   icon: string
   mark: string
   requiredProtocol: AccessProtocol
@@ -110,6 +113,28 @@ export const gatewayClients: readonly GatewayClient[] = [
     mark: 'CX',
     searchTerms: ['openai', 'cli'],
     requiredProtocol: 'openai-responses',
+  },
+  {
+    id: 'omp',
+    kind: 'commandLine',
+    configKind: 'snippet',
+    steps: 3,
+    icon: 'omp',
+    mark: 'OM',
+    searchTerms: ['oh-my-pi', 'oh my pi'],
+    requiredProtocol: 'openai-responses',
+    requiresModel: true,
+  },
+  {
+    id: 'openkai',
+    kind: 'commandLine',
+    configKind: 'snippet',
+    steps: 3,
+    icon: 'openkai',
+    mark: 'OK',
+    searchTerms: ['open kai'],
+    requiredProtocol: 'openai-responses',
+    requiresModel: true,
   },
   {
     id: 'gemini-cli',
@@ -222,7 +247,7 @@ export function clientRequiredProtocol(
   return client.id === 'cc-switch' ? ccSwitchTarget.requiredProtocol : client.requiredProtocol
 }
 
-const modelNameCollator = new Intl.Collator('en-US', {
+const modelNameCollator = new Intl.Collator('en-GB', {
   numeric: true,
   sensitivity: 'base',
 })
@@ -304,6 +329,20 @@ export function clientConfiguration(
         'env_key = "GPT_LOAD_API_KEY"',
         'wire_api = "responses"',
       ].join('\n')
+    case 'omp':
+    case 'openkai': {
+      const selectedModel = model.trim() || 'YOUR_MODEL'
+      return [
+        'providers:',
+        '  demerzel:',
+        `    baseUrl: ${JSON.stringify(openAIBaseURL(origin))}`,
+        '    apiKey: DEMERZEL_API_KEY',
+        '    api: openai-responses',
+        '    models:',
+        `      - id: ${JSON.stringify(selectedModel)}`,
+        `        name: ${JSON.stringify(selectedModel)}`,
+      ].join('\n')
+    }
     case 'nextchat':
       return JSON.stringify({ url: origin, key }, null, 2)
     case 'cherry-studio':
@@ -401,8 +440,8 @@ export function clientQuickImportURL(
 }
 
 /**
- * 图形界面客户端要填的值。它们没有配置文件，所以不走代码块，
- * 而是逐项列出、各自可复制。
+ * GUI clients do not have a configuration file. Show their fields separately,
+ * with independent copy actions for each value.
  */
 export function clientFields(
   clientID: GatewayClientID,

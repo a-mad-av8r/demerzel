@@ -1,4 +1,4 @@
-// Package geminiimage 实现 OpenAI Images 客户端到 Gemini 生图上游的单向格式适配。
+// Package geminiimage adapts OpenAI Images clients to the Gemini image-generation upstream in one direction.
 package geminiimage
 
 import (
@@ -16,10 +16,10 @@ import (
 	"gpt-load/internal/usage"
 )
 
-// ErrInvalidResponse 表示上游响应无法转换为有效的单张图片，错误不包含上游正文。
+// ErrInvalidResponse means the upstream response cannot become a valid single image; the error excludes the upstream body.
 var ErrInvalidResponse = errors.New("Gemini image response could not be converted")
 
-// unsupportedRequestError 沿用执行器的转换失败分类，允许尝试其他上游候选。
+// unsupportedRequestError uses the executor's conversion-failure classification, allowing other upstream candidates to be tried.
 type unsupportedRequestError string
 
 func (err unsupportedRequestError) Error() string { return string(err) }
@@ -28,7 +28,7 @@ func (unsupportedRequestError) ConversionCode() string {
 	return execution.ErrorCodeTargetConversionNotSupported
 }
 
-// ValidateRequest 校验单图、非流式合同，避免静默丢弃 Images 参数。
+// ValidateRequest validates the single-image, non-streaming contract without silently discarding Images parameters.
 func ValidateRequest(payload []byte) error {
 	_, err := generationPrompt(payload)
 	return err
@@ -82,7 +82,7 @@ func generationPrompt(payload []byte) (string, error) {
 	return prompt, conversionErr
 }
 
-// ConvertRequest 将已清理控制字段的 Images 请求转换为 Gemini generateContent 正文。
+// ConvertRequest converts a cleaned Images request into a Gemini generateContent body.
 func ConvertRequest(payload []byte) ([]byte, error) {
 	prompt, err := generationPrompt(payload)
 	if err != nil {
@@ -102,7 +102,7 @@ type imageData struct {
 	Data          string `json:"data"`
 }
 
-// ConvertResponse 返回 Images 正文及保留原 Gemini 计价语义的用量证据。
+// ConvertResponse returns an Images body and usage evidence that retains Gemini's pricing semantics.
 func ConvertResponse(payload []byte) ([]byte, *execution.UsageEvidence, error) {
 	var root struct {
 		ModelVersion  string          `json:"modelVersion"`
@@ -145,7 +145,7 @@ func ConvertResponse(payload []byte) ([]byte, *execution.UsageEvidence, error) {
 			if image != "" || data.Data == "" {
 				return nil, nil, ErrInvalidResponse
 			}
-			// 流式校验 Base64，避免额外分配整张解码图片。
+			// Validate Base64 while streaming to avoid an extra allocation for decoding the whole image.
 			decoded, err := io.Copy(io.Discard, base64.NewDecoder(base64.StdEncoding.Strict(), strings.NewReader(data.Data)))
 			if err != nil || decoded == 0 {
 				return nil, nil, ErrInvalidResponse
@@ -158,7 +158,7 @@ func ConvertResponse(payload []byte) ([]byte, *execution.UsageEvidence, error) {
 	}
 	normalized, err := dialect.NewGemini().ExtractUsage(payload)
 	if err != nil {
-		// 用量算术失败不丢弃已生成的图片，但不能据此产生正常报价。
+		// Arithmetic failure must not discard the generated image, but cannot produce a normal quote.
 		normalized = usage.Result{State: usage.StateMissing}
 		normalized.Diagnostics.Add(usage.DiagnosticInvalidNumber)
 	}
@@ -169,7 +169,7 @@ func ConvertResponse(payload []byte) ([]byte, *execution.UsageEvidence, error) {
 	if model := strings.TrimSpace(root.ModelVersion); model != "" {
 		response["model"] = model
 	}
-	// 对外只映射可信计数；内部保留原始 Gemini 的完整状态和缓存计价语义。
+	// Externally map only trusted counts; retain Gemini's complete original state and cache-pricing semantics internally.
 	if normalized.State != usage.StateMissing && normalized.Diagnostics == (usage.Diagnostics{}) {
 		var metadata map[string]json.RawMessage
 		if err := json.Unmarshal(root.UsageMetadata, &metadata); err != nil {

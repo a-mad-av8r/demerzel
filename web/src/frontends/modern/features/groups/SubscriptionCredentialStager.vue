@@ -46,7 +46,7 @@ const props = defineProps<{
   error?: string
 }>()
 const modelStages = defineModel<CredentialStage[]>({ required: true })
-// 多个请求可能在同一轮更新中返回，用本地同步快照合并，再同步给父级。
+
 const stages = shallowRef(modelStages.value)
 watch(
   modelStages,

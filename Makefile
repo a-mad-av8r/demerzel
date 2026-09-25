@@ -10,11 +10,11 @@ PODMAN_USERNS ?= keep-id:uid=10001,gid=10001
 
 .PHONY: _web-deps
 _web-deps:
-	$(PNPM) --dir $(WEB_DIR) install --frozen-lockfile
+	cd $(WEB_DIR) && $(PNPM) install --frozen-lockfile
 
 .PHONY: _web-build
 _web-build: _web-deps
-	$(PNPM) --dir $(WEB_DIR) run build
+	cd $(WEB_DIR) && $(PNPM) run build
 
 .PHONY: dev
 dev: _web-build ## Build the Web UI and run with race detection
@@ -37,9 +37,9 @@ check: _web-deps ## Run source checks and build
 	@go_root="$$($(GO) env GOROOT)"; formatted_files="$$("$${go_root}/bin/gofmt" -l .)"; test -z "$${formatted_files}"
 	$(GO) mod tidy -diff
 	$(GO) vet ./...
-	$(PNPM) --dir $(WEB_DIR) run lint
-	$(PNPM) --dir $(WEB_DIR) run format
-	$(PNPM) --dir $(WEB_DIR) run build
+	cd $(WEB_DIR) && $(PNPM) run lint
+	cd $(WEB_DIR) && $(PNPM) run format
+	cd $(WEB_DIR) && $(PNPM) run build
 	$(GO) build -o $(APP) .
 	$(GO) test -count=1 . ./internal/...
 	git --no-pager diff --check

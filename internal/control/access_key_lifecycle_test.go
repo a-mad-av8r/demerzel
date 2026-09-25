@@ -401,7 +401,7 @@ func serveAccessKeyLifecycleRequest(
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Authorization", "Bearer "+authTestKey)
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	if body != "" {
 		request.Header.Set("Content-Type", "application/json")
 	}

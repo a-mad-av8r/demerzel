@@ -144,7 +144,7 @@ function preventInactiveClick(event: MouseEvent): void {
   background: var(--modern-control-hover);
   color: var(--modern-text);
 }
-/* brand 用于需要在一排中性图标里被一眼看到的高频入口。 */
+
 .modern-button--brand {
   border-color: transparent;
   background: transparent;

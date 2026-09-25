@@ -54,7 +54,7 @@ const state = useURLState(
     access_key_id: props.admin && value.id ? String(value.id) : undefined,
   }),
 )
-// 链接中明确指定的选择优先；普通返回首页时恢复浏览器记忆。
+// Honour an explicit query selection; otherwise restore the browser's previous choice.
 state.value = {
   client: route.query.client === undefined ? remembered.client : state.value.client,
   id: route.query.access_key_id === undefined ? remembered.accessKeyID : state.value.id,
@@ -140,6 +140,7 @@ const blocks = computed(() =>
   configBlocks.value.map((block, index) => ({
     ...block,
     resolve: async () => {
+      if (!block.requiresKey) return block.content
       const input = { ...config.value }
       const secret = await resolveKey()
       return gatewayConfiguration(input, secret)[index]!.content

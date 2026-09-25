@@ -12,7 +12,7 @@ import (
 	"gpt-load/internal/state"
 )
 
-// AccessKeyUsageReader 查询长期保留的 AccessKey 累计预估成本。
+// AccessKeyUsageReader queries long-retained cumulative estimated costs for an AccessKey.
 type AccessKeyUsageReader interface {
 	QueryAccessKeyTotalCost(context.Context, uint) (int64, error)
 }
@@ -28,7 +28,7 @@ func (handler *Handler) handleUsage(c *gin.Context, request *dataPlaneRequestCon
 	c.Header("Cache-Control", "no-store")
 	result := accessKeyUsageResponse{IsActive: true}
 	var totalRule *accessquota.RuleView
-	// 与配置发布同步，避免读到另一次配置的额度状态。
+	// Synchronise with configuration publication to avoid reading quota state from another configuration version.
 	current := handler.manager.WithCurrentSnapshotRead(func(snapshot *state.ConfigSnapshot) bool {
 		if snapshot != request.snapshot {
 			return false

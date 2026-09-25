@@ -33,7 +33,7 @@ const { t, te, n, locale } = useI18n()
 const paired = computed(() => props.fields.length > 1)
 const protocolColumn = computed(() => props.fields.length === 1 && props.fields[0] === 'protocol')
 const modelColumn = computed(() => props.fields.length === 1 && props.fields[0] === 'client_model')
-// 同值合并，缺值只展示已有信息；没有上游记录不代表发生转换。
+
 const identityLines = computed(() => {
   const request = protocolColumn.value ? props.row.protocol : props.row.client_model
   const upstream = protocolColumn.value ? props.row.upstream_protocol : props.row.upstream_model
@@ -494,7 +494,7 @@ function fieldFilterValue(field: LogColumnId): string {
   outline: var(--modern-focus-width) solid var(--modern-accent);
   outline-offset: var(--modern-focus-offset);
 }
-/* 配对单元格的第二行是附属信息，降一档字号与色阶。 */
+
 .modern-log-cell-value.is-secondary {
   color: var(--modern-control-placeholder);
   font-size: var(--modern-font-size-caption);

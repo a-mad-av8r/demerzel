@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// HTTP 与 WebSocket 共用此转换入口；响应继续使用 CPA 原始转换器。
+// HTTP and WebSocket share this conversion entry point; responses continue to use CPA's native converter.
 func init() {
 	sdktranslator.Register(sdktranslator.FormatOpenAIResponse, sdktranslator.FormatCodex,
 		codexRequestWithServiceTier(codexresponses.ConvertOpenAIResponsesRequestToCodex),
@@ -32,10 +32,10 @@ func codexRequestWithServiceTier(convert sdktranslator.RequestTransform) sdktran
 		body := convert(model, raw, stream)
 		switch tier {
 		case "fast", "priority":
-			// Codex 订阅端使用 priority，不能套用公开 API 的 fast 别名。
+			// The Codex subscription endpoint uses priority; it cannot use the public API's fast alias.
 			tier = "priority"
 		case "ultrafast":
-			// 在 CPA 原始转换完成后恢复，避免被其字段过滤规则删除。
+			// Restore it after CPA's native conversion to avoid removal by its field-filter rules.
 		default:
 			return body
 		}

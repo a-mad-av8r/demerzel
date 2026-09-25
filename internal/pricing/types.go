@@ -1,7 +1,7 @@
 package pricing
 
 // Mode identifies the price schedule selected for one request. Mode prices
-// remain provider-neutral and contain no routing behavior.
+// remain provider-neutral and contain no routing behaviour.
 type Mode string
 
 const (

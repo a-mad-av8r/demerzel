@@ -9,7 +9,7 @@ import (
 
 const ID0013 = "0013_validation_protocol"
 
-// Up0013 使用原子加列，NULL 保留既有分组的默认协议选择。
+// Up0013 adds the column atomically; NULL retains the existing Group's default protocol selection.
 func Up0013(db *gorm.DB) error {
 	if err := ValidateRecoverable0013(db); err != nil {
 		return err

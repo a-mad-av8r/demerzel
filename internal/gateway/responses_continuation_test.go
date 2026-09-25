@@ -163,7 +163,7 @@ func TestResponsesContinuationRegistersSSEBeforeDelivery(t *testing.T) {
 			if writer.Body.String() != created {
 				t.Fatalf("created event was not delivered intact: %q", writer.Body.String())
 			}
-			// 客户端收到 created 即可续接，无需等待原请求 completed。
+			// A client can continue on receiving created, without waiting for the original request to complete.
 			serveContinuation(t, engine, "gl-client", `{"model":"gpt-4o","previous_response_id":"first","input":"continue"}`, http.StatusOK)
 			if err := sink(execution.StreamEvent{Sequence: 4, Kind: execution.StreamEventData, Data: []byte(completed)}); err != nil {
 				t.Fatal(err)

@@ -11,13 +11,13 @@ import (
 	"gpt-load/internal/platform/response"
 )
 
-// ModernCredentialItem 复用凭据读快照，仅补充配置来源，不改变经典 API 或调度逻辑。
+// ModernCredentialItem reuses the credential read snapshot, adding only configuration provenance without changing classic API or scheduling logic.
 type ModernCredentialItem struct {
 	CredentialItemResponse
 	WeightManual *int `json:"weight_manual"`
 }
 
-// 仅新版集合接口接受这些展示条件；经典接口仍使用原查询合同。
+// Only the modern collection endpoint accepts these display conditions; the classic endpoint retains its original query contract.
 type modernCredentialFilters struct {
 	sort          string
 	proxy         string
@@ -185,7 +185,7 @@ func (s *Server) handleGetModernCredential(c *gin.Context) {
 		writeServiceError(c, "get_modern_credential", err)
 		return
 	}
-	// 经典详情已补充订阅账号活动；新版 API 密钥也展示同一来源的统计。
+	// Classic detail already includes subscription-account activity; the modern API key also displays statistics from that same source.
 	if result.Credential.ConnectionType == "api_key" {
 		items := []CredentialItemResponse{result.Credential}
 		s.service.enrichCredentialActivityIDs(c.Request.Context(), items, []uint{id})

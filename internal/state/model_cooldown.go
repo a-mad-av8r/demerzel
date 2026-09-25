@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SetModelCooldown 只接受当前目标、当前恢复代次的结果；并发限制只延长期限。
+// SetModelCooldown accepts results only for the current target and recovery generation; concurrency limits may only extend the expiry.
 func (r *CredentialRegistry) SetModelCooldown(ref CredentialRef, model string, until, now time.Time) (bool, bool) {
 	if model == "" || strings.TrimSpace(model) != model || !until.After(now) {
 		return false, false
@@ -39,7 +39,7 @@ func (r *CredentialRegistry) ModelCooldowns(credentialID uint, now time.Time) ma
 	return cloneModelCooldowns(entry.ModelCooldowns)
 }
 
-// ClearModelCooldowns 属于显式恢复；不由普通成功、token 刷新或额度同步调用。
+// ClearModelCooldowns is explicit recovery; ordinary success, token refresh, and quota synchronisation must not call it.
 func (r *CredentialRegistry) ClearModelCooldowns(credentialID uint) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -52,7 +52,7 @@ func (r *CredentialRegistry) ClearModelCooldowns(credentialID uint) bool {
 	return true
 }
 
-// ExpireModelCooldowns 复用现有运行态维护时机清理，不新增定时任务。
+// ExpireModelCooldowns reuses existing runtime-state maintenance timing and adds no scheduled task.
 func (r *CredentialRegistry) ExpireModelCooldowns(now time.Time) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -34,7 +34,7 @@ func wsTestSession(t *testing.T, target string, proxyURLs ...string) *CodexWSSes
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 生产入口保持 HTTPS 校验；测试仅将已固定的执行地址指向本地假上游。
+	// The production entry point retains HTTPS validation; the test only points the fixed execution URL at a local fake upstream.
 	session.auth.Attributes["base_url"] = target
 	t.Cleanup(func() {
 		if err := session.Close(); err != nil {
@@ -243,7 +243,7 @@ func TestCodexWSSessionContinuationAndIsolation(t *testing.T) {
 	if first.ResponseID == "" || first.Status != "completed" || !json.Valid(first.Usage) {
 		t.Fatalf("missing terminal result: %+v", first)
 	}
-	cancelFirst() // 成功请求的 context 结束不应关闭已空闲的会话。
+	cancelFirst() // Ending the successful request's context must not close the idle session.
 	second, err := session.ExecuteTurn(context.Background(), json.RawMessage(fmt.Sprintf(`{"model":"gpt-5","input":"continue","previous_response_id":%q}`, first.ResponseID)), consume)
 	if err != nil {
 		t.Fatal(err)
@@ -537,8 +537,8 @@ func TestCodexWSSessionEventFailureClosesConnection(t *testing.T) {
 	}
 }
 
-// 在真实 SDK 的首次 Bind 后关闭连接，确定性制造业务写入失败。
-// 仍使用生产 resource 的 Bind/End，验证 SDK 重拨不能再次发送业务帧。
+// Close the connection after the real SDK's first Bind to deterministically cause a business-write failure.
+// Continue to use the production resource's Bind/End and verify that an SDK reconnect cannot send the business frame again.
 type closeFirstWSBinding struct {
 	resource *codexWSResource
 	binds    atomic.Int32
@@ -571,7 +571,7 @@ func TestCodexWSSessionGuardsSDKSendRetry(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		// 握手响应已发出，但服务端统计尚未更新，复现客户端先返回的调度顺序。
+		// The handshake response has been sent, but server statistics are not yet updated, reproducing the ordering in which the client returns first.
 		<-recordAfterSend
 		handshakes.Add(1)
 		if _, _, err := conn.ReadMessage(); err == nil {
@@ -590,7 +590,7 @@ func TestCodexWSSessionGuardsSDKSendRetry(t *testing.T) {
 		Metadata:           map[string]any{cliproxyexecutor.ExecutionSessionMetadataKey: session.id},
 		ExecutionLifecycle: lifecycle,
 	})
-	// 请求结束后立即撤销上下文，收尾统计仍必须有自己的等待时间。
+	// Cancel the context immediately after the request ends; final statistics still need their own wait time.
 	cancel()
 	close(recordAfterSend)
 	waitCtx, cancelWait := context.WithTimeout(context.Background(), time.Second)
@@ -598,7 +598,7 @@ func TestCodexWSSessionGuardsSDKSendRetry(t *testing.T) {
 	if err == nil {
 		t.Fatal("failed send succeeded")
 	}
-	// 客户端返回不代表服务端已统计完连接和业务帧；等待真实处理结束再断言。
+	// The client returning does not mean the server has counted the connection and business frame; wait for real processing before asserting.
 	handlersMu.Lock()
 	pendingHandlers := append([]chan struct{}(nil), handlers...)
 	handlersMu.Unlock()
@@ -637,7 +637,7 @@ func TestCodexWSSessionRejectsSDKReplacementConnection(t *testing.T) {
 		}
 		defer conn.Close()
 		if replacement {
-			// 握手已响应，但延后服务端统计，固定客户端先返回的调度顺序。
+			// The handshake has responded, but defer server statistics to fix the ordering in which the client returns first.
 			<-recordAfterSend
 		}
 		handshakes.Add(1)
@@ -659,7 +659,7 @@ func TestCodexWSSessionRejectsSDKReplacementConnection(t *testing.T) {
 	session.inner.CloseExecutionSession(session.id)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	// 模拟 SDK 已经重拨，并再次要求接管资源；它必须在写入业务帧之前失败。
+	// Simulate the SDK having redialled and requested the resource again; it must fail before writing the business frame.
 	_, err := session.inner.ExecuteStream(ctx, session.auth, cliproxyexecutor.Request{
 		Model: "gpt-5", Payload: []byte(`{"model":"gpt-5","input":"hello"}`),
 	}, cliproxyexecutor.Options{
@@ -669,7 +669,7 @@ func TestCodexWSSessionRejectsSDKReplacementConnection(t *testing.T) {
 	})
 	cancel()
 	releaseStats()
-	// 请求上下文已结束，使用独立期限等待服务端完成统计和业务帧读取。
+	// The request context has ended; use an independent deadline to wait for server statistics and business-frame reads.
 	waitCtx, cancelWait := context.WithTimeout(context.Background(), time.Second)
 	defer cancelWait()
 	handlersMu.Lock()
@@ -887,7 +887,7 @@ func TestCodexWSSessionContinuesThroughSOCKS5(t *testing.T) {
 			}
 			return
 		}
-		// 后续轮次必须复用此连接；额外拨号直接失败，避免坏实现卡在 SOCKS 协商。
+		// Subsequent turns must reuse this connection; an extra dial fails immediately to prevent a faulty implementation hanging in SOCKS negotiation.
 		_ = proxy.Close()
 		defer conn.Close()
 		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {

@@ -10,7 +10,7 @@ import SegmentedControl, { type SegmentedControlOption } from '@/components/ui/S
 
 const props = withDefaults(
   defineProps<{
-    /** 已保存的基线，用于推导占位地址与校验状态。 */
+    /** Saved baseline used to derive the placeholder address and validation state. */
     base: ProxyViewDto
     mode: ProxyConfiguredMode
     endpoint: string
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const inputId = `${useId()}-proxy-url`
 
-// inherit 由外层「覆盖 / 恢复默认」开关表达，这里只给出显式覆盖的两种取值。
+// The outer “Override / restore defaults” toggle represents inherit; expose only two explicit override modes here.
 const modeOptions = computed<SegmentedControlOption[]>(() => [
   { value: 'direct', label: t('common.proxy.mode.direct'), disabled: props.disabled },
   { value: 'custom', label: t('common.proxy.mode.custom'), disabled: props.disabled },

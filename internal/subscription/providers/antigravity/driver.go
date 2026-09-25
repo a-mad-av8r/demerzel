@@ -19,7 +19,7 @@ type antigravityDriver struct{}
 func newAntigravityDriver() *antigravityDriver { return &antigravityDriver{} }
 
 // Implementations returns the concrete Antigravity subscription
-// behavior assembled by the application composition root.
+// behaviour assembled by the application composition root.
 func Implementations() subscriptionruntime.Implementations {
 	driver := newAntigravityDriver()
 	return subscriptionruntime.Implementations{

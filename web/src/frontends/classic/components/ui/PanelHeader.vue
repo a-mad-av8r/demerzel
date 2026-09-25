@@ -3,7 +3,7 @@ defineProps<{
   headingId: string
   title: string
   description?: string
-  /** 有序流程中的步骤序号；只在页面确实按步骤推进时传入。 */
+  /** Step number in an ordered process; provide only when the page genuinely advances through steps. */
   step?: number
 }>()
 </script>

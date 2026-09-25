@@ -14,7 +14,7 @@ import (
 
 const rerankPath = "/v1/rerank"
 
-// Rerank 实现 query/documents 纯文本原生接口。
+// Rerank implements the native plain-text query/documents interface.
 type Rerank struct{}
 
 func NewRerank() *Rerank { return &Rerank{} }

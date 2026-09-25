@@ -330,7 +330,7 @@ export async function saveModelProfile(
   if (profile.clientModel !== model) throw new InvalidResponseError()
   return profile
 }
-// 详情不依赖列表当前页或计价筛选，硬刷新与跨页进入同样能取到完整来源。
+
 export async function getModelContext(
   client: ApiClient,
   name: string,

@@ -1,4 +1,3 @@
-// 沿用经典版素材与 SVG 命名空间规则；新版独立持有资源，保持前端边界。
 const rawIcons = {
   ...import.meta.glob('../../assets/clients/*.svg', {
     eager: true,
@@ -35,7 +34,7 @@ for (const [path, source] of Object.entries(rawIcons)) {
   if (name) {
     const markup = stripTitle(source)
     iconsByName.set(name, markup)
-    // 静态素材的 ID 只解析一次，实例化时仍分别替换命名空间。
+
     idsByName.set(name, [
       ...new Set([...markup.matchAll(/\bid="([^"]+)"/gu)].map((match) => match[1])),
     ])

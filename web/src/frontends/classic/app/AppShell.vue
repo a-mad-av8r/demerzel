@@ -21,13 +21,10 @@ import { useAuthSession } from '@/features/auth/auth-session'
 import { useImportRecovery } from '@/features/import/import-recovery'
 import PreferencesControl from '@/features/preferences/PreferencesControl.vue'
 import { useTheme } from '@/features/preferences/theme'
-import { supportedLocales, type AppLocale } from '@/i18n'
-import { useAppI18n } from '@/i18n/context'
 
 const session = useAuthSession()
 const recovery = useImportRecovery()
 const unsavedChanges = useUnsavedChangesController()
-const appI18n = useAppI18n()
 const theme = useTheme()
 const route = useRoute()
 const router = useRouter()
@@ -54,16 +51,9 @@ const navigation = computed(() => {
     { key: 'settings', to: settingsLocation(), label: t('shell.settings') },
   ]
 })
-const currentLocale = computed(() => locale.value as AppLocale)
 
 function isPrimaryActive(key: string): boolean {
   return route.meta.primaryNav === key
-}
-
-function setLocale(value: string): void {
-  if (supportedLocales.includes(value as AppLocale)) {
-    void appI18n.setLocale(value as AppLocale)
-  }
 }
 
 async function logout(): Promise<void> {
@@ -106,7 +96,7 @@ watch(
           :to="homeLocation()"
           :aria-label="`${t('common.appName')} · ${t('shell.home')}`"
         >
-          <BrandMark :size="24" />
+          <BrandMark :size="40" />
           <span>{{ t('common.appName') }}</span>
         </RouterLink>
 
@@ -145,10 +135,8 @@ watch(
           <PreferencesControl
             compact
             show-sign-out
-            :locale="currentLocale"
             :trigger-label="t('shell.menu')"
             :theme="theme.theme.value"
-            @update:locale="setLocale"
             @update:theme="theme.setTheme"
             @sign-out="logout"
           >

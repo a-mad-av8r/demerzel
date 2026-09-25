@@ -15,7 +15,7 @@ function getStorage(type: 'localStorage' | 'sessionStorage'): Storage | undefine
   try {
     return window[type]
   } catch {
-    // 存储不可用时，会话继续在内存中维护。
+    // The session remains in memory when storage is unavailable.
     return undefined
   }
 }
@@ -23,9 +23,7 @@ function getStorage(type: 'localStorage' | 'sessionStorage'): Storage | undefine
 export async function bootstrap(): Promise<void> {
   const i18n = createModernI18n()
   document.documentElement.lang = i18n.global.locale.value
-  const preferences = createPreferences(i18n.global.locale.value, (locale) => {
-    i18n.global.locale.value = locale
-  })
+  const preferences = createPreferences()
   const queryClient = createModernQueryClient()
   const client = createSessionApiClient({
     fetch: window.fetch.bind(window),

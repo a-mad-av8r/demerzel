@@ -9,7 +9,7 @@ import (
 	"gpt-load/internal/protocol"
 )
 
-// 仅修正 DeepSeek 原生协议的字段差异，不重建或重排消息历史。
+// Correct only DeepSeek native-protocol field differences; do not rebuild or reorder message history.
 func normalizeDeepSeekNativeRequest(body []byte, clientProtocol protocol.Protocol) ([]byte, error) {
 	var err error
 	body, err = normalizeDeepSeekDefaultThinking(body, clientProtocol)
@@ -41,14 +41,14 @@ func normalizeDeepSeekNativeRequest(body []byte, clientProtocol protocol.Protoco
 		path := field + "." + strconv.Itoa(index)
 		var err error
 		if message.Get("role").String() == "developer" && deepSeekTextOnlyContent(message.Get("content"), clientProtocol) {
-			// Completions 不接受 developer；Responses 将它视为 user，需保留指令语义。
+			// Completions does not accept developer; Responses treats it as user, so preserve instruction semantics.
 			body, err = sjson.SetBytes(body, path+".role", "system")
 			if err != nil {
 				return nil, err
 			}
 		}
 		if clientProtocol == protocol.OpenAICompletions && message.Get("role").String() == "assistant" && !message.Get("reasoning_content").Exists() {
-			// 只复制已有的完整文本，不用摘要、密文或空占位补造思考内容。
+			// Copy only existing complete text; do not manufacture reasoning content from summaries, ciphertext, or empty placeholders.
 			reasoning := message.Get("reasoning")
 			if reasoning.Type == gjson.String && reasoning.Str != "" {
 				body, err = sjson.SetRawBytes(body, path+".reasoning_content", []byte(reasoning.Raw))
@@ -61,7 +61,7 @@ func normalizeDeepSeekNativeRequest(body []byte, clientProtocol protocol.Protoco
 	return body, nil
 }
 
-// 强制工具调用优先于上游默认思考；显式思考配置保持原样，由上游校验冲突。
+// Forced tool calls take precedence over upstream default reasoning; explicit reasoning configuration remains unchanged for the upstream to validate conflicts.
 func normalizeDeepSeekDefaultThinking(body []byte, clientProtocol protocol.Protocol) ([]byte, error) {
 	choice := gjson.GetBytes(body, "tool_choice")
 	forced := false

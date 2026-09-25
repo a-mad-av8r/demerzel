@@ -8,14 +8,14 @@ import (
 	providerobservation "gpt-load/internal/subscription/providers/observation"
 )
 
-// PassiveQuotaSample 保留一份额度信号及其原始观测时间。
+// PassiveQuotaSample retains one quota signal and its original observation time.
 type PassiveQuotaSample struct {
 	ObservedAtMS int64
 	Windows      []providerobservation.QuotaWindow
 }
 
-// PassiveQuotaObservation 保存一个凭据的最新待写样本。
-// WS 可附带同一连接的握手样本，时间独立保留，不累积事件历史。
+// PassiveQuotaObservation stores the latest pending-to-write sample for one credential.
+// WS may include a handshake sample from the same connection; preserve their times separately without accumulating event history.
 type PassiveQuotaObservation struct {
 	CredentialID       uint
 	IdentityGeneration uint64
@@ -34,7 +34,7 @@ type passiveQuotaEntry struct {
 	dirty              bool
 }
 
-// passiveQuotaPending 每个凭据仅保留一份实时快照；历史待解析观测与待写点分别有界。
+// passiveQuotaPending retains one live snapshot per credential; pending historical-resolution observations and write points are separately bounded.
 type passiveQuotaPending struct {
 	mu                      sync.Mutex
 	entries                 map[uint]*passiveQuotaEntry
@@ -82,8 +82,8 @@ func (manager *CredentialManager) RecordPassiveQuotaObservation(
 	manager.recordPassiveQuotaObservation(credentialID, identityGeneration, observedAtMS, windows, nil)
 }
 
-// RecordPassiveQuotaPair 让 WS 的最新事件携带同一连接的握手证据。
-// 两份样本分别校验时间；每个凭据仍仅保留一组，不合并其他请求或事件。
+// RecordPassiveQuotaPair associates the latest WS event with handshake evidence from the same connection.
+// Validate the two sample times independently; each credential still retains only one pair without merging other requests or events.
 func (manager *CredentialManager) RecordPassiveQuotaPair(
 	credentialID uint,
 	identityGeneration uint64,
@@ -107,7 +107,7 @@ func (manager *CredentialManager) recordPassiveQuotaObservation(
 		return
 	}
 	manager.passiveQuota.record(credentialID, identityGeneration, observedAtMS, windows, preceding, func() (uint, bool) {
-		// 在短内存锁内核对当前身份；不等待后台持有的数据库 mutation 锁。
+		// Confirm current identity while holding a short in-memory lock; do not wait for the database mutation lock held in the background.
 		ref, ok := manager.registry.CredentialRef(credentialID)
 		if !ok || ref.IdentityGeneration != identityGeneration {
 			return 0, false

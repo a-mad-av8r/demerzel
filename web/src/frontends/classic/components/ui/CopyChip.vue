@@ -21,8 +21,8 @@ const props = withDefaults(
     failureLabel: string
     resolveValue?: () => string | Promise<string>
     /**
-     * leading：图标在值前面（默认）。trailing：图标跟在值后面。
-     * icon：只渲染图标，用于值已由相邻标题承担的场景。
+     * leading: icon before the value (default). trailing: icon after the value.
+     * icon: render only an icon when a neighbouring heading already carries the value.
      */
     layout?: 'leading' | 'trailing' | 'icon'
   }>(),
@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
   flex: none;
 }
 
-/* 图标模式没有文字撑开点击区，补足到与其他紧凑控件一致的尺寸。 */
+/* Icon-only mode has no text to size its hit area, so match other compact controls. */
 .copy-chip--icon {
   width: var(--control-compact);
   min-width: var(--control-compact);

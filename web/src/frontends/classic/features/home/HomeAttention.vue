@@ -58,7 +58,6 @@ function itemTone(item: (typeof items.value)[number]): 'danger' | 'warning' {
 </script>
 
 <template>
-  <!-- 条件区：没有要处理的事就整块不渲染——不留标题、不留边框、不留「一切正常」的绿条。 -->
   <section v-if="items.length > 0" class="home-attention" aria-labelledby="home-attention-title">
     <h2 id="home-attention-title" class="sr-only">{{ t('home.ledger.attention.title') }}</h2>
 
@@ -126,10 +125,6 @@ function itemTone(item: (typeof items.value)[number]): 'danger' | 'warning' {
   padding-top: 14px;
 }
 
-/*
- * 告警要一眼认出来：按 tone 上底色与描边，配警示图标，回到仓库
- * 「图标 + 文字 + 颜色」的三重编码。原来只有一个 6px 圆点承载严重度。
- */
 .home-attention__row {
   display: flex;
   align-items: center;

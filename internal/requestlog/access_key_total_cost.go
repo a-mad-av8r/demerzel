@@ -11,7 +11,7 @@ import (
 	"gpt-load/internal/storage/dbtx"
 )
 
-// QueryAccessKeyTotalCost 从长期保留的小时汇总读取累计成本，不受明细留存或周期额度重置影响。
+// QueryAccessKeyTotalCost reads cumulative cost from long-retained hourly aggregates, unaffected by detail retention or periodic quota resets.
 func (service *Service) QueryAccessKeyTotalCost(ctx context.Context, accessKeyID uint) (int64, error) {
 	if service == nil || service.db == nil || accessKeyID == 0 {
 		return 0, fmt.Errorf("query access key total cost: invalid database or key scope")

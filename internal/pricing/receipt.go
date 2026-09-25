@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// UnmarshalJSON 区分缺省字段与显式 null，并保持历史版本的字段边界。
+// UnmarshalJSON distinguishes omitted fields from explicit null while retaining historical-version field boundaries.
 func (receipt *Receipt) UnmarshalJSON(data []byte) error {
 	var header struct {
 		SchemaVersion    int             `json:"schema_version"`

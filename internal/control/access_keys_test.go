@@ -176,7 +176,7 @@ func TestAccessKeyCreateAcceptsAllEnabledProtocolsInCanonicalOrder(t *testing.T)
 func TestAccessKeyFiltersRejectInvalidCurrentInputWithoutPublishing(t *testing.T) {
 	t.Parallel()
 	blank := "   "
-	tooLong := strings.Repeat("名", 86)
+	tooLong := strings.Repeat("☃", 86)
 	controlName := "bad\nname"
 	tests := []struct {
 		name    string

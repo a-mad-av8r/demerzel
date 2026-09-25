@@ -292,7 +292,7 @@ func ResolveGroupRuntimeSettings(
 			}
 			resolved.HeaderRules = parsed
 		case SettingRetryCount:
-			// 兼容读取历史分组配置；重试预算仅由系统设置决定。
+			// Retain compatibility when reading historical Group configuration; only system settings determine retry budget.
 		case SettingAccountSelection:
 			mode, err := parseAccountSelectionMode(value)
 			if err != nil {

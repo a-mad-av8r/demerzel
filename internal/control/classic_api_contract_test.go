@@ -12,8 +12,8 @@ import (
 	"gpt-load/internal/outboundproxy"
 )
 
-// 核对后端公开 JSON 字段与经典版读取契约，不执行前端或浏览器测试。
-// 包含 omitempty 字段，防止只在有账号、额度、错误等数据时才暴露兼容回归。
+// Check public backend JSON fields against the classic-reader contract without running frontend or browser tests.
+// Include omitempty fields to prevent compatibility regressions that appear only when accounts, quota, errors, or other data are present.
 func TestSharedAPIResponseFieldsMatchClassicContracts(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

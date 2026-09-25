@@ -12,7 +12,7 @@ const mediaQueries = []
 const issues = []
 const definedTokens = new Set()
 
-// 页面只组合公共控件；隐藏表单值不属于视觉控件。
+// Pages only compose shared controls; hidden form values are not visual controls.
 function checkTemplateRules(node, filename) {
   if (!node) return
   if (node.type === 1) {
@@ -27,7 +27,7 @@ function checkTemplateRules(node, filename) {
       !hiddenInput
     ) {
       issues.push(
-        `${path.relative(root, filename)}:${node.loc.start.line}: 业务页面的 <${node.tag}> 必须使用 components/ui 公共组件`,
+        `${path.relative(root, filename)}:${node.loc.start.line}: feature pages must use shared controls from components/ui`,
       )
     }
     const hasTitle = node.props.some(
@@ -40,7 +40,7 @@ function checkTemplateRules(node, filename) {
     )
     if (node.tagType === 0 && (hasTitle || node.tag === 'title')) {
       issues.push(
-        `${path.relative(root, filename)}:${node.loc.start.line}: 鼠标提示必须使用 AppTooltip，不使用原生 title`,
+        `${path.relative(root, filename)}:${node.loc.start.line}: use AppTooltip rather than a native title attribute`,
       )
     }
   }
@@ -113,34 +113,34 @@ const neutralValues = new Set([
 
 for (const { filename, location, property, value } of declarations) {
   for (const match of value.matchAll(/var\(\s*(--modern-[\w-]+)/gu)) {
-    if (!definedTokens.has(match[1])) issues.push(`${location}: 未定义的视觉变量 ${match[1]}`)
+    if (!definedTokens.has(match[1])) issues.push(`${location}: undefined visual token ${match[1]}`)
   }
   if (filename === tokenFile) continue
   const hasToken = value.includes('var(--modern-')
   if (rawColor.test(value)) {
-    issues.push(`${location}: ${property} 的颜色必须取自 styles/tokens.css`)
+    issues.push(`${location}: ${property} must use a colour token from styles/tokens.css`)
   } else if (
     visualProperty.test(property) &&
     !hasToken &&
     !neutralValues.has(value) &&
     !(property === 'opacity' && value === '1')
   ) {
-    issues.push(`${location}: ${property} 必须使用视觉变量`)
+    issues.push(`${location}: ${property} must use a visual token`)
   }
   if (spacingProperty.test(property) && rawLength.test(value)) {
-    issues.push(`${location}: ${property} 的间距或边框尺寸必须使用视觉变量`)
+    issues.push(`${location}: ${property} spacing or border size must use a visual token`)
   }
   if (/^(?:transition|animation)(?:-|$)/u.test(property) && rawDuration.test(value)) {
-    issues.push(`${location}: ${property} 的时长必须使用视觉变量`)
+    issues.push(`${location}: ${property} duration must use a visual token`)
   }
 }
 
-// CSS 媒体条件不支持 var()，允许的像素阈值从同一份 JS 定义读取。
+// CSS media queries do not support var(); pixel thresholds are read from this JavaScript definition.
 const widths = new Set(Object.values(breakpoints))
 for (const { filename, value } of mediaQueries) {
   for (const match of value.matchAll(/(?:min-width|max-width|width)\s*(?::|[<>]=?)\s*(\d+)px/gu)) {
     if (!widths.has(Number(match[1]))) {
-      issues.push(`${path.relative(root, filename)}: 未约定的断点 ${match[1]}px`)
+      issues.push(`${path.relative(root, filename)}: unapproved breakpoint ${match[1]}px`)
     }
   }
 }
@@ -149,5 +149,5 @@ if (issues.length) {
   console.error(issues.join('\n'))
   process.exitCode = 1
 } else {
-  console.log('新版视觉变量、公共控件复用与响应断点检查通过')
+  console.log('Modern visual token, shared control, and responsive breakpoint checks passed')
 }

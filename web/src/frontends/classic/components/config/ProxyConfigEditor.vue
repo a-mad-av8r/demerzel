@@ -35,7 +35,7 @@ const modeOptions = computed(() => [
   { value: 'direct', label: t('common.proxy.mode.direct') },
   { value: 'custom', label: t('common.proxy.mode.custom') },
 ])
-// 分段控件没有整体 disabled，逐项禁用。
+// Segmented controls have no overall disabled state, so disable each item.
 const segmentedModeOptions = computed(() =>
   modeOptions.value.map((option) => ({ ...option, disabled: props.disabled || pending.value })),
 )
@@ -49,7 +49,7 @@ const configuredModeLabel = computed(() => t(`common.proxy.mode.${props.view.con
 const effectiveValue = computed(
   () => props.view.display_url ?? t(`common.proxy.mode.${props.view.effective_mode}`),
 )
-// 显式选了直连时，模式标签本身就是结论，再跟一个“直连”属于重复。
+// When direct is explicitly selected, the mode label is already conclusive; repeating “direct” is redundant.
 const showValue = computed(() => props.view.configured_mode !== 'direct')
 
 function beginEdit(): void {
@@ -82,7 +82,7 @@ function updateEndpoint(value: string): void {
   saveFailed.value = false
 }
 
-// 供卡片徽章行的指示器一次完成“展开 + 进入编辑”。
+// The card badge indicator completes “expand + enter edit mode” in one action.
 defineExpose({ beginEdit })
 
 async function save(): Promise<void> {
@@ -187,7 +187,7 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
-/* 面板外壳由全局 .setting-panel 提供，这里只写代理特有的部分。 */
+/* The global .setting-panel supplies the panel shell; this file contains only proxy-specific styling. */
 .proxy-config-editor__value {
   overflow: hidden;
   color: var(--color-text);
@@ -196,7 +196,7 @@ async function save(): Promise<void> {
   white-space: nowrap;
 }
 
-/* 渠道不支持时没有编辑入口，说明文案占满整行并允许换行。 */
+/* Unsupported channels have no edit entry point, so the explanation fills the row and may wrap. */
 .proxy-config-editor__unsupported {
   display: flex;
   min-width: 0;
@@ -220,11 +220,11 @@ async function save(): Promise<void> {
 }
 
 .proxy-config-editor__endpoint {
-  /* 默认给错误图标预留 38px，在这个窄面板里会把占位符挤掉，按缩小后的图标重算。 */
+  /* The default 38px error-icon reservation crowds this narrow panel, so recompute for the smaller icon. */
   --compact-field-error-indicator-size: 22px;
   --compact-field-error-indicator-right: 2px;
   --compact-field-error-input-gap: 4px;
-  /* basis 归零，地址栏独吞剩余宽度，控件行不折行。 */
+  /* Reset basis so the address field takes remaining width and the control row does not wrap. */
   flex: 1 1 0;
   min-width: 0;
 }

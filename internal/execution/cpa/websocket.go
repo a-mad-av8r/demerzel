@@ -22,7 +22,7 @@ type websocketProvider interface {
 	openWebsocket(execution.AttemptSpec, providerCredential, string, string, func(http.Header, time.Time)) (execution.WebsocketSession, error)
 }
 
-// OpenWebsocket 使用既有凭据刷新和网络准备，Session 仍由单个下游连接拥有。
+// OpenWebsocket uses existing credential refresh and network preparation; a Session remains owned by one downstream connection.
 func (a *Adapter) OpenWebsocket(ctx context.Context, spec execution.AttemptSpec) (execution.WebsocketSession, execution.WebsocketResult) {
 	result := execution.WebsocketResult{DispatchState: execution.DispatchNotSent}
 	reject := func() (execution.WebsocketSession, execution.WebsocketResult) {
@@ -108,7 +108,7 @@ func (s *observedWebsocketSession) ExecuteTurn(ctx context.Context, payload []by
 	})
 }
 
-// observeHeaders 保留响应头的原始额度样本；握手在交付本连接的事件之前记录。
+// observeHeaders retains raw quota samples from response headers; record the handshake before delivering events for this connection.
 func (s *observedWebsocketSession) observeHeaders(headers http.Header, observedAt time.Time) {
 	if len(headers) == 0 || observedAt.IsZero() {
 		return
@@ -193,7 +193,7 @@ func codexWebsocketEvidence(ctx context.Context, err error) *execution.ErrorEvid
 		if strings.EqualFold(failure.UpstreamCode, "model_at_capacity") || strings.EqualFold(failure.UpstreamCode, "model_is_at_capacity") {
 			e.Hint = execution.FailureHintCandidateUnavailable
 			e.ScopeHint = execution.ErrorScopeModel
-			// WS 错误未携带生成阶段证据；容量不足不计为额度耗尽，也不据此重放。
+			// WS errors carry no generation-phase evidence; insufficient capacity is neither quota exhaustion nor a basis for replay.
 			e.ReplaySafety = execution.ReplaySafetyUnknown
 		}
 	}

@@ -55,7 +55,6 @@ function setWebsocketEnabled(value: boolean): void {
   publish('responses_websocket_enabled', draft)
 }
 
-// 代理沿用其它设置项的覆盖语义：inherit 即“未覆盖”，direct/custom 即“显式覆盖”。
 const proxyOverridden = computed(() => props.proxyMode !== 'inherit')
 const proxyPendingRestore = computed(
   () => props.proxy.configured_mode !== 'inherit' && props.proxyMode === 'inherit',

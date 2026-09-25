@@ -33,7 +33,7 @@ func NormalizeUpstreamRequestRepresentation(request *http.Request, finalBodyLeng
 	request.ContentLength = finalBodyLength
 }
 
-// StripRepresentationMetadata 清理绑定原始 HTTP 正文的元数据，适用于请求与响应。
+// StripRepresentationMetadata removes metadata tied to an original HTTP body for both requests and responses.
 func StripRepresentationMetadata(headers http.Header) {
 	if headers == nil {
 		return

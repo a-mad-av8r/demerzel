@@ -324,56 +324,44 @@ func TestAuthenticateRetryAfterMatchesResponseData(t *testing.T) {
 	}
 }
 
-func TestAuthenticateMessagesAreLocalized(t *testing.T) {
+func TestAuthenticateMessagesUseBritishEnglish(t *testing.T) {
 	t.Parallel()
 	initControlI18n(t)
-	for index, test := range []struct {
-		language     string
-		unauthorized string
-		locked       string
-	}{
-		{
-			language:     "zh-CN",
-			unauthorized: "无效的授权密钥",
-			locked:       "认证尝试过多，请稍后重试",
-		},
-		{
-			language:     "en-US",
-			unauthorized: "Invalid authorization key",
-			locked:       "Too many authentication attempts; try again later",
-		},
-		{
-			language:     "ja-JP",
-			unauthorized: "無効な認証キー",
-			locked:       "認証試行回数が多すぎます。しばらくしてから再試行してください",
-		},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			_, engine := newAuthProbeServer(t)
-			unauthorizedPeer := "192.0.2." + strconv.Itoa(30+index) + ":1234"
-			unauthorized := serveAuthRequest(
-				engine,
-				"/api/probe",
-				unauthorizedPeer,
-				"Bearer wrong-key",
-				map[string]string{"Accept-Language": test.language},
-			)
-			assertAuthMessage(t, unauthorized, http.StatusUnauthorized, "UNAUTHORIZED", test.unauthorized)
+	_, engine := newAuthProbeServer(t)
 
-			lockedPeer := "192.0.2." + strconv.Itoa(40+index) + ":1234"
-			var locked *httptest.ResponseRecorder
-			for attempt := 0; attempt < authFailureLimit; attempt++ {
-				locked = serveAuthRequest(
-					engine,
-					"/api/probe",
-					lockedPeer,
-					"Bearer wrong-key",
-					map[string]string{"Accept-Language": test.language},
-				)
-			}
-			assertAuthMessage(t, locked, http.StatusTooManyRequests, "AUTH_LOCKED", test.locked)
-		})
+	unauthorized := serveAuthRequest(
+		engine,
+		"/api/probe",
+		"192.0.2.30:1234",
+		"Bearer wrong-key",
+		map[string]string{"Accept-Language": "*"},
+	)
+	assertAuthMessage(
+		t,
+		unauthorized,
+		http.StatusUnauthorized,
+		"UNAUTHORIZED",
+		"Invalid authorisation key",
+	)
+
+	lockedPeer := "192.0.2.40:1234"
+	var locked *httptest.ResponseRecorder
+	for range authFailureLimit {
+		locked = serveAuthRequest(
+			engine,
+			"/api/probe",
+			lockedPeer,
+			"Bearer wrong-key",
+			map[string]string{"Accept-Language": "*"},
+		)
 	}
+	assertAuthMessage(
+		t,
+		locked,
+		http.StatusTooManyRequests,
+		"AUTH_LOCKED",
+		"Too many authentication attempts; try again later",
+	)
 }
 
 func TestAuthSessionEndpointReturnsAuthenticatedWithoutDatabaseAccess(t *testing.T) {

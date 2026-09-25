@@ -20,7 +20,7 @@ var (
 )
 
 // OpenMigrated returns an isolated in-memory SQLite database restored from one
-// migrated schema template. Migration and SQLite-open safety behavior remain
+// migrated schema template. Migration and SQLite-open safety behaviour remain
 // covered by storage tests; business-package fixtures only need the final DDL.
 func OpenMigrated(t *testing.T) *gorm.DB {
 	t.Helper()

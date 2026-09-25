@@ -33,7 +33,7 @@ func TestFairnessGroupModelLifecycle(t *testing.T) {
 			if scenario == "initially empty" {
 				initialModels = nil
 			}
-			// 保持真实启动顺序：配置发布先于凭据加载。
+			// Preserve real startup order: configuration publication precedes credential loading.
 			snapshot := publish(initialModels)
 			entries := []state.CredentialEntry{
 				{ID: 11, GroupID: 1, Version: 1, IdentityGeneration: 1, Status: state.CredentialStatusActive,
@@ -62,7 +62,7 @@ func TestFairnessGroupModelLifecycle(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "old request":
-				// 旧快照不能回退全局分组状态；已捕获路由的请求仍可继续。
+				// An old snapshot cannot revert global group state; a request that already captured routing may still continue.
 				old := New(beforeChange, registry, fairnessQuery(12))
 				selected, err := old.Next()
 				if err != nil || selected.CredentialID != 12 {
@@ -87,7 +87,7 @@ func TestFairnessGroupModelLifecycle(t *testing.T) {
 					t.Fatalf("restored %d credentials, want 2", got)
 				}
 			}
-			// 不可用期间继续产生流量，验证恢复校准没有被同步或旧请求提前清除。
+			// Continue generating traffic while unavailable to verify recovery calibration is neither synchronised nor cleared early by old requests.
 			for range 1000 {
 				fairnessPick(t, snapshot, registry, 0)
 			}
@@ -98,7 +98,7 @@ func TestFairnessGroupModelLifecycle(t *testing.T) {
 			}
 			want := 51
 			if scenario == "other model" {
-				// 分组仍能服务其他模型，仅本次路由缺席，保留原有累计补偿。
+				// The group can still serve other models; only this route is absent, so retain existing accumulated compensation.
 				want = 100
 			}
 			if counts[12] != want || counts[11] != 101-want {

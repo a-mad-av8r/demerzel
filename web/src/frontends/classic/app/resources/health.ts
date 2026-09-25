@@ -360,7 +360,7 @@ export function healthQueryOptions(
           refetchIntervalInBackground: false,
         }
       : {}),
-    // /api/health 不在 AccessKey 白名单里，调用方需要能按身份关掉这个查询。
+    // /api/health is not in the AccessKey allowlist, so callers must be able to disable this query by identity.
     ...(enabled !== undefined ? { enabled } : {}),
   })
 }

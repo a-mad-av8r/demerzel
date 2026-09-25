@@ -8,7 +8,7 @@ import (
 	"gpt-load/internal/platform/epochms"
 )
 
-// ResolveUsageTimeBucket 根据精确时间跨度选择趋势桶，不依赖前端快捷范围。
+// ResolveUsageTimeBucket selects a trend bucket from the exact time span, without relying on frontend shortcut ranges.
 func ResolveUsageTimeBucket(fromMS, toMS int64) (UsageGranularity, int64, error) {
 	const maxSafeMilliseconds int64 = 1<<53 - 1
 	if fromMS < 0 || toMS <= fromMS || toMS > maxSafeMilliseconds {
@@ -28,13 +28,13 @@ func ResolveUsageTimeBucket(fromMS, toMS int64) (UsageGranularity, int64, error)
 	case spanMS <= 15*day:
 		return UsageGranularityHour, 12 * hour, nil
 	default:
-		// 向上取整时不先加除数，超长区间仍保持安全整数运算。
+		// Do not add the divisor before rounding up; very long intervals retain safe integer arithmetic.
 		return UsageGranularityDay, ((spanMS-1)/(30*day) + 1) * day, nil
 	}
 }
 
-// usageWindowScope 先按时间拆分来源，再合并行集供总览、趋势和分布使用。
-// 数据缺失不会改变分段，也不会把首尾小时的整桶统计带入精确区间。
+// usageWindowScope first splits sources by time, then combines row sets for overview, trend, and distribution.
+// Missing data neither changes the segmentation nor brings whole-bucket statistics from boundary hours into an exact interval.
 func usageWindowScope(db *gorm.DB, input UsageQuery, groupIDs ...uint) *gorm.DB {
 	hour := epochms.MillisecondsPerHour
 	if input.ToMS-input.FromMS <= hour {
@@ -47,7 +47,7 @@ func usageWindowScope(db *gorm.DB, input UsageQuery, groupIDs ...uint) *gorm.DB 
 	fullToMS := input.ToMS - input.ToMS%hour
 	full := input
 	full.FromMS, full.ToMS = fullFromMS, fullToMS
-	// 数值运算固定参数类型，避免 PostgreSQL 把 SELECT 中的独立参数推断为 text。
+	// Fix numeric parameter types so PostgreSQL cannot infer standalone SELECT parameters as text.
 	parts := []any{usageStatScope(db, full, groupIDs...).Select(usageWindowColumns+", ? + 0 AS bucket_alignment_ms", hour)}
 	unionSQL := "?"
 	for _, boundary := range [][2]int64{{input.FromMS, fullFromMS}, {fullToMS, input.ToMS}} {
@@ -67,7 +67,7 @@ func queryUsageWindowSeries(scope *gorm.DB, input UsageQuery, widthMS int64) ([]
 		BucketStartMS int64 `gorm:"column:series_bucket_ms"`
 		UsageAggregate
 	}
-	// 直接按最终自然桶聚合，年度等长区间不会把每个小时传回进程再合并。
+	// Aggregate directly by final natural bucket so equally long annual ranges do not send every hour back to the process for recombination.
 	if err := scope.Select("bucket_start_ms - bucket_start_ms % ? AS series_bucket_ms, "+usageAggregateSelect, widthMS).
 		Group("series_bucket_ms").Order("series_bucket_ms ASC").
 		Scan(&rows).Error; err != nil {

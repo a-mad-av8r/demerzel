@@ -52,7 +52,7 @@ func TestBusinessTargetPreservesNativeEndpoints(t *testing.T) {
 					server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						targetURL := *r.URL
 						targetURL.Scheme, targetURL.Host = "https", r.Host
-						// 只忽略随版本变化的客户端版本参数，业务查询参数必须保留。
+						// Ignore only version-varying client-version parameters; business query parameters must be retained.
 						query := targetURL.Query()
 						query.Del("client_version")
 						query.Del("entrypoint")

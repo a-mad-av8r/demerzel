@@ -552,8 +552,8 @@ func TestHealthProblemCredentialIdentityMasksAPIKeySecret(t *testing.T) {
 	}
 }
 
-// 订阅账号在管理面其余位置（凭据卡片、日志）一律展示完整邮箱，这里不再是例外；
-// 泄露边界仍然成立——展示的只是邮箱，refresh/access token 绝不出现在返回值里。
+// Subscription accounts display their full email address everywhere else in management (credential cards and logs), so this is no exception;
+// the disclosure boundary still holds: only the email is displayed, never refresh or access tokens.
 func TestHealthProblemCredentialIdentityShowsFullSubscriptionEmail(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)

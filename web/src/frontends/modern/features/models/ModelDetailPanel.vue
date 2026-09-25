@@ -122,7 +122,7 @@ useMessageSource(() =>
     : undefined,
 )
 onScopeDispose(() => controller.abort())
-// 没有「全部来源」这一层了，未指定来源时直接落到第一个。
+
 watch(
   [modelData, () => props.source],
   ([data, current]) => {
@@ -558,7 +558,7 @@ async function reset(): Promise<void> {
   margin: 0;
   font-size: var(--modern-font-size-secondary);
 }
-/* 标签列定宽右对齐：auto 会让每行按各自内容算宽，行与行对不齐。 */
+
 .modern-model-catalog-facts > div {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -602,7 +602,7 @@ async function reset(): Promise<void> {
   min-width: 0;
   max-width: 100%;
 }
-/* 详情里分组是独立段落，比表格行里的标签放大一档。 */
+
 .modern-model-detail-group .modern-model-group-chip {
   --modern-model-chip-height: var(--modern-badge-sm);
 }

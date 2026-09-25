@@ -404,7 +404,7 @@ func groupProbeModel(group models.Group) (string, error) {
 	return "", nil
 }
 
-// 测试协议直接读取渠道声明，不另行维护能力清单。
+// The test protocol reads channel declarations directly rather than maintaining a separate capability list.
 func availableValidationProtocols(target channel.ResolvedTarget) []protocol.Protocol {
 	result := make([]protocol.Protocol, 0)
 	for _, candidate := range protocol.DataPlaneProtocols() {

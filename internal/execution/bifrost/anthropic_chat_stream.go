@@ -8,8 +8,8 @@ import (
 	"github.com/maximhq/bifrost/core/schemas"
 )
 
-// 继续使用 SDK 原有的 Anthropic→Chat 内容转换，仅将用量读取与其丢弃
-// message_delta 的 Chat 传输循环解耦，保留工具索引、思考和签名的转换行为。
+// Continue using the SDK's existing Anthropic-to-Chat content conversion, decoupling only usage reading from
+// its message_delta-discarding Chat transport loop while retaining conversion of tool indices, reasoning, and signatures.
 type anthropicChatStreamEncoder struct {
 	state           *anthropic.AnthropicStreamState
 	id              string

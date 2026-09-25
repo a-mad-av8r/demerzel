@@ -59,7 +59,7 @@ const health = useQuery({
   queryFn: ({ signal }) => getHealth(client, signal),
   enabled: admin,
 })
-// 初始化只看配置是否齐全，不把停用、冷却等运行状态当成尚未配置。
+
 const showSetup = computed(() => {
   if (!admin.value || !groups.data.value || !keys.data.value) return false
   return (
@@ -77,7 +77,7 @@ const attentionIssues = computed(() => {
   ).sort((left, right) => compareHealthIssues(left, right, locale.value))
 })
 const attention = computed(() => attentionIssues.value?.length ?? 0)
-// 深链接 /monitor/inspector 会重定向到首页并带上 inspect_* 参数，那种情况直接展开。
+
 const inspectorOpen = ref(
   route.hash === '#route-inspector' ||
     Object.keys(route.query).some((key) => key.startsWith('inspect_')),

@@ -12,7 +12,7 @@ export function logModelMismatch(row: LogEntry): boolean {
   return row.model_consistency === 'mismatch'
 }
 export function logCanMergeError(row: LogEntry): boolean {
-  // 中断或失败仍可能产生实际消耗；真实的零用量/零费用也不能当成缺失。
+  // Interrupted or failed requests may still consume resources; an actual zero must not be treated as missing.
   return (
     row.status !== 'success' &&
     Boolean(row.error_code.trim() || row.error_summary.trim()) &&
@@ -32,7 +32,7 @@ export function logCanMergeError(row: LogEntry): boolean {
 }
 export function logNumber(value: string | number, locale: string, compact = false): string {
   return numberFormatter(
-    compact ? 'en-US' : locale,
+    compact ? 'en-GB' : locale,
     compact ? { notation: 'compact', maximumFractionDigits: 1 } : {},
   ).format(typeof value === 'string' ? BigInt(value) : value)
 }

@@ -24,7 +24,7 @@ type requestLogOperationIndexColumn0017 struct {
 	IsValid    bool
 }
 
-// Up0017 为操作筛选增加与游标顺序一致的索引，不改历史日志。
+// Up0017 adds an operation-filter index consistent with cursor ordering and does not alter historical logs.
 func Up0017(db *gorm.DB) error {
 	if err := ValidateRecoverable0017(db); err != nil {
 		return err
@@ -77,7 +77,7 @@ func requestLogOperationIndexColumns0017(db *gorm.DB) ([]requestLogOperationInde
 	var arguments []any
 	switch db.Dialector.Name() {
 	case "postgres":
-		// GORM 的 PostgreSQL GetIndexes 未按 indkey 的位置排序，也不返回排序方向。
+		// GORM's PostgreSQL GetIndexes neither sorts by indkey position nor returns sort direction.
 		query = `
 			SELECT attribute.attname AS name,
 				(definition.indoption[key.position - 1] & 1) <> 0 AS descending,

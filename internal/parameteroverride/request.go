@@ -8,17 +8,17 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-// 只为规则涉及的路径建立节点；其他值始终引用原始 JSON，不展开数组或对象。
-// raw 为 nil 表示字段不存在，JSON null 则保留为四个字节。
+// Create nodes only for paths covered by rules; all other values continue to reference the original JSON without expanding arrays or objects.
+// raw nil means the field is absent; JSON null remains four bytes.
 type requestValue struct {
 	raw    []byte
 	fields map[string]*requestValue
 	loaded bool
 	dirty  bool
-	// 当前字段在父对象原始 JSON 中最后一次出现的位置，不随覆盖值改变。
+	// The final occurrence of this field in the parent object's original JSON; override values do not alter it.
 	start int
 	end   int
-	// 重复对象通过代次使旧子字段失效，避免每次遍历全部规则字段清空。
+	// Object generations invalidate stale child fields without clearing every rule field on each traversal.
 	generation       uint
 	parentGeneration uint
 }
@@ -64,7 +64,7 @@ func (value *requestValue) load() error {
 	return err
 }
 
-// 按规则路径直接下行，返回对象终点；父层不先扫描整个子树再递归。
+// Traverse directly along rule paths and return the object end; do not scan a whole child subtree before recursing.
 func (value *requestValue) scan(body []byte) (int, error) {
 	value.generation++
 	end, err := value.eachField(body, true, nil)
@@ -119,7 +119,7 @@ func (value *requestValue) merge(source any) error {
 		value.dirty = true
 		return nil
 	}
-	// 仅序列化受配置大小限制的替换值，客户端的大值不会进入通用 JSON 树。
+	// Serialise only replacement values limited by configuration size; large client values never enter a general JSON tree.
 	var encoded bytes.Buffer
 	encoder := json.NewEncoder(&encoded)
 	encoder.SetEscapeHTML(false)
@@ -184,8 +184,8 @@ func (value *requestValue) write(output *requestOutput) error {
 	return nil
 }
 
-// 调用方已用 json.Valid 校验完整请求。这里只扫描字段边界，值引用原始字节；
-// 仅含转义或非法 UTF-8 的键需要解码，沿用 encoding/json 的键名语义。
+// The caller already validated the complete request with json.Valid. Scan only field boundaries here, retaining references to raw values;
+// decode only keys containing escapes or invalid UTF-8, preserving encoding/json key-name semantics.
 func (value *requestValue) eachField(body []byte, discover bool, visit func(key, member []byte)) (int, error) {
 	remaining := bytes.TrimLeft(body[1:], " \t\r\n")
 	for remaining[0] != '}' {
@@ -202,7 +202,7 @@ func (value *requestValue) eachField(body []byte, discover bool, visit func(key,
 			key = []byte(decoded)
 		}
 		remaining = bytes.TrimLeft(remaining[end:], " \t\r\n")
-		remaining = bytes.TrimLeft(remaining[1:], " \t\r\n") // 跳过冒号。
+		remaining = bytes.TrimLeft(remaining[1:], " \t\r\n") // Skip colon.
 		start := len(body) - len(remaining)
 		child := value.fields[string(key)]
 		switch {
@@ -210,7 +210,7 @@ func (value *requestValue) eachField(body []byte, discover bool, visit func(key,
 			child.reset(nil)
 			end, err = child.scan(remaining)
 		case !discover && child != nil && child.parentGeneration == value.generation && child.start == start && child.end > start:
-			// 测量和输出直接使用已发现的终点，不重复扫描深层的大值。
+			// Measure and output directly from an already discovered end, without rescanning deeply nested large values.
 			end = child.end - start
 		default:
 			_, _, end, err = jsonparser.Get(remaining)
@@ -222,7 +222,7 @@ func (value *requestValue) eachField(body []byte, discover bool, visit func(key,
 			return 0, err
 		}
 		if discover && child != nil {
-			// 重复键只保留最后一次的位置，索引大小不随客户端字段数量增长。
+			// For duplicate keys, retain only the final position so index size does not grow with client field count.
 			child.raw = remaining[:end]
 			child.start, child.end = start, start+end
 			child.parentGeneration = value.generation

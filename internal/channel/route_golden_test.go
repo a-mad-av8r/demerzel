@@ -11,7 +11,7 @@ import (
 )
 
 // TestBuiltInRouteGolden freezes the explicit built-in route contract. It is
-// based on the pre-module behavior with the intentionally unreachable
+// based on the pre-module behaviour with the intentionally unreachable
 // OpenAI Responses model-list routes removed.
 func TestBuiltInRouteGolden(t *testing.T) {
 	t.Parallel()

@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { Languages, LogOut, Menu, Monitor, Moon, Sun } from '@lucide/vue'
+import { LogOut, Menu, Monitor, Moon, Sun } from '@lucide/vue'
 import { ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import AppPopover from '@/components/ui/AppPopover.vue'
 import AppTooltip from '@/components/ui/AppTooltip.vue'
 import IconButton from '@/components/ui/IconButton.vue'
-import type { AppLocale } from '@/i18n'
 
 import type { AppTheme } from './theme'
 
 const props = withDefaults(
   defineProps<{
-    locale: AppLocale
     theme: AppTheme
     compact?: boolean
     showSignOut?: boolean
@@ -26,7 +24,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  'update:locale': [locale: AppLocale]
   'update:theme': [theme: AppTheme]
   'sign-out': []
 }>()
@@ -35,11 +32,6 @@ const { t } = useI18n()
 const open = ref(false)
 const identity = useId()
 const githubURL = 'https://github.com/a-mad-av8r/demerzel'
-const localeOptions: Array<{ value: AppLocale; labelKey: string; compactLabelKey: string }> = [
-  { value: 'zh-CN', labelKey: 'shell.localeZh', compactLabelKey: 'shell.localeZhShort' },
-  { value: 'en-US', labelKey: 'shell.localeEn', compactLabelKey: 'shell.localeEnShort' },
-  { value: 'ja-JP', labelKey: 'shell.localeJa', compactLabelKey: 'shell.localeJaShort' },
-]
 const themeOptions: Array<{
   value: AppTheme
   labelKey: string
@@ -49,11 +41,6 @@ const themeOptions: Array<{
   { value: 'light', labelKey: 'shell.themeLight', icon: Sun },
   { value: 'dark', labelKey: 'shell.themeDark', icon: Moon },
 ]
-
-function updateLocale(event: Event): void {
-  const input = event.target as HTMLInputElement
-  if (input.checked) emit('update:locale', input.value as AppLocale)
-}
 
 function updateTheme(event: Event): void {
   const input = event.target as HTMLInputElement
@@ -112,21 +99,6 @@ function close(): void {
           </label>
         </div>
       </div>
-      <div class="preferences-panel__group">
-        <span class="preferences-panel__label">{{ t('shell.language') }}</span>
-        <div class="preferences-panel__segments" role="group" :aria-label="t('shell.language')">
-          <label v-for="option in localeOptions" :key="option.value">
-            <input
-              type="radio"
-              :name="`${identity}-locale`"
-              :value="option.value"
-              :checked="props.locale === option.value"
-              @change="updateLocale"
-            />
-            <span>{{ t(option.compactLabelKey) }}</span>
-          </label>
-        </div>
-      </div>
       <div class="preferences-panel__divider"></div>
       <div class="preferences-panel__group">
         <div class="preferences-panel__project-meta">
@@ -166,23 +138,6 @@ function close(): void {
   </AppPopover>
 
   <div v-else class="preferences-control preferences-panel">
-    <div class="preferences-panel__group">
-      <span class="preferences-panel__label">
-        <Languages :size="15" aria-hidden="true" />{{ t('shell.language') }}
-      </span>
-      <div class="preferences-panel__segments" role="group" :aria-label="t('shell.language')">
-        <label v-for="option in localeOptions" :key="option.value">
-          <input
-            type="radio"
-            :name="`${identity}-locale`"
-            :value="option.value"
-            :checked="props.locale === option.value"
-            @change="updateLocale"
-          />
-          <span>{{ t(option.labelKey) }}</span>
-        </label>
-      </div>
-    </div>
     <div class="preferences-panel__group">
       <span class="preferences-panel__label">
         <Monitor :size="15" aria-hidden="true" />{{ t('shell.theme') }}

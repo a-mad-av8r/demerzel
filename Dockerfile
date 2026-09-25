@@ -17,8 +17,8 @@ FROM --platform=$BUILDPLATFORM golang:1.27.0-alpine3.24@sha256:4c9fe60190a2a3350
 ARG VERSION=2.0.0-dev
 ARG TARGETOS
 ARG TARGETARCH
-# GOPROXY 使用竖线分隔：任何错误（含网络错误）都回退到下一个源。
-# 默认的逗号只在 404/410 时回退，模块代理瞬时故障会直接中断构建。
+# GOPROXY uses a pipe separator: any error, including a network error, falls back to the next source.
+# The default comma separator falls back only on 404/410; a transient module-proxy failure would halt the build.
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOPROXY="https://proxy.golang.org|direct"
@@ -38,9 +38,8 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -o gpt-load
 
 
-# runtime 是两条打包路径共用的唯一 runtime 定义：默认的源码自包含构建，
-# 以及发布流程复用 build-binaries 预编译产物的 prebuilt。两者只有二进制来源
-# 不同，其余 runtime 配置全部在这里定义一次，避免出现两套配置各自漂移。
+# runtime is the sole runtime definition shared by the default self-contained source build and the release prebuilt target, which reuses build-binaries output.
+# Only the binary source differs; all other runtime configuration is defined here to prevent drift between the two packaging paths.
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS runtime
 
 WORKDIR /app
@@ -69,7 +68,7 @@ USER 10001:10001
 ENTRYPOINT ["/app/gpt-load"]
 
 
-# 发布路径：直接打包 build-binaries 已交叉编译好的二进制，不在镜像内重复编译。
+# Release path: package the cross-compiled binary produced by build-binaries directly, without recompiling it in the image.
 # The release prebuilt target packages a Demerzel-owned Linux release asset.
 FROM runtime AS prebuilt
 
@@ -79,8 +78,8 @@ ARG DEMERZEL_TARGETARCH=${TARGETARCH}
 COPY --chmod=0755 release/demerzel-linux-${DEMERZEL_TARGETARCH} /app/gpt-load
 
 
-# 默认 target：自包含的源码构建，供本地 `docker build .` 与用户自建使用。
-# 必须保持在文件末尾，否则默认构建会落到 prebuilt 而要求预编译产物。
+# Default target: a self-contained source build for local `docker build .` and user-built images.
+# It must remain last, otherwise the default build resolves to prebuilt and requires a prebuilt artefact.
 FROM runtime AS source-build
 
 COPY --from=go-builder /build/gpt-load .

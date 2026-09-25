@@ -264,7 +264,7 @@ func TestAdapterTokenCountPreservesAnthropicInstructions(t *testing.T) {
 					}
 					return tokens
 				}
-				// 执行请求以 developer 原位发送指令，计数必须采用同一个提示。
+				// Send the executed request's instruction in-place as developer; counting must use the same prompt.
 				want := count("developer")
 				if got := count("system"); got != want {
 					t.Fatalf("system token count = %d, executed developer prompt count = %d", got, want)

@@ -19,7 +19,7 @@ type codexDriver struct{}
 
 func newCodexDriver() *codexDriver { return &codexDriver{} }
 
-// Implementations returns the concrete Codex subscription behavior assembled by
+// Implementations returns the concrete Codex subscription behaviour assembled by
 // the application composition root.
 func Implementations() subscriptionruntime.Implementations {
 	driver := newCodexDriver()

@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// CodexClientVersion 必须与固定 CPA 依赖及 GPT-Load 的 Codex 模型目录版本一致，由测试校验。
+// CodexClientVersion must match the pinned CPA dependency and GPT-Load Codex model catalogue version; tests enforce it.
 const CodexClientVersion = "0.154.0"
 
-// codexHeadersRoundTripper 保留 CPA 的 UA，并固定版本及 HTTP 会话头。
+// codexHeadersRoundTripper preserves CPA's UA and pins the version and HTTP session headers.
 type codexHeadersRoundTripper struct {
 	base       http.RoundTripper
 	source     http.Header
@@ -31,7 +31,7 @@ func (transport codexHeadersRoundTripper) RoundTrip(request *http.Request) (*htt
 	}
 	request.Header.Set("Version", CodexClientVersion)
 	normalizeCodexSessionHeader(request.Header)
-	// CPA 的直接图片路径不读取 opts.Headers，补回调用者显式提供的会话。
+	// CPA's direct image route does not read opts.Headers; restore the session explicitly provided by the caller.
 	if request.Header.Get("Session-Id") == "" {
 		if session := transport.source.Get("Session-Id"); session != "" {
 			request.Header.Set("Session-Id", session)
@@ -45,7 +45,7 @@ func normalizedCodexHeaders(headers http.Header) http.Header {
 	if cloned == nil {
 		cloned = make(http.Header)
 	}
-	// 仅 Codex 忽略客户端及分组规则提供的版本身份，UA 由 CPA 生成。
+	// Only Codex ignores version identities from the client and grouping rules; CPA generates the UA.
 	for name := range cloned {
 		if strings.EqualFold(name, "User-Agent") || strings.EqualFold(name, "Version") {
 			delete(cloned, name)
@@ -56,7 +56,7 @@ func normalizedCodexHeaders(headers http.Header) http.Header {
 	return cloned
 }
 
-// normalizeCodexSessionHeader 兼容下划线拼法；同时存在时以连字符字段为准。
+// normalizeCodexSessionHeader accepts the underscore spelling; the hyphenated field takes precedence when both are present.
 func normalizeCodexSessionHeader(headers http.Header) {
 	session, _ := codexHeaderValue(headers, "Session-Id")
 	session = strings.TrimSpace(session)

@@ -92,7 +92,7 @@ func NewGrokAuth(id string, credential GrokCredential, baseURL string) *cliproxy
 	}
 	attributes := map[string]string{
 		"auth_kind": "oauth", "using_api": "false",
-		// CPA 默认仅向官方域附加这些头，API 代理仍需保持相同订阅协议。
+		// CPA normally adds these headers only to the official domain; the API proxy must retain the same subscription protocol.
 		"header:X-XAI-Token-Auth":         "xai-grok-cli",
 		"header:x-grok-client-version":    grokClientVersion,
 		"header:User-Agent":               "xai-grok-workspace/" + grokClientVersion,

@@ -473,7 +473,7 @@ func TestPromptCacheKeyAffinityPrecedesPromptPrefix(t *testing.T) {
 			t.Fatal("wrong cache affinity kind")
 		}
 	}
-	// 客户端缓存分组不改变 provider-private replay 的提示词隔离。
+	// A client cache group does not change provider-private replay prompt isolation.
 	if forwarder.inputs[0].ContinuityKey == forwarder.inputs[1].ContinuityKey {
 		t.Fatal("cache key became replay identity")
 	}

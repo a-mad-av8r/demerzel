@@ -74,7 +74,7 @@ export interface HealthReport {
   accessKeys: HealthAccessKey[]
 }
 const timestamp = (value: unknown) => (value == null ? null : integer(value))
-// 无邮箱兜底中的数据库 ID 不进入新版展示。
+
 const identity = (value: unknown) => text(value).replace(/^Subscription #\d+$/, '')
 function counts(value: unknown): HealthCounts {
   const row = record(value)

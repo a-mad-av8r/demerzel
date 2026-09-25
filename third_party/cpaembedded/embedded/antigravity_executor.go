@@ -111,7 +111,7 @@ func newAntigravityHTTPExecutor(baseURL string) *antigravityHTTPExecutor {
 	return &antigravityHTTPExecutor{cfg: cfg, inner: internalexecutor.NewAntigravityExecutor(cfg), baseURL: baseURL}
 }
 
-// executionBaseURL 按请求解析目标，私有构造地址保留已有测试接缝。
+// executionBaseURL resolves the target per request; the private constructor URL retains the existing test seam.
 func (executor *antigravityHTTPExecutor) executionBaseURL(apiRoot string) (string, error) {
 	endpoints, err := ResolveAntigravityAPIEndpoints(apiRoot)
 	if err != nil {
@@ -289,7 +289,7 @@ func antigravityExecutorOptions(
 	if scope := strings.TrimSpace(request.ContinuityKey); scope != "" {
 		options.Metadata = map[string]any{
 			cliproxyexecutor.ExecutionSessionMetadataKey: scope,
-			// CPA 的原生 sessionId 和私有 replay 分别读取两种 metadata。
+			// CPA's native sessionId and private replay read distinct metadata values.
 			cliproxyexecutor.DerivedSessionIDMetadataKey: scope,
 		}
 	}
@@ -342,7 +342,7 @@ func normalizeAntigravityConvertedUsage(format string, stream bool, raw []byte) 
 	format = strings.TrimSpace(format)
 	switch format {
 	case "openai":
-		// CPA 的 Chat 流式转换仍单独报告思考 tokens；非流式及 Responses 已计入输出总数。
+		// CPA's streaming Chat conversion still reports reasoning tokens separately; non-streaming and Responses already count them in total output.
 		if stream {
 			return addAntigravityUsageIntegers(result, "usage.completion_tokens", "usage.completion_tokens_details.reasoning_tokens")
 		}

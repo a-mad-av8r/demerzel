@@ -46,7 +46,7 @@ func TestCredentialManagerRechecksTargetAfterWaitingToForceRefresh(t *testing.T)
 			t.Fatal("force refresh bypassed the in-flight target mutation")
 		case <-time.After(100 * time.Millisecond):
 		}
-		// force refresh 已在等待同一凭据的锁；拿到锁后必须重新验证目标身份。
+		// Force refresh is already waiting for the same credential's lock; validate target identity again after acquiring it.
 		params := models.JSON(`{"base_url":"https://relay.example/current"}`)
 		if err := db.Model(&models.Group{}).Where("id = ?", row.GroupID).Update("params", params).Error; err != nil {
 			t.Fatal(err)

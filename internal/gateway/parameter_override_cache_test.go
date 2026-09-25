@@ -29,7 +29,7 @@ func TestHandlerParameterOverrideCacheKeepsOnlyLastGroup(t *testing.T) {
 		dialectGatewayGroup{id: 1, name: "first", upstreamURL: "https://first.example", apiKeys: []string{"sk-one", "sk-two", "sk-three"}, settings: settings("first")},
 		dialectGatewayGroup{id: 2, name: "second", upstreamURL: "https://second.example", apiKeys: []string{"sk-four"}, settings: settings("second")},
 	)
-	// 暂时冷却第三个凭据，形成同分组重试、跨分组、返回原分组的顺序。
+	// Temporarily cool down the third credential, producing retries within the group, then across groups, then back to the original group.
 	until := time.Now().Add(time.Hour)
 	forwarder.onCall = func(index int) {
 		switch index {

@@ -9,14 +9,14 @@ import (
 
 const codexWSSessionIDPrefix = "gptload-codex-ws-"
 
-// 先于应用运行时的通用脱敏和日志写入 Hook 注册，避免 session 前缀先被
-// 遮蔽而无法匹配，或原始错误正文先被其他 Hook 持久化。
+// Register before the application runtime's generic redaction and log-writing hooks, so the session prefix cannot be
+// obscured before matching or the raw error body persisted by another hook.
 func init() {
 	logrus.AddHook(codexWSLogHook{})
 }
 
-// CPA v7.2.151 在通知 lifecycle 前将 CloseError 正文写入默认 logger。
-// 仅处理本封装会话的该条日志，不修改全局级别、输出或其他执行器的日志。
+// CPA v7.2.151 writes the CloseError body to the default logger before notifying the lifecycle.
+// Process only the log entry for this wrapper session; do not alter the global level, output, or logs from other executors.
 type codexWSLogHook struct{}
 
 func (codexWSLogHook) Levels() []logrus.Level { return []logrus.Level{logrus.InfoLevel} }
@@ -31,7 +31,7 @@ func (codexWSLogHook) Fire(entry *logrus.Entry) error {
 	}
 	entry.Message = message
 	entry.Data["error_class"] = "upstream_error"
-	// 只提取 Gorilla CloseError 的数值关闭码；未知格式也不保留错误正文。
+	// Extract only Gorilla CloseError's numeric close code; unknown formats do not retain the error body either.
 	if detail, ok := strings.CutPrefix(rawError, "websocket: close "); ok {
 		if end := strings.IndexAny(detail, " :"); end >= 0 {
 			detail = detail[:end]

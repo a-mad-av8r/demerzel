@@ -6,7 +6,7 @@ import (
 	cpaembedded "github.com/router-for-me/CLIProxyAPI/v7/gptload-embedded/embedded"
 )
 
-// antigravityAPIOptions 只为凭据准备完成后的业务调用设置代理目标。
+// antigravityAPIOptions sets a proxy target only for business calls after credential preparation completes.
 func antigravityAPIOptions(ctx context.Context, apiRoot string) (cpaembedded.AntigravityOptions, error) {
 	options, err := antigravityOptions(ctx)
 	if err != nil {

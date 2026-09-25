@@ -240,7 +240,7 @@ func (observer *streamEventObserver) classify(
 		return genericProviderError, nil
 	}
 	if observer.sawTerminal {
-		// 首个协议终态确定观测结果；后续数据仅透传。
+		// The first protocol terminal state determines the observation outcome; later data is only forwarded.
 		return false, nil
 	}
 

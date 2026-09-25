@@ -125,7 +125,7 @@ func judgeUpstreamResult(
 		DownstreamErr:       downstreamErr,
 		Now:                 now,
 	}, decisionContext)
-	// 搜索错误不写入模型冷却或自动权重；明确的账号认证故障仍沿用生命周期处理。
+	// Search errors do not write model cooldown or automatic weights; explicit account-authentication failures still follow lifecycle handling.
 	if decisionContext.Operation == execution.OperationWebSearch &&
 		decision.Effect != health.EffectSkipGroup &&
 		decision.Category != health.FailureCategoryAuthenticationRequired &&

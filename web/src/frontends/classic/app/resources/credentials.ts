@@ -558,7 +558,7 @@ export function projectCredentialItem(value: unknown): CredentialItemDto {
   const cooldownUntil = projectNullableEpochMilliseconds(record.cooldown_until_ms)
   const recovery = projectRecovery(record.recovery)
   if (
-    // 分组停用或权重为 0 时，active 凭据的运行时状态也会是 disabled。
+    // When the group is disabled or its weight is zero, an active credential's runtime status is also disabled.
     (configuredStatus === 'disabled' && effectiveStatus !== 'disabled') ||
     (weight === 0 && effectiveStatus !== 'disabled') ||
     (effectiveStatus === 'cooldown') !== (cooldownUntil !== null) ||
@@ -1189,7 +1189,7 @@ export async function cacheCredentialItem(
     .flatMap((items) => items ?? [])
     .find(({ credential_id }) => credential_id === item.credential_id)
   for (const query of queries) {
-    // 批量操作会更新汇总并将旧明细标为过期；不能再用旧明细计算增减。
+    // Batch operations update summaries and stale old details; old details can no longer calculate deltas.
     if (query.state.isInvalidated) {
       await queryClient.refetchQueries(
         { queryKey: query.queryKey, exact: true, type: 'active' },

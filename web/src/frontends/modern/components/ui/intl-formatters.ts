@@ -1,4 +1,3 @@
-// 跨组件和页面复用格式化器，避免逐行、逐单元格重复创建 Intl 实例。
 const numbers = new Map<string, Intl.NumberFormat>()
 const dates = new Map<string, Intl.DateTimeFormat>()
 const maximumEntries = 64

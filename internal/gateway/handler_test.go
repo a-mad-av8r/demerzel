@@ -812,7 +812,7 @@ func TestGatewayFailureAndValidationRecoveryRecoveryFirstLeavesNewFailure(t *tes
 }
 
 func (registry *mutatingRuntimeRegistry) WithCredentialCandidates(groups []uint, excluded func(uint) bool, now time.Time, fn func([]state.CredentialMeta)) {
-	// 故意在收集后改变身份/状态，覆盖较弱来源返回旧候选的防线。
+	// Deliberately change identity/state after collection to cover the defence against weaker sources returning stale candidates.
 	fn(registry.CollectCredentialCandidates(groups, excluded, now))
 }
 
@@ -1639,13 +1639,13 @@ func TestHandlerEnforcesModelUTF8ByteLimitBeforeAttempt(t *testing.T) {
 		},
 		{
 			name:       "multibyte UTF-8 255 bytes accepted",
-			model:      strings.Repeat("界", 85),
+			model:      strings.Repeat("☃", 85),
 			wantStatus: http.StatusOK,
 			wantCalls:  1,
 		},
 		{
 			name:       "multibyte UTF-8 256 bytes rejected",
-			model:      strings.Repeat("界", 84) + strings.Repeat("é", 2),
+			model:      strings.Repeat("☃", 84) + strings.Repeat("é", 2),
 			wantStatus: http.StatusBadRequest,
 			wantCode:   reasonInvalidProtocolRequest.Code,
 		},
@@ -3232,7 +3232,7 @@ func TestHandlerDoesNotRetryDownstreamWriteDeadline(t *testing.T) {
 }
 
 func TestHandlerDoesNotAdvanceCandidatesAfterRequestDeadline(t *testing.T) {
-	// 虚拟时间在转发器等待 deadline 后才推进，避免路由阶段提前耗尽预算。
+	// Virtual time advances only after the forwarder waits for its deadline, preventing the routing phase from exhausting the budget early.
 	synctest.Test(t, func(t *testing.T) {
 		forwarder := &scriptedForwarder{streamResults: []UpstreamResult{
 			{Err: context.DeadlineExceeded, RequestWritten: true},

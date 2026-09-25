@@ -1,148 +1,106 @@
 # Demerzel
 
-**Status: installer productization is under review. No release, package, or Homebrew tap has been published.**
+![Demerzel — local-first AI gateway](web/public/assets/demerzel_logo.png)
 
-Demerzel is a local-first LLM gateway forked from
-[tbphp/gpt-load v2 @ `1f615d83`](https://github.com/tbphp/gpt-load/tree/1f615d839338)
-(MIT). It provides individually named provider accounts, model selection
-separate from account selection, and deterministic serial failover.
+**A local-first gateway for managing provider accounts, model access and failover.**
 
-- [macOS installation](docs/demerzel/install-macos.md) — private Homebrew formula, service custody, state and rollback.
-- [Linux installation](docs/demerzel/install-linux.md) — authenticated artifact download and persistent XDG paths.
-- [Rootless Podman installation](docs/demerzel/install-containers.md) — local Demerzel build, named data volume, external age identity.
-- [Key custody and recovery](docs/demerzel/key-custody.md) — native vaults, age custody, migration and restore boundaries.
-- [Actual Go module contracts](docs/demerzel/module-contracts.md) — owned interfaces and conformance checks.
-- [Credential accounts](docs/demerzel/accounts.md) — supported account CLI workflows and protected credential output.
-- [Visual architecture](docs/demerzel/architecture.html) — open locally in any browser.
-- [Donor provenance](VENDORING.md) — exact upstream module revisions, modifications and retained notices.
-- [Switchyard spike](docs/demerzel/2026-09-24-switchyard-spike.md) — evaluation only; the benchmark is blocked pending authorized provider responses and raw p95 data. It is not measured performance or released model policy.
-- [Research and execution plan](https://github.com/Adaptech-AI/kos-infra/tree/adam/llm-router-research/docs/kos-infra-adaptech/discovery) — design decisions and release gates.
+Demerzel is distributed under the MIT Licence and is forked from [tbphp/gpt-load v2](https://github.com/tbphp/gpt-load/tree/1f615d839338); see [`LICENSE`](LICENSE), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`VENDORING.md`](VENDORING.md) for attribution and component details.
 
-## Private installation status
+## What it does
 
-`packaging/homebrew/demerzel.rb` is the tap-ready macOS formula. The intended
-single Homebrew command, after the private tap and a signed release are approved,
-is:
+- **Manages multiple provider accounts.** Keep credentials individually named and encrypted; enable or disable accounts without changing clients.
+- **Separates model choice from account choice.** Configure channel protocols and model names independently from the account-selection strategy.
+- **Supports per-group routing.** New groups default to serial account selection; existing groups that omit the setting retain weighted-fair selection. A quota reserve can be configured from 0 to 100 per cent.
+- **Fails over predictably.** Credential-scoped quota rejections advance the persisted account cursor. Model- or request-scoped limits do not move it; replay-safe requests may use another account for that request.
+- **Provides OpenAI-compatible endpoints.** Clients can use the supported Chat Completions and Responses protocols; Anthropic and Gemini adapters are also available.
+- **Includes a management UI and account CLI.** The browser UI manages channels, groups, keys and usage. Secret-bearing account commands use an owner-only Unix socket rather than a plain HTTP control endpoint.
+- **Connects OMP and OpenKai.** The home page generates OpenAI Responses-compatible provider configuration for both clients. Choose an access key that supports `openai-responses` and a model; keep `DEMERZEL_API_KEY` in the client's environment file, not in `models.yml`.
+
+See the [visual architecture](docs/demerzel/architecture.html), [module contracts](docs/demerzel/module-contracts.md), [credential accounts guide](docs/demerzel/accounts.md) and [key-custody runbook](docs/demerzel/key-custody.md).
+
+## Availability and installation
+
+The source is public. **No signed GitHub release, Homebrew tap or Bun/npm package has been published.** Pre-built `curl` and Homebrew installation therefore cannot be used yet. The release workflow also requires an approved tag on `main` and protected release approval; it currently accepts strict `v2.x.y` SemVer tags.
+
+| Channel                   | Current state                                                                                                  | Guide                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Build from source         | Available from a checkout containing this revision                                                             | Instructions below                                                                |
+| Signed release via `curl` | Installer and verification procedure are ready; release assets are not published                               | [macOS](docs/demerzel/install-macos.md) · [Linux](docs/demerzel/install-linux.md) |
+| Homebrew                  | Formula is in `packaging/homebrew/demerzel.rb`; the public tap and release are not available                   | [macOS installation](docs/demerzel/install-macos.md)                              |
+| Bun                       | A Bun-compatible launcher for the Go gateway is prepared locally; package and signed release are not published | [Bun launcher](packaging/bun/README.md)                                           |
+| Rootless Podman           | Local container build and run instructions are available                                                       | [Container installation](docs/demerzel/install-containers.md)                     |
+
+### Build and run from source
+
+Requirements: Go 1.27, Node.js 24.11 or later, Corepack and pnpm 11.17. The
+current public implementation branch is `adam/m2-productization`; the source
+build commands below start from that branch.
 
 ```sh
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
+git clone --branch adam/m2-productization --single-branch \
+  https://github.com/a-mad-av8r/demerzel.git
+cd demerzel
+corepack enable
+make build
+DATA_DIR="$HOME/.local/share/demerzel-dev" ./demerzel
 ```
 
-It is **not usable yet**: the tap repository and release assets are publication
-gates and have not been created or published by this work. Authenticate to the
-private GitHub repository explicitly with `gh auth login --hostname
-github.com --scopes repo` first. The token is passed through the environment, not
-printed or embedded in a formula. The formula verifies the Sigstore bundle
-against the expected Demerzel release workflow identity and verifies the chosen
-binary against the signed manifest. Do not substitute an upstream download or
-an unverified `curl | sh` command.
+Open <http://127.0.0.1:3001>. The server binds to loopback by default. Use a dedicated `DATA_DIR` for development; do not point a fresh key at an existing database or move a populated data directory without following the [custody and restore procedure](docs/demerzel/key-custody.md).
 
-Demerzel has no in-app release checker or updater. Update checking and install
-verification belong to the Demerzel installer; the running service does not
-query `tbphp/gpt-load` releases.
+The first run creates management authentication material in `DATA_DIR/auth.key`. Keep the data directory owner-only. For unattended hosts, configure explicit age custody before first boot; desktop macOS and Linux may use their unlocked native secret services. Windows does not currently provide those custody backends and requires `ENCRYPTION_KEY` from a controlled environment.
 
-## Runtime and recovery invariants
+### Connecting OMP and OpenKai
 
-- macOS Homebrew service: binary under the Homebrew prefix; fresh data defaults
-  to `$HOME/.demerzel`, with an external age identity at
-  `$HOME/.config/demerzel/identity.txt`.
-- Homebrew pins its selected absolute root in
-  `$HOME/.config/demerzel/data-dir` and retains that path across upgrades.
-  Set `HOMEBREW_DEMERZEL_DATA_DIR` on first install only when deliberately
-  continuing an existing absolute path; later root changes are refused by the
-  formula.
-- Linux native install: persistent data under
-  `${XDG_DATA_HOME:-$HOME/.local/share}/demerzel`; external identity under
-  `$HOME/.config/demerzel/identity.txt`.
-- Rootless Podman: Demerzel-owned local image, named `demerzel-data` volume at
-  `/app/data`, and a read-only age identity bind mount outside that volume.
-- Secret-bearing account CLI commands connect only through the owner-only Unix
-  socket at `DATA_DIR/control.sock`, with the same Unix user and exact `DATA_DIR`
-  as the gateway. The browser/data-plane HTTP listener remains loopback; it is
-  not an account CLI transport.
-- Keep the same canonical absolute `DATA_DIR` for every restart, upgrade and
-  rollback. Its canonical path participates in native-vault custody and the
-  installation identity. A database alone is not a backup.
-- Existing development data under `./data` is **not** auto-migrated to the
-  macOS/Linux defaults. Keep its original canonical absolute `DATA_DIR` and
-  matching custodied key, or follow the supervised database-plus-custody
-  restore/import runbook before moving state; an empty root is not a credential
-  migration. Never copy or rotate age ciphertext by itself.
-- Preserve the database, `auth.key`, the matching Keychain/Secret Service item
-  or the separate age identity plus `encryption.key.age`, and
-  `runtime-state.checkpoint.json` as one recovery set. Uninstall preserves
-  state by default. The explicit `--purge` path removes only the app-owned data
-  directory after an exact typed confirmation; it never removes the external
-  age identity.
-- Unattended macOS services use age custody from first boot. Do not switch an
-  existing database to another key backend. Windows has no supported native
-  vault or age custody in this productization; Windows operators must provide
-  `ENCRYPTION_KEY` explicitly in a controlled environment.
+In the home page, choose **OMP** or **OpenKai**, select an access key that permits the `openai-responses` protocol, and choose a model exposed by that key. Merge the generated `demerzel` provider entry into the existing `~/.omp/agent/models.yml`; do not replace other providers. Both clients use that OMP-compatible model file by default.
 
-For native-vault escrow and recovery, record the non-secret locator alongside
-backup metadata:
+Store the key as `DEMERZEL_API_KEY` in `~/.omp/agent/.env` for OMP or `~/.openkai/.env` for OpenKai. Keep those files owner-only. The generated model YAML contains only the environment-variable name; the key is copied separately or included only when the explicit environment-file copy action is used.
+
+## Runtime and recovery
+
+- **Listener:** loopback HTTP on port 3001 by default. Do not expose it directly to an untrusted network.
+- **Data:** use one canonical absolute `DATA_DIR` for every restart, upgrade and rollback. macOS defaults to `~/.demerzel`; Linux defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/demerzel`.
+- **Age custody:** unattended native installations keep the age identity at `$HOME/.config/demerzel/identity.txt`, outside `DATA_DIR`. The standalone and Homebrew installers pin the selected absolute data path and fail closed when the matching identity is missing.
+- **Account CLI:** run it as the gateway's Unix user with the same `DATA_DIR`; it connects through `DATA_DIR/control.sock` and does not use the browser listener as a control transport.
+- **Backups:** preserve the database and SQLite sidecars when applicable, `auth.key`, the matching native custody item or the external age identity plus `encryption.key.age`, `runtime-state.checkpoint.json` and operator configuration as one recovery set. Verify a restore before relying on it.
+- **Uninstall:** package removal preserves runtime data by default. Explicit purge requires a separate exact-path confirmation and never removes the external age identity.
+
+The non-secret vault locator can be recorded with backup metadata:
 
 ```sh
 demerzel key-locator --data-dir "${DATA_DIR:-$(cat "$HOME/.config/demerzel/data-dir")}"
 ```
 
-The locator is not key material and does not replace a tested database-plus-key
-restore. See the [custody runbook](docs/demerzel/key-custody.md).
+The locator is not key material and does not prove a restore. Follow the [key-custody runbook](docs/demerzel/key-custody.md) before changing custody or moving data.
 
 ## Account routing
 
-New groups persist `overrides.account_selection=serial`; existing groups that
-omit the setting retain `weighted_fair`. This per-group choice does not change
-global `route_strategy`. Serial selection uses a 10% quota reserve by default
-only when an account-level quota observation supplies a remaining ratio and
-reset time; configure `serial_quota_reserve_percent` from 0 through 100.
+New groups persist `overrides.account_selection=serial`; existing groups without the setting retain `weighted_fair`. This per-group setting does not change the global `route_strategy`. Serial selection uses the configured quota reserve only when an account-level observation supplies both a remaining ratio and reset time.
 
-A credential-scoped quota rejection blocks the primary; the next eligible
-selection advances and persists the account cursor.
-Model/request-scoped limits do not move that cursor, although a replay-safe
-`next_candidate` decision can use another account for the current request.
-Failback waits 60 seconds after the blocked window resets and retries with
-backoff from 5 seconds up to 5 minutes. An idempotent list-models GET is a
-preflight only when that provider declares the route; otherwise a single
-caller-initiated inference serves as the recovery probe. Only a successful
-caller inference promotes the primary account. The scheduling checkpoint
-retains cursor and backoff state across clean restarts.
+A credential-scoped quota rejection blocks the primary account; the next eligible selection advances and persists the account cursor. Model- and request-scoped limits do not move that cursor. Failback waits 60 seconds after the blocked window resets and retries with back-off from 5 seconds to 5 minutes. A provider-declared, idempotent list-models GET can be a recovery probe; otherwise the next caller-initiated inference is used. Only a successful caller inference promotes the primary account. The scheduling checkpoint retains cursor and back-off state across clean restarts.
 
-## Origin and scope
-
-The fork keeps upstream history and attribution (`LICENSE`,
-`THIRD_PARTY_NOTICES.md`, `LICENSES/`). `upstream` points to tbphp/gpt-load;
-`origin` points to a-mad-av8r/demerzel. Execution uses the existing Bifrost Core
-and CLIProxyAPI adapters. Do not import primary subscription accounts or treat
-this work as a production release. `README_CN.md` and `README_JP.md` remain
-historical upstream documentation, not Demerzel installation guides.
-
-## Run from source (development only)
-
-Use Go 1.27, Node ≥24.11 and pnpm 11.17. A desktop macOS development process may
-use the unlocked login Keychain; Linux desktop development may use an unlocked
-Secret Service. For an unattended process, configure explicit age custody
-before first boot.
+## Development
 
 ```sh
-pnpm --dir web install --frozen-lockfile
-pnpm --dir web run build
-go build -o /tmp/demerzel .
-DATA_DIR="$HOME/.local/share/demerzel-dev" /tmp/demerzel
+make dev       # Build the web UI and run the application with Go's race detector
+make build     # Build the web UI and the Demerzel binary
+make test      # Run Go unit tests
+make check     # Run formatting, static checks, web validation, build and Go tests
 ```
 
-The browser/data-plane listener is `http://127.0.0.1:3001`; keep it on loopback
-unless a separately protected deployment is intentionally configured. The
-secret-bearing account CLI uses only the owner-only `DATA_DIR/control.sock`
-Unix socket with the same user and absolute `DATA_DIR` as the gateway; it does
-not send `AUTH_KEY` or upstream keys through a plain HTTP listener. Generated
-management authentication is stored in `DATA_DIR/auth.key`. This is a
-development recipe, not a production service or backup system.
+`third_party/cpaembedded` is a separate Go module. When changing it, follow the extra checks in [`CONTRIBUTING.md`](CONTRIBUTING.md). For local Podman setup, external age custody and persistent-volume recovery, see the [container guide](docs/demerzel/install-containers.md).
 
-## Cortex integration (deferred)
+## Project documents
 
-Cortex is being migrated. Demerzel does not require a Cortex API, credentials,
-process, or environment variable to build, start, serve the UI, or manage
-accounts. Keep Cortex out of the service configuration; contributor memory and
-handoff integration can be connected after that migration. Rootless Podman is
-also optional for native installations, not a gateway dependency.
+- [macOS install and Homebrew status](docs/demerzel/install-macos.md)
+- [Linux install and signed `curl` procedure](docs/demerzel/install-linux.md)
+- [Credential accounts](docs/demerzel/accounts.md)
+- [Key custody and recovery](docs/demerzel/key-custody.md)
+- [Module contracts](docs/demerzel/module-contracts.md)
+- [Visual architecture](docs/demerzel/architecture.html)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Vendoring and provenance](VENDORING.md)
+- [Security reporting](SECURITY.md)
+
+## Licence
+
+Demerzel is distributed under the MIT Licence. It retains the upstream GPT-Load fork history and attribution; third-party licences and modifications are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`VENDORING.md`](VENDORING.md).

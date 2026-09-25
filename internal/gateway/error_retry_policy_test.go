@@ -29,7 +29,7 @@ func TestAnthropicPrechargeFailureRetriesWithoutCredentialPenalty(t *testing.T) 
 				w.Header().Set("Content-Type", "application/json")
 				if key == "sk-one" {
 					w.WriteHeader(http.StatusForbidden)
-					_, _ = fmt.Fprintf(w, `{"type":"error","error":{"type":%q,"message":"预扣费额度失败，余额 0.10，需要预扣 0.20"}}`, errorType)
+					_, _ = fmt.Fprintf(w, `{"type":"error","error":{"type":%q,"message":"Quota precharge failed: balance 0.10, precharge required 0.20"}}`, errorType)
 					return
 				}
 				_, _ = w.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","model":"model-a","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`))

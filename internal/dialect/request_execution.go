@@ -108,7 +108,7 @@ func hasMeaningfulField(object map[string]any, field string) bool {
 	}
 }
 
-// CountMidConversationSystemMessages 只观察真实角色，不把用户文本中的提示标签当作系统消息。
+// CountMidConversationSystemMessages observes only actual roles; it does not mistake prompt labels in user text for system messages.
 func CountMidConversationSystemMessages(clientProtocol protocol.Protocol, body []byte) int {
 	root, ok := decodeExecutionFeatureObject(body)
 	if !ok {
@@ -142,7 +142,7 @@ func CountMidConversationSystemMessages(clientProtocol protocol.Protocol, body [
 		}
 		itemType, _ := message["type"].(string)
 		if clientProtocol == protocol.OpenAIResponses && itemType != "" {
-			// 非指令项目也属于有序历史，不按部分工具类型枚举会话起点。
+			// Non-instruction items are also ordered history; do not enumerate particular tool types to find the start of a conversation.
 			seenConversation = true
 		}
 	}
@@ -172,7 +172,7 @@ func responsesCreateRequirements(
 	if exists && !ok {
 		return execution.RouteRequirementNative, execution.ResponsesStorePreferenceNone
 	}
-	// 其他资源与参数约束优先；仅纯 ID 续接使用上游存储要求。
+	// Other resource and parameter constraints take precedence; only pure-ID continuation requires upstream storage.
 	if hasMeaningfulField(root, "previous_response_id") {
 		return execution.RouteRequirementNative, execution.ResponsesStorePreferenceRequireStored
 	}

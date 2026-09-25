@@ -48,7 +48,6 @@ const specs = computed<CatalogSpec[]>(() => {
   return entries
 })
 
-/** 目录来源与模型名同属一条溯源信息，合并成一行避免占两行。 */
 const sourceLine = computed(() => `${sourceLabel.value} · ${metadata.value.name}`)
 
 const capabilities = computed(() =>
@@ -58,7 +57,6 @@ const capabilities = computed(() =>
     .concat(metadata.value.open_weights === true ? [t('models.detail.openWeights')] : []),
 )
 
-/** 已知 Models.dev 枚举本地化；新值保留原文，避免目录扩展导致信息丢失。 */
 const catalogStatus = computed(() => {
   const status = metadata.value.status
   if (!status || !knownStatuses.has(status)) return status
@@ -108,7 +106,6 @@ function formatModalities(): string {
   font-size: var(--text-label-xs);
 }
 
-/* label 与值同行内联，避免每项占两行。 */
 .model-spec__specs {
   display: flex;
   align-items: baseline;

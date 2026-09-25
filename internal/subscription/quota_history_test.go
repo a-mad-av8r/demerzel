@@ -28,16 +28,16 @@ func TestQuotaHistoryRecordsDisplayedPercentChangesAndSurvivesRestart(t *testing
 		}
 	}
 	record(10_000, "primary", 0.1)
-	// 剩余 89.51% 与 89.50% 都显示为 90%，不应新增历史点。
+	// Remaining 89.51% and 89.50% both display as 90%, so neither should add a history point.
 	record(20_000, "primary", 0.1049)
 	record(30_000, "secondary", 0.4)
 	flush()
 	record(40_000, "primary", 0.105)
 	flush()
-	// 剩余 89.49% 显示为 89%，即使相隔不到十五分钟也必须记录。
+	// Remaining 89.49% displays as 89%, so record it even when less than 15 minutes apart.
 	record(50_000, "primary", 0.1051)
 	flush()
-	// 重启后使用持久化的最后显示值去重。
+	// Deduplicate after restart using the persisted final displayed value.
 	manager.passiveQuota = newPassiveQuotaPending()
 	record(60_000, "primary", 0.1052)
 	flush()
@@ -77,7 +77,7 @@ func TestQuotaHistoryIgnoresMissingPercentAndKeepsSamplesAfterWriteFailure(t *te
 	if remaining, err := manager.FlushPassiveQuotaObservations(t.Context()); err == nil || !remaining {
 		t.Fatal("history failure must remain pending")
 	}
-	// 写入失败期间继续观测，每次显示值变化都必须保留。
+	// Continue observing during write failure; retain each displayed-value change.
 	for index, utilization := range []float64{0.9, 0.01, 0.02} {
 		manager.RecordPassiveQuotaObservation(credential.ID, ref.IdentityGeneration, 30_000+int64(index)*10_000,
 			[]providerobservation.QuotaWindow{{ID: "primary", WindowSeconds: &seconds, Utilization: &utilization}})
@@ -201,10 +201,10 @@ func TestQuotaHistoryRecordsEveryDisplayedChangeAndDropsOutOfOrderObservation(t 
 	record(20_000, 0.9)
 	flush()
 	record(30_000, 0.01)
-	// 未刷新的相邻显示值变化都必须保留。
+	// Retain adjacent displayed-value changes that have not yet flushed.
 	record(40_000, 0.02)
 	flush()
-	// 乱序观测不能替换较新的额度值。
+	// An out-of-order observation cannot replace a newer quota value.
 	record(50_000, 0.015)
 	record(45_000, 0)
 	flush()
@@ -212,7 +212,7 @@ func TestQuotaHistoryRecordsEveryDisplayedChangeAndDropsOutOfOrderObservation(t 
 	flush()
 	record(930_000, 0.4)
 	flush()
-	// 重启后仍从持久化的最后显示值继续去重。
+	// Continue deduplication from the persisted final displayed value after restart.
 	manager.passiveQuota = newPassiveQuotaPending()
 	record(940_000, 0.39)
 	flush()

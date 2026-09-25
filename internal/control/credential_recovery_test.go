@@ -13,7 +13,7 @@ import (
 	subscriptionruntime "gpt-load/internal/subscription/runtime"
 )
 
-// 手动刷新凭据是异常账号唯一的原地恢复入口，不再要求先重新连接或导入。
+// Manual credential refresh is the only in-place recovery route for an unhealthy account; it no longer requires reconnecting or importing first.
 func TestRefreshGroupCredentialRecoversFailedAuthStates(t *testing.T) {
 	t.Parallel()
 
@@ -47,7 +47,7 @@ func TestRefreshGroupCredentialRecoversFailedAuthStates(t *testing.T) {
 	}
 }
 
-// 恢复权限只属于手动刷新凭据，其他控制面操作在异常状态下继续被拒。
+// Recovery permission belongs only to manual credential refresh; other control-plane operations remain rejected in unhealthy states.
 func TestSubscriptionControlOperationsStillRejectFailedAuthStates(t *testing.T) {
 	t.Parallel()
 

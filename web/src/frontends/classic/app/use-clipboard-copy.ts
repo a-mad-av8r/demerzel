@@ -29,7 +29,7 @@ export function useClipboardCopy() {
     const isCurrent = () => !disposed && sequence === operation
     pending.value = true
     try {
-      // 已有文本直接复制，避免在用户点击与兼容复制之间额外等待。
+      // Copy existing text immediately to avoid extra delay between the user action and compatibility fallback.
       const value = typeof source === 'function' ? await source() : source
       if (!isCurrent()) return 'cancelled'
       const copied = await copyText(value, undefined, isCurrent)

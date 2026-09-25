@@ -2,7 +2,7 @@ package embedded
 
 import claudeauth "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/claude"
 
-// ClaudeAPIEndpoints 集中声明凭据准备完成后的业务端点，不包含 OAuth 与身份核验。
+// ClaudeAPIEndpoints declares the service endpoints used after credentials are prepared, excluding OAuth and identity verification.
 type ClaudeAPIEndpoints struct {
 	ExecutionBase string
 	ProfileURL    string
@@ -11,7 +11,7 @@ type ClaudeAPIEndpoints struct {
 	UsageURL      string
 }
 
-// ResolveClaudeAPIEndpoints 保留完整官方目标集合，或将原生路径映射到代理根地址。
+// ResolveClaudeAPIEndpoints retains the complete official target set or maps native paths to the proxy root URL.
 func ResolveClaudeAPIEndpoints(apiRoot string) (ClaudeAPIEndpoints, error) {
 	endpoints := ClaudeAPIEndpoints{
 		ExecutionBase: "https://api.anthropic.com",

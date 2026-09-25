@@ -25,8 +25,8 @@ func TestQuotaSourcesMatchWithoutDependingOnDisplayName(t *testing.T) {
 		active.QuotaWindows[1].SourceID != "codex_future_tier" {
 		t.Fatalf("active sources = %#v", active.QuotaWindows)
 	}
-	// 名称变化不影响来源；本次计费到普通额度，通用组仍归账号自身。
-	// 周窗口从主动 primary 变为响应头 secondary。
+	// A name change does not affect the source: this request is billed to ordinary quota, so the generic group remains the account's own.
+	// The period window changes from active primary to response-header secondary.
 	passive := NormalizePassiveQuotaWindows(map[string]string{
 		"X-Codex-Active-Limit":                       "premium",
 		"X-Codex-Future-Tier-Limit-Name":             "Renamed display",

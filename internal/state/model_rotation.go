@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-// GroupModelKey 将轮询进度限定在同组同名模型，组内凭据共享进度。
+// GroupModelKey limits rotation progress to a same-named model in one Group; credentials in the Group share progress.
 type GroupModelKey struct {
 	GroupID       uint
 	ExternalModel string
 }
 
-// SelectModel 接收按上游 ID 排序的可用模型；只消费模型轮次，不修改凭据份额。
+// SelectModel receives available models ordered by upstream ID; it consumes only model rotation and does not change credential shares.
 func (s *SchedulingState) SelectModel(groupID uint, externalModel string, models []string) string {
 	if len(models) == 0 {
 		return ""
@@ -25,7 +25,7 @@ func (s *SchedulingState) SelectModel(groupID uint, externalModel string, models
 				continue
 			}
 			selected = model
-			// 只把本次选中的模型移到队尾，保留其他凭据仍可用模型的先后顺序。
+			// Move only the selected model to the end, preserving the order of models still available to other credentials.
 			copy(order[index:], order[index+1:])
 			order[len(order)-1] = model
 			break
@@ -58,7 +58,7 @@ func (s *SchedulingState) syncModelCursorsLocked(snapshot *ConfigSnapshot) {
 	s.ledger.ModelCursors = cursors
 }
 
-// 配置发布和检查点恢复都保留现存模型的轮询顺序，新模型追加到队尾。
+// Configuration publication and checkpoint recovery retain rotation order for extant models, appending new models to the end.
 func reconcileModelOrder(previous, configured []string) []string {
 	remaining := make(map[string]struct{}, len(configured))
 	for _, model := range configured {

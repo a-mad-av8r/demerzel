@@ -7,8 +7,8 @@ import (
 	"gpt-load/internal/usage"
 )
 
-// 服务端压缩的额外用量位于 iterations；顶层只包含回答轮次。
-// 仅计入 compaction，不能再累加重复描述回答或服务端 fallback 的轮次。
+// Server-side compaction's additional usage is in iterations; the top level contains only answer turns.
+// Count only compaction, never answer turns described redundantly or server-side fallback turns.
 func (e *anthropicUsageStreamExtractor) observeCompaction(object map[string]json.RawMessage) usage.Diagnostics {
 	raw, present := object["iterations"]
 	if !present || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
@@ -43,7 +43,7 @@ func (e *anthropicUsageStreamExtractor) observeCompaction(object map[string]json
 		}
 		tokens = combined
 	}
-	// iterations 是快照，重复上报不能重复计费；字段缺失时保留上次快照。
+	// iterations is a snapshot, so repeated reports must not be double-billed; retain the previous snapshot when the field is absent.
 	e.compaction = tokens
 	return diagnostics
 }

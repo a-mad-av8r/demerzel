@@ -516,8 +516,8 @@ func TestOAuthCallbackServerIsPublicStateBoundAndNoStore(t *testing.T) {
 	contentSecurityPolicy := response.Header.Get("Content-Security-Policy")
 	if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" ||
 		response.Header.Get("Referrer-Policy") != "no-referrer" || !strings.Contains(contentSecurityPolicy, "script-src 'sha256-") ||
-		response.Header.Get("Location") != "" || !strings.Contains(body, "授权已完成") ||
-		!strings.Contains(body, "返回 GPT-Load 添加账号") || !strings.Contains(body, "关闭") {
+		response.Header.Get("Location") != "" || !strings.Contains(body, "Authorisation complete") ||
+		!strings.Contains(body, "Return to GPT-Load to add your account") || !strings.Contains(body, "close") {
 		t.Fatalf("callback response = %d %#v", response.StatusCode, response.Header)
 	}
 	completed, err := fixture.service.GetCredentialStage(t.Context(), started.StageID)
@@ -556,7 +556,7 @@ func TestOAuthCallbackServerRejectsStateFromAnotherDriverEndpoint(t *testing.T) 
 	callbackURL := "http://" + fixture.service.oauthCallback.Addr(claudeCallback) +
 		"/callback?state=" + url.QueryEscape(payload.State) + "&code=authorization-code"
 	response, body := getOAuthCallbackResponse(t, callbackURL)
-	if response.StatusCode != http.StatusOK || !strings.Contains(body, "无法识别这次授权") {
+	if response.StatusCode != http.StatusOK || !strings.Contains(body, "Unrecognised authorisation") {
 		t.Fatalf("cross-endpoint callback response = %d %s", response.StatusCode, body)
 	}
 	pending, err := fixture.service.GetCredentialStage(t.Context(), started.StageID)
@@ -594,7 +594,7 @@ func TestOAuthCallbackServerMarksDeniedAuthorizationFailed(t *testing.T) {
 	callbackURL := "http://" + fixture.service.oauthCallback.Addr(callbackSpec) + "/auth/callback?state=" + payload.State + "&error=access_denied"
 	response, body := getOAuthCallbackResponse(t, callbackURL)
 	if response.StatusCode != http.StatusOK || response.Header.Get("Location") != "" ||
-		!strings.Contains(body, "授权未完成") || !strings.Contains(body, "关闭") {
+		!strings.Contains(body, "Authorisation incomplete") || !strings.Contains(body, "close") {
 		t.Fatalf("callback response = %d %#v", response.StatusCode, response.Header)
 	}
 	failed, err := fixture.service.GetCredentialStage(t.Context(), started.StageID)
@@ -637,8 +637,8 @@ func TestOAuthCallbackExchangeFailureDoesNotOfferConsumedCallbackRetry(t *testin
 
 	callbackURL := "http://" + fixture.service.oauthCallback.Addr(callbackSpec) + "/auth/callback?state=" + payload.State + "&code=one-time-authorization-code"
 	response, body := getOAuthCallbackResponse(t, callbackURL)
-	if response.StatusCode != http.StatusOK || !strings.Contains(body, "换取凭据时失败") ||
-		!strings.Contains(body, "不能重复使用") || strings.Contains(body, "copy-callback-url") ||
+	if response.StatusCode != http.StatusOK || !strings.Contains(body, "Credential exchange failed") ||
+		!strings.Contains(body, "cannot be reused") || strings.Contains(body, "copy-callback-url") ||
 		strings.Contains(body, "one-time-authorization-code") {
 		t.Fatalf("callback response = %d %s", response.StatusCode, body)
 	}

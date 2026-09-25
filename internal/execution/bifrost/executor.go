@@ -213,8 +213,8 @@ func (r *Runtime) ExecuteStream(
 		))
 	}
 	if prepared.request != nil && prepared.upstreamProtocol == protocol.Anthropic {
-		// SDK 的 Chat 流会丢弃 message_delta；借用保留原始事件的读取路径，
-		// 请求仍按原有 Chat builder 生成，客户端仍使用原有 Anthropic→Chat 转换。
+		// The SDK's Chat stream drops message_delta; borrow the raw-event retaining read path,
+		// while still building requests with the existing Chat builder and using existing Anthropic-to-Chat conversion for clients.
 		prepared.responsesRequest = prepared.request.ToResponsesRequest()
 	}
 	if prepared.responsesRequest != nil {
@@ -478,7 +478,7 @@ func (r *Runtime) prepare(spec execution.AttemptSpec, stream bool) (preparedAtte
 	}
 	safeQuery := safeAttemptQuery(spec)
 	if mode == channel.RouteConverted {
-		// 源协议的调用标记和响应格式不能继承到其他协议的目标 URL。
+		// Source-protocol call markers and response formats cannot carry over to a target URL using another protocol.
 		switch spec.ClientProtocol {
 		case protocol.Anthropic:
 			safeQuery = removeRawQueryValue(safeQuery, "beta")

@@ -1,6 +1,5 @@
 import { onMounted, onScopeDispose } from 'vue'
 
-// 全站共用一个被动监听，包含 Portal 浮层；只更新滑块显隐，不干预滚动或测量布局。
 export function useScrollbarActivity(): void {
   const active = new Map<HTMLElement, ReturnType<typeof setTimeout>>()
   let media: MediaQueryList | undefined

@@ -646,7 +646,7 @@ func logCredentialProbe(ref state.CredentialRef, response CredentialProbeRespons
 	)
 }
 
-// 禁用分组不进入数据面快照；只为手动测试编译局部视图，不发布或启用分组。
+// A disabled group does not enter the data-plane snapshot; compile a local view only for manual testing, without publishing or enabling the group.
 func (s *Service) compileDisabledGroupProbe(ctx context.Context, row models.Group) (state.GroupView, error) {
 	group, err := mapGroupRowToState(row)
 	if err != nil {

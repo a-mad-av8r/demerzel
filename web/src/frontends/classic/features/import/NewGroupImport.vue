@@ -821,7 +821,7 @@ function startDiscovery(): void {
     draft.connection_type === 'subscription' ? currentReadyStages()[0] : undefined
   if (draft.connection_type === 'subscription' && !subscriptionStage) {
     expireStaleReadyStages()
-    // 让位给 draft 变更触发的 invalidateDiscovery，否则这条提示会被它清掉。
+
     void nextTick(() => {
       discoveryErrorKey.value = 'common.subscriptionErrors.stageExpired'
     })
@@ -989,7 +989,7 @@ async function submitCreate(): Promise<void> {
     currentReadyStages().length === 0
   ) {
     expireStaleReadyStages()
-    // 同上：draft 变更会触发清空 errorKey 的 watcher，先让它跑完。
+
     await nextTick()
     await reportSubmissionError('common.subscriptionErrors.stageExpired')
     return

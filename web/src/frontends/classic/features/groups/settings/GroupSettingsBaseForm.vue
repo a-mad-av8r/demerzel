@@ -53,7 +53,7 @@ const isSubscription = computed(() => props.connectionType === 'subscription')
 const currentChannel = computed(
   () => props.switchableChannels?.find(({ channel_id }) => channel_id === props.channelId) ?? null,
 )
-// 验活直接把该值当成上游模型 ID 使用，所以候选取 id 而不是可能被别名替换的 client_model。
+
 const validationModelOptions = computed(() =>
   [...props.models]
     .map(({ id, alias, alias_enabled }) => ({ id, alias: alias_enabled ? alias : '' }))

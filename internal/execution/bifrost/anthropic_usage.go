@@ -24,8 +24,8 @@ func captureAnthropicWireUsage(ctx *schemas.BifrostContext, prepared preparedAtt
 	if prepared.upstreamProtocol != protocol.Anthropic {
 		return nil
 	}
-	// 只取每个事件随 SDK chunk 返回的原始响应，不缓冲整个回答。
-	// 响应 hook 再启用 integration type，避免 SDK 分派时误清除兼容上游的捕获开关。
+	// Use only the raw response returned with each SDK chunk; do not buffer the entire answer.
+	// Re-enable the response hook's integration type to prevent SDK dispatch from clearing raw capture for compatible upstreams.
 	ctx.SetValue(schemas.BifrostContextKeyAllowPerRequestRawOverride, true)
 	ctx.SetValue(schemas.BifrostContextKeySendBackRawResponse, true)
 	ctx.SetValue(anthropicUsageCaptureKey, true)
@@ -37,7 +37,7 @@ func (capture *anthropicWireUsage) observe(raw *any) {
 		return
 	}
 	value := *raw
-	*raw = nil // 原始回答不得进入后续客户端序列化或普通日志。
+	*raw = nil // Raw answers must not enter subsequent client serialisation or ordinary logs.
 	capture.seen = true
 	body, ok := rawRequestJSON(value)
 	if !ok {
@@ -47,7 +47,7 @@ func (capture *anthropicWireUsage) observe(raw *any) {
 	if err := capture.extractor.Observe(body); err != nil {
 		capture.invalid = true
 	}
-	// 证据只保留最后一次原始 usage 对象，不保留消息内容。
+	// Retain evidence only for the final raw usage object, never message content.
 	var event struct {
 		Usage   json.RawMessage `json:"usage"`
 		Message struct {
@@ -107,9 +107,9 @@ func (capture *anthropicWireUsage) applyResponses(target *schemas.ResponsesRespo
 	return nil
 }
 
-// 在首个响应事件的同步 hook 中启用 message_delta，既保留后续用量事件，
-// 又不触发 SDK 请求分派阶段按供应商名单清除 raw capture 和 URL 的行为。
-// 此标记只由已确定上游协议为 Anthropic 的流式尝试设置。
+// Enable message_delta in the synchronous hook for the first response event, retaining subsequent usage events
+// without triggering SDK request dispatch to clear raw capture and URL behaviour by provider allow-list.
+// Set this marker only for streaming attempts already known to use the Anthropic upstream protocol.
 type anthropicUsageContextKey struct{}
 
 var anthropicUsageCaptureKey anthropicUsageContextKey

@@ -51,7 +51,6 @@ const query = useQuery(
       range.value,
     ],
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
-      // 两个接口使用同一时间范围，刷新时同时推进，任一失败不遮挡另一个图表。
       const timeRange = resolveTimeRange({ preset: range.value })
       const [usage, quota] = await Promise.allSettled([
         getUsage(
@@ -175,7 +174,6 @@ function quotaTooltipAt(at: number): string {
   const windows = quotaHistory.value?.windows.filter((window) => window.points.length) ?? []
   const lines: string[] = []
   for (const window of windows) {
-    // 无历史时当前额度以查询起点为展示时间；其余时间使用最近一次真实观测。
     const point = quotaPointAt(window, at)
     const key = 'credentialCards.quotaLabels.' + window.labelKey
     const label = quotaWindowTitle(window, window.labelKey && te(key) ? t(key) : window.label)

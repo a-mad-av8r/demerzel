@@ -700,7 +700,7 @@ func (r *Runtime) executeConvertedResponsesStream(
 			raw := response.ExtraFields.RawResponse
 			wireUsage.observe(&response.ExtraFields.RawResponse)
 			if wireUsage != nil && response.Type == "message_delta" && prepared.clientProtocol != protocol.Anthropic {
-				// 该事件只为取得原始用量；其他客户端协议在各自终止事件中接收最终用量。
+				// This event exists only to obtain raw usage; other client protocols receive final usage in their own terminal events.
 				idleTimer.resume()
 				continue
 			}
@@ -802,8 +802,8 @@ func (e *convertedResponsesStreamEncoder) encode(
 			if err != nil {
 				return nil, fmt.Errorf("marshal Anthropic stream event")
 			}
-			// 同协议重建只沿用上游的原始用量事件，保留缺失/零及 iterations 的语义。
-			// SDK 已完成内容块状态推进；这里不重算或重复叠加用量。
+			// Same-protocol reconstruction uses only the upstream's raw usage events, retaining missing, zero, and iterations semantics.
+			// The SDK has already advanced content-block state; do not recalculate or add usage again here.
 			if e.anthropicSource && raw != nil && (event.Type == anthropic.AnthropicStreamEventTypeMessageStart || event.Type == anthropic.AnthropicStreamEventTypeMessageDelta) {
 				original, ok := rawRequestJSON(raw)
 				if !ok {

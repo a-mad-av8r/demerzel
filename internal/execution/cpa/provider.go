@@ -60,7 +60,7 @@ func annotateProviderErrorEvidence(evidence *execution.ErrorEvidence, err error)
 	if evidence.Kind == execution.ErrorKindHTTP && evidence.StatusCode == http.StatusBadRequest &&
 		(evidence.Hint == "" || evidence.Hint == execution.FailureHintRequestRejected) &&
 		!explicitRequestRejection && !requestScopedFailure(err) {
-		// 仅细化通用拒绝；明确参数错误和 provider 的强请求级判定优先。
+		// Refine only generic rejection; explicit parameter errors and the provider's strong request-level determination take precedence.
 		switch strings.ToLower(strings.TrimSpace(evidence.Code)) {
 		case "unsupported_model", "unsupported-model":
 			evidence.Hint = execution.FailureHintModelUnavailable
@@ -117,7 +117,7 @@ type providerRequest struct {
 	// ContinuityKey is a private, tenant-scoped key used only by providers
 	// whose tool/thinking protocol needs an isolated multi-request replay lane.
 	ContinuityKey string
-	// BaseURL 是可选的订阅 API 代理根地址，原生路径由渠道解析。
+	// BaseURL is the optional subscription API proxy root; the channel resolves native paths.
 	BaseURL              string
 	ProxyURL             string
 	ProxyFromEnvironment bool

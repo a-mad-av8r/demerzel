@@ -1,205 +1,132 @@
 # macOS installation
 
-**Status: not published.** The formula is tap-ready at
-[`packaging/homebrew/demerzel.rb`](../../packaging/homebrew/demerzel.rb), but no
-private tap repository or release assets have been created/published by this
-work. The Homebrew command below becomes usable only after the publication gates
-at the end of this guide are completed.
+Demerzel's source repository is public. **There is not yet a signed GitHub release or a Homebrew tap**, so neither packaged installation command below is available today. Build the public source revision until an authorised release and tap are published.
 
-## Private Homebrew install
+## Install from a signed release with curl
 
-Authenticate once with an account that can read the private Demerzel repository
-and tap:
+This path downloads the public release assets, verifies the Sigstore identity and installer hashes, then runs the already-verified native installer. It does not use `gh`, a GitHub token or `curl | sh`.
+
+Requirements: macOS on Intel or Apple silicon, `curl`, `jq`, `cosign` and `age-keygen`. Homebrew can provide the verification and custody tools:
 
 ```sh
-gh auth login --hostname github.com --scopes repo
+brew install cosign jq age
 ```
 
-After the approved tap contains the versioned formula and its matching signed
-GitHub Release exists, installation is one command:
+After the first approved public release, download and verify it as follows:
 
-```sh
-HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
-```
+```bash
+set -euo pipefail
+umask 077
 
-If several GitHub accounts are logged in, select an account with access in the
-same command using `gh auth token --user ACCOUNT` instead of the active-account
-form above. The token is not printed or stored in the formula: Homebrew uses it
-to access the private tap; the formula passes it to the `gh release download`
-subprocess and then clears that override. The formula verifies the
-Sigstore bundle against the exact versioned Demerzel release-workflow identity,
-then compares the selected binary with the signed manifest. No donor release
-or unverified `curl | sh` bootstrap is used.
+release_dir="$(mktemp -d)"
+chmod 700 "$release_dir"
+tag="$(curl --fail --location --silent --show-error \
+  https://api.github.com/repos/a-mad-av8r/demerzel/releases/latest | jq -er '.tag_name')"
+if [[ ! "$tag" =~ ^v2\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+  printf 'Unexpected Demerzel release tag: %s\n' "$tag" >&2
+  exit 1
+fi
+case "$(uname -m)" in
+  arm64) asset=demerzel-macos-arm64 ;;
+  x86_64) asset=demerzel-macos-amd64 ;;
+  *) printf 'Unsupported macOS architecture: %s\n' "$(uname -m)" >&2; exit 1 ;;
+esac
+release_base="https://github.com/a-mad-av8r/demerzel/releases/download/${tag}"
+for name in "$asset" manifest.json manifest.sigstore.json install.sh verify-release.sh; do
+  curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 \
+    "$release_base/$name" --output "$release_dir/$name"
+done
 
-The formula stages its own checked local tap file rather than asking Homebrew
-to fetch a private release URL before authentication. Its install step fetches
-the binary with the scoped token, verifies the signed manifest and checksum,
-then installs a launcher that reads the pinned data root. Loading the formula
-and its service definition was checked locally; actual tap installation remains
-unverified until approved artifacts and a private tap exist.
-
-The installed binary is in the Homebrew prefix. The formula provisions explicit
-age custody on first install and registers a launchd service definition; start
-it only when ready:
-
-```sh
-brew services start demerzel
-```
-
-The service binds to loopback and uses:
-
-- `DATA_DIR` read from `$HOME/.config/demerzel/data-dir` (mode `0700`;
-  fresh installs default to `$HOME/.demerzel`),
-- `$HOME/.config/demerzel/identity.txt` (mode `0600`, outside `DATA_DIR`),
-- the recipient derived from that identity at service start,
-- owner-only `DATA_DIR/control.sock` for the secret-bearing account CLI.
-
-The new Homebrew default does not discover or move an old source-development
-`./data` directory. Fresh installs use `~/.demerzel`; old development data stays
-untouched at its previous canonical path. Before changing roots, either keep
-that exact absolute path explicitly on first formula install or complete the
-supervised database-plus-custody restore/import runbook. `HOMEBREW_DEMERZEL_DATA_DIR`
-pins an absolute path at first install; later attempts to change the pin fail
-closed. An existing database without its matching age identity also fails
-closed. Never copy or rotate age ciphertext by itself.
-
-To deliberately retain an existing absolute `DATA_DIR` on first formula install,
-pass it explicitly; the formula pins the path for later upgrades:
-
-```sh
-HOMEBREW_DEMERZEL_DATA_DIR="/absolute/old/data/path" \
-  HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)" brew install a-mad-av8r/tap/demerzel
-```
-
-The browser and data-plane HTTP listener remains on loopback port 3001.
-The Homebrew `bin/demerzel` launcher reads the owner-only `data-dir` pin and
-exports the same absolute `DATA_DIR` used by launchd. Run the secret-bearing
-account CLI as that user; it connects only to the Unix admin socket:
-
-```sh
-demerzel accounts list
-```
-
-Do not move or replace the pinned `DATA_DIR`, change its canonical absolute path,
-or generate a replacement identity against its database. Keychain/Secret
-Service custody is not used for unattended macOS service mode until stable
-Developer-ID signing and a real upgrade/ACL test are release gates. The age
-identity is created from first boot and must be backed up separately from the
-data directory.
-
-An old native Keychain-only data directory cannot be started by an age-custodied
-launchd service without importing the original master key. Follow the
-[key-custody restore/import procedure](key-custody.md) with a verified database
-backup; never generate a replacement age master against unmigrated ciphertext.
-
-For non-secret vault escrow/recovery metadata, record the read-only locator:
-
-```sh
-demerzel key-locator --data-dir "$(cat "$HOME/.config/demerzel/data-dir")"
-```
-
-The returned identifier is not a key and does not prove a restore. A complete
-recovery set includes the database (and SQLite sidecars when present),
-`auth.key`, the external age identity plus `encryption.key.age`,
-`runtime-state.checkpoint.json`, and operator configuration. Back up while the
-service is stopped and verify a restore before relying on it.
-
-Use the [credential accounts guide](accounts.md) for account operations and
-the [key-custody runbook](key-custody.md) for restore procedures.
-
-## Local installation from generated signed artifacts
-
-A generated release-asset directory contains the tap-ready formula, signed
-manifest and bundle, `SHA256SUMS`, both macOS binaries, and executable
-installer/smoke tools. Homebrew 7 accepts formulas only from a tap, so the
-standalone signed-artifact installer is the supported tap-free path. Verify the
-manifest identity and tool hashes **before** executing downloaded shell code:
-
-```sh
-release_dir="/path/to/generated/release-assets"
-release_tag=v2.0.0  # Replace with the exact approved tag for this directory.
-escaped_tag="${release_tag//./\\.}"
+escaped_tag="${tag//./\\.}"
 identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
   --bundle "$release_dir/manifest.sigstore.json" \
   --certificate-identity-regexp "$identity" \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   "$release_dir/manifest.json"
-test "$(jq -er '.tag' "$release_dir/manifest.json")" = "$release_tag"
-for tool in demerzel.rb install.sh verify-release.sh local-smoke.sh; do
+test "$(jq -er '.tag' "$release_dir/manifest.json")" = "$tag"
+for tool in "$asset" install.sh verify-release.sh; do
   expected="$(jq -er --arg name "$tool" '.assets[] | select(.name == $name) | .sha256' "$release_dir/manifest.json")"
   actual="$(shasum -a 256 "$release_dir/$tool" | cut -d ' ' -f 1)"
   test "$actual" = "$expected"
 done
-(cd "$release_dir" && shasum -a 256 -c SHA256SUMS)
-```
 
-Install the verified native binary without a Git checkout or Homebrew tap:
-
-```sh
 bash "$release_dir/install.sh" install --artifacts "$release_dir"
 ```
 
-This path installs under `~/.local/opt/demerzel`, pins the data root and
-provisions the external age identity. It does not register a Homebrew service;
-start the verified launcher explicitly or configure a supervised user service.
+The signed manifest is the source of truth for the downloaded binary and both executable installer tools. Verify it before running either script. The installer checks the binary again, installs under `~/.local/opt/demerzel`, creates an external age identity on an empty data directory and preserves runtime data on uninstall.
 
-For an artifact-only upgrade/rollback smoke, verify the signed manifest
-**and** `install.sh`, `verify-release.sh`, and `local-smoke.sh` digests with the
-preflight above separately for `$old_dir` and `$new_dir`. Pin each certificate
-identity to that directory's operator-selected release tag. Never execute a
-downloaded installer or smoke script before checking its own signed digest:
+Run the installed gateway in a terminal:
 
 ```sh
-bash "$new_dir/local-smoke.sh" "$old_dir" "$new_dir"
+"$HOME/.local/opt/demerzel/bin/demerzel"
 ```
 
-The verified smoke tool uses its adjacent trusted verifier to check both sets
-again before executing their installers. It needs `cosign`, `jq`, and
-`age-keygen`, but no Git checkout; no two signed releases exist yet, so this
-runtime upgrade/rollback path has not been exercised.
+The browser and data-plane listener binds to loopback on port 3001. The default standalone data directory is `~/.demerzel`; the external age identity is `~/.config/demerzel/identity.txt`. Keep the identity outside the data directory and back it up separately.
 
-## Upgrade, rollback, and uninstall
+## Homebrew
 
-`brew upgrade demerzel` replaces only the Homebrew-managed binary; it never
-migrates the pinned `DATA_DIR` or removes the external age identity. Rollback
-requires a previously approved signed version published as a versioned formula
-in the private tap, or a separately verified standalone installer against a
-restore-proven backup. Homebrew 7 rejects `brew reinstall --formula` from a
-loose release-asset path; do not treat that command as a rollback mechanism.
+The formula template is [`packaging/homebrew/demerzel.rb`](../../packaging/homebrew/demerzel.rb). It downloads public, versioned release assets with `curl`, verifies the Sigstore bundle against the Demerzel release workflow, checks the selected binary digest and provisions age custody. It does not require a GitHub token.
 
-Rollback changes code only. It does not rewind database migrations or restore
-secrets; keep a consistent state backup and verify compatibility before
-activating an older binary. Keep the same absolute data root and key material.
+A tap repository and signed release do not exist yet. Once the public `a-mad-av8r/homebrew-tap` repository contains the versioned formula and the matching release has passed its approval gates, install and start the service with:
 
-Uninstalling Homebrew software preserves `~/.demerzel` and
-`~/.config/demerzel/identity.txt`:
+```sh
+brew install a-mad-av8r/tap/demerzel
+brew services start demerzel
+```
+
+The Homebrew service binds to loopback. It pins its absolute data path in `$HOME/.config/demerzel/data-dir` and stores the external identity in `$HOME/.config/demerzel/identity.txt`. Fresh installations use `~/.demerzel`. To keep an existing absolute data path on the first install only, set `HOMEBREW_DEMERZEL_DATA_DIR`:
+
+```sh
+HOMEBREW_DEMERZEL_DATA_DIR="/absolute/data/path" brew install a-mad-av8r/tap/demerzel
+```
+
+Homebrew refuses later attempts to change the pinned path. An existing database without its matching age identity also fails closed. Do not copy or rotate age ciphertext by itself.
+
+## Runtime paths and account operations
+
+For a Homebrew service:
+
+- `DATA_DIR` is read from `$HOME/.config/demerzel/data-dir`; a fresh install defaults to `$HOME/.demerzel`.
+- The age identity is `$HOME/.config/demerzel/identity.txt`, mode `0600`, outside `DATA_DIR`.
+- The identity's recipient is supplied to the service at startup.
+- Secret-bearing account commands use the owner-only `DATA_DIR/control.sock`, not the HTTP listener.
+
+Run the account CLI as the same user and with the same `DATA_DIR` as the gateway:
+
+```sh
+demerzel accounts list
+```
+
+An old development `./data` directory is not discovered or moved automatically. Keep its original canonical absolute path and matching custody identity, or follow the supervised database-plus-custody restore procedure before moving state. An empty directory is not a credential migration.
+
+For non-secret recovery metadata, record the read-only locator:
+
+```sh
+demerzel key-locator --data-dir "$(cat "$HOME/.config/demerzel/data-dir")"
+```
+
+The locator is not key material and does not prove a restore. A recovery set includes the database and any SQLite sidecars, `auth.key`, the matching external age identity and `encryption.key.age`, `runtime-state.checkpoint.json`, and operator configuration. Back up while the service is stopped and verify a restore before relying on it. See the [key-custody runbook](key-custody.md) and [credential accounts guide](accounts.md).
+
+## Upgrade, rollback and uninstall
+
+`brew upgrade demerzel` replaces only the Homebrew-managed binary. It does not migrate the pinned data directory or remove the external identity. Rollback changes code only; it does not reverse database migrations or restore secrets. Keep the same absolute data path and verify a consistent database-plus-key backup before activating an older version.
+
+Stop and remove the Homebrew service without deleting runtime data:
 
 ```sh
 brew services stop demerzel
 brew uninstall demerzel
 ```
 
-The standalone generated-artifact installer also preserves data by default.
-Its `uninstall --purge` option removes only the app-owned `~/.demerzel` directory
-and requires typing the exact absolute path; the external identity remains
-untouched.
+The standalone installer also preserves runtime data by default. To remove its binaries:
 
-## Publication prerequisites
+```sh
+bash "$HOME/.local/opt/demerzel/install.sh" uninstall
+```
 
-Before the command at the top can be used, an authorized release owner must:
+The explicit standalone `uninstall --purge` operation removes only the app-owned `.demerzel` directory after requiring the exact absolute path. It leaves the external age identity untouched. Do not use purge as a substitute for a verified backup.
 
-1. Create/approve the private `a-mad-av8r/homebrew-tap` repository and grant
-   repository-read access; this work does not create or push a tap.
-2. Configure the `demerzel-release` GitHub Environment with required reviewers
-   and set `DEMERZEL_RELEASE_APPROVED_TAG` to the exact authorized tag.
-3. Approve a strict `v2.x` tag, complete release checks, and publish the signed
-   manifest, bundle, checksums, and binary assets to the private GitHub Release.
-4. Verify the signed manifest and `demerzel.rb` digest, then copy that exact
-   versioned formula into the tap's `Formula/demerzel.rb` **without editing it**
-   after signing.
-5. Audit and install from the actual private tap; verify the release certificate,
-   selected binary digest, first-boot age custody, service restart, backups,
-   and a real upgrade/rollback restore drill before calling launchd supported.
+## Publication requirements
 
-No tap, package, GitHub Release, or production service is claimed by this guide.
+The release workflow currently accepts strict `v2.x.y` SemVer tags only. A release tag must point to a commit on `main` and pass the protected release approval. No signed GitHub release or Homebrew tap is published yet; treat the package commands above as unavailable until those external prerequisites exist. The planned version scheme is being tracked separately from the initial source publication.

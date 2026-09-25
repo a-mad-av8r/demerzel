@@ -20,7 +20,7 @@ func TestParseAccessKeyCollectionQueryAcceptsStrictContract(t *testing.T) {
 	t.Parallel()
 	active := state.AccessKeyStatusActive
 	disabled := state.AccessKeyStatusDisabled
-	q200 := strings.Repeat("猫", 200)
+	q200 := strings.Repeat("☃", 200)
 
 	tests := []struct {
 		name       string
@@ -72,7 +72,7 @@ func TestParseAccessKeyCollectionQueryRejectsEveryInvalidForm(t *testing.T) {
 		{name: "status repeated", rawQuery: "status=active&status=disabled"},
 		{name: "page repeated", rawQuery: "page=1&page=2"},
 		{name: "page size repeated", rawQuery: "page_size=20&page_size=100"},
-		{name: "q exceeds 200 Unicode code points", rawQuery: "q=" + strings.Repeat("猫", 201)},
+		{name: "q exceeds 200 Unicode code points", rawQuery: "q=" + strings.Repeat("☃", 201)},
 		{name: "status empty", rawQuery: "status="},
 		{name: "status unknown", rawQuery: "status=unavailable"},
 		{name: "group zero", rawQuery: "group_id=0"},
@@ -174,7 +174,7 @@ func TestAccessKeyCollectionHTTPReturnsAuthenticatedCollectionEnvelope(t *testin
 	NewServer(&config.Config{AuthKey: authTestKey}, fixture.service).RegisterRoutes(engine)
 	request := httptest.NewRequest(http.MethodGet, "/api/access-keys?status=active&page=1&page_size=100", nil)
 	request.Header.Set("Authorization", "Bearer "+authTestKey)
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -237,7 +237,7 @@ func TestAccessKeyCollectionHTTPReturnsLatestRequestTimeAndOmitsCollectionScope(
 	NewServer(&config.Config{AuthKey: authTestKey}, fixture.service).RegisterRoutes(engine)
 	request := httptest.NewRequest(http.MethodGet, "/api/access-keys?page=1&page_size=20", nil)
 	request.Header.Set("Authorization", "Bearer "+authTestKey)
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -286,7 +286,7 @@ func TestAccessKeyCollectionHTTPRejectsInvalidQueryBeforeServiceAccess(t *testin
 		t.Run(target, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, target, nil)
 			request.Header.Set("Authorization", "Bearer "+authTestKey)
-			request.Header.Set("Accept-Language", "en-US")
+			request.Header.Set("Accept-Language", "en-GB")
 			recorder := httptest.NewRecorder()
 			engine.ServeHTTP(recorder, request)
 			assertAccessKeyCollectionHTTPError(t, recorder, http.StatusBadRequest, "BAD_REQUEST")

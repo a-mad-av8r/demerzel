@@ -14,7 +14,7 @@ func modelCooldownUntil(limits map[string]time.Time, model string, operation exe
 	return limits[model]
 }
 
-// CooldownUntil 仅解释尚未发起尝试时的动态冷却耗尽，不改变实际失败的优先级。
+// CooldownUntil interprets dynamic cooldown exhaustion only before an attempt starts; it does not change the priority of actual failures.
 func (iterator *Iterator) CooldownUntil() (time.Time, bool) {
 	source, ok := iterator.credentials.(interface {
 		Snapshot() []state.CredentialRuntimeView

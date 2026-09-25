@@ -33,7 +33,7 @@ const props = defineProps<
   }
 >()
 const model = defineModel<string>({ required: true })
-// 全部选项使用空字符串；Reka 的可选空值为 null，表单提交仍为原始空字符串。
+
 const selected = computed({
   get: () => (model.value === '' ? null : model.value),
   set: (value: string | null) => {

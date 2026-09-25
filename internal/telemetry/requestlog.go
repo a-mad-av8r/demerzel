@@ -165,7 +165,7 @@ type NoopRequestLogSink struct{}
 
 func (NoopRequestLogSink) Emit(RequestEvent) {}
 
-// 亲和类型仅描述实际选中账号的依据，不代表上游缓存命中。
+// Affinity type describes only the basis for selecting the actual account, not an upstream cache hit.
 const (
 	AffinityPromptPrefix       = "prompt_prefix"
 	AffinityPromptCacheKey     = "prompt_cache_key"

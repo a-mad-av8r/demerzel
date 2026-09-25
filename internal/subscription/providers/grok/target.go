@@ -6,7 +6,7 @@ import (
 	cpaembedded "github.com/router-for-me/CLIProxyAPI/v7/gptload-embedded/embedded"
 )
 
-// grokAPIOptions 只为凭据准备完成后的业务调用设置代理目标。
+// grokAPIOptions sets a proxy target only for business calls after credential preparation completes.
 func grokAPIOptions(ctx context.Context, apiRoot string) (cpaembedded.GrokOptions, error) {
 	options, err := grokOptions(ctx)
 	if err != nil {

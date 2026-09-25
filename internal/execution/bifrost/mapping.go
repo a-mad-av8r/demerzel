@@ -325,7 +325,7 @@ func neutralFailureHint(status int, values ...string) execution.FailureHint {
 	}
 }
 
-// candidateCapabilityRejected 只识别具体能力拒绝，不放宽整个 invalid_request_error 类型。
+// candidateCapabilityRejected identifies only concrete capability rejection; it does not relax the entire invalid_request_error type.
 func candidateCapabilityRejected(status int, values []string) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusForbidden, http.StatusNotFound, http.StatusMethodNotAllowed:
@@ -343,7 +343,7 @@ func candidateCapabilityRejected(status int, values []string) bool {
 	if code != "" || !strings.EqualFold(strings.TrimSpace(values[0]), "invalid_request_error") {
 		return false
 	}
-	// 保留已知 Anthropic 能力拒绝的窄匹配，引用文本或其他参数错误不能触发重试。
+	// Retain a narrow match for known Anthropic capability rejection; quoted text or other parameter errors cannot trigger retries.
 	message := strings.ToLower(strings.TrimSpace(values[len(values)-1]))
 	return strings.TrimSuffix(message, ".") == "function calling is not supported with this model"
 }

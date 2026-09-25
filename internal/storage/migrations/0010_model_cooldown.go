@@ -14,7 +14,7 @@ const modelCooldownEffect0010 = "chk_request_log_attempt_effect"
 const modelCooldownDeadline0010 = "chk_request_log_attempt_cooldown"
 const modelCooldownEffectExpression0010 = "effect IN ('','none','cooldown_credential','cooldown_model','record_credential_failure','skip_group') AND (effect <> 'cooldown_model' OR cooldown_until_ms IS NOT NULL)"
 
-// Up0010 只扩展日志合同；运行态模型冷却仍由 Registry 与检查点管理。
+// Up0010 extends only the log contract; runtime model cooldown remains managed by Registry and checkpoints.
 func Up0010(db *gorm.DB) error {
 	if err := ValidateRecoverable0010(db); err != nil {
 		return err
@@ -28,7 +28,7 @@ func Up0010(db *gorm.DB) error {
 		}
 	}
 	if strings.EqualFold(db.Dialector.Name(), "sqlite") {
-		// SQLite 更换 CHECK 需要重建表，按原定义恢复全部独立索引。
+		// Changing a SQLite CHECK requires rebuilding the table, restoring every independent index from the original definition.
 		var indexes []string
 		if err := db.Raw("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL", modelCooldownTable0010).Scan(&indexes).Error; err != nil {
 			return err
@@ -47,7 +47,7 @@ func Up0010(db *gorm.DB) error {
 			mysqlRequiresCheckDropSyntax0003(dialector.ServerVersion) {
 			drop = "DROP CHECK"
 		}
-		// 同一条 DDL 原子替换，避免 MySQL 中断后因旧迁移约束缺失而无法恢复。
+		// Atomically replace within one DDL so a MySQL interruption cannot prevent recovery because the old migration constraint is absent.
 		if err := db.Exec("ALTER TABLE request_log_attempts " + drop + " chk_request_log_attempt_effect, ADD CONSTRAINT chk_request_log_attempt_effect CHECK (" + modelCooldownEffectExpression0010 + ")").Error; err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func rebuildModelCooldownSQLite0010(db *gorm.DB) error {
 		names = append(names, `"`+column.Name()+`"`)
 	}
 	projection := strings.Join(names, ",")
-	// 由迁移执行器持有写事务，不能在这里通过 Migrator 再次 BEGIN。
+	// The migration executor owns the write transaction, so do not BEGIN again through Migrator here.
 	for _, statement := range []string{ddl,
 		"INSERT INTO request_log_attempts__0010 (" + projection + ") SELECT " + projection + " FROM request_log_attempts",
 		"DROP TABLE request_log_attempts", "ALTER TABLE request_log_attempts__0010 RENAME TO request_log_attempts"} {
@@ -92,7 +92,7 @@ func rebuildModelCooldownSQLite0010(db *gorm.DB) error {
 	return nil
 }
 
-// ValidateRecoverable0010 接受 MySQL 的列已添加或约束已完成原子替换状态。
+// ValidateRecoverable0010 accepts MySQL states where the column was added or constraints were atomically replaced.
 func ValidateRecoverable0010(db *gorm.DB) error {
 	if !db.Migrator().HasTable(modelCooldownTable0010) {
 		return fmt.Errorf("model cooldown attempts table is missing")

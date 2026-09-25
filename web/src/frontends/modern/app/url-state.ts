@@ -7,7 +7,6 @@ import {
   type LocationQueryRaw,
 } from 'vue-router'
 
-// 只保存明确声明的展示状态；密钥、授权信息和编辑草稿不进入 URL。
 export function useURLState<T extends object>(
   keys: readonly string[],
   parse: (query: LocationQuery) => T,

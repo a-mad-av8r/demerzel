@@ -16,7 +16,7 @@ func sameSubscriptionTarget(before, after models.Group) bool {
 }
 
 func (s *Service) restoreCredentialRuntimeForTarget(ctx context.Context, group models.Group, credentialID uint) (bool, bool, error) {
-	// 上游已确认消耗成功，客户端取消不能中断本地收尾。
+	// The upstream has confirmed successful consumption; client cancellation must not interrupt local finalisation.
 	finalizeContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), controlTransactionCleanupTimeout)
 	defer cancel()
 	s.writeMu.RLock()

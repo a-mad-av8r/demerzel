@@ -93,7 +93,7 @@ func TestRegistryZeroOutputGuardUsesEffectiveRequestAndOperation(t *testing.T) {
 		{name: "malformed body keeps existing validation", body: `{"max_tokens":0`},
 		{name: "native Anthropic", body: `{"max_tokens":0}`, native: true},
 		{name: "count tokens", body: `{"max_tokens":0}`, operation: execution.OperationCountTokens},
-		{name: "OpenAI zero retains existing behavior", body: `{"max_tokens":0}`, protocol: protocol.OpenAICompletions},
+		{name: "OpenAI zero retains existing behaviour", body: `{"max_tokens":0}`, protocol: protocol.OpenAICompletions},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			adapter := &recordingAdapter{}

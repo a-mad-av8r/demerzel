@@ -1,9 +1,27 @@
-/* 客户端目录只决定配置格式和路由检查的默认协议，不限制访问密钥能选择的客户端。 */
+// Client metadata controls config generation and default protocol checks; it does not restrict access-key choices.
 export const gatewayClients = [
   {
     id: 'codex',
     name: 'Codex',
     icon: 'codex',
+    protocol: 'openai-responses',
+    kind: 'snippet',
+    surface: 'cli',
+    group: 'cli',
+  },
+  {
+    id: 'omp',
+    name: 'OMP',
+    icon: 'omp',
+    protocol: 'openai-responses',
+    kind: 'snippet',
+    surface: 'cli',
+    group: 'cli',
+  },
+  {
+    id: 'openkai',
+    name: 'OpenKai',
+    icon: 'openkai',
     protocol: 'openai-responses',
     kind: 'snippet',
     surface: 'cli',
@@ -111,6 +129,8 @@ export interface GatewayConfig {
 export interface ConfigBlock {
   label: string
   content: string
+  /** True when copying this block must resolve an access key. */
+  requiresKey?: boolean
 }
 const shellQuote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
 const tomlQuote = (value: string) => JSON.stringify(value)
@@ -141,8 +161,32 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
             'wire_api = "responses"',
           ].join('\n'),
         },
-        { label: 'shell', content: env('GPT_LOAD_API_KEY', key) },
+        { label: 'shell', content: env('GPT_LOAD_API_KEY', key), requiresKey: true },
       ]
+    case 'omp':
+    case 'openkai': {
+      const envPath = config.client === 'omp' ? '~/.omp/agent/.env' : '~/.openkai/.env'
+      return [
+        {
+          label: '~/.omp/agent/models.yml',
+          content: [
+            'providers:',
+            '  demerzel:',
+            `    baseUrl: ${JSON.stringify(endpoint)}`,
+            '    apiKey: DEMERZEL_API_KEY',
+            '    api: openai-responses',
+            '    models:',
+            `      - id: ${JSON.stringify(model)}`,
+            `        name: ${JSON.stringify(model)}`,
+          ].join('\n'),
+        },
+        {
+          label: envPath,
+          content: `DEMERZEL_API_KEY=${JSON.stringify(key)}`,
+          requiresKey: true,
+        },
+      ]
+    }
     case 'claude-code':
       return [
         {
@@ -154,6 +198,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
             'export ANTHROPIC_CUSTOM_MODEL_OPTION="$ANTHROPIC_MODEL"',
             'export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY="1"',
           ].join('\n'),
+          requiresKey: true,
         },
       ]
     case 'gemini-cli':
@@ -161,6 +206,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
         {
           label: 'shell',
           content: [env('GOOGLE_GEMINI_BASE_URL', endpoint), env('GEMINI_API_KEY', key)].join('\n'),
+          requiresKey: true,
         },
       ]
     case 'cc-switch':
@@ -179,6 +225,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
             null,
             2,
           ),
+          requiresKey: true,
         },
       ]
     case 'new-api':
@@ -186,6 +233,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
         {
           label: 'JSON',
           content: JSON.stringify({ _type: 'newapi_channel_conn', key, url: endpoint }, null, 2),
+          requiresKey: true,
         },
       ]
     case 'curl':
@@ -198,6 +246,7 @@ export function gatewayConfiguration(config: GatewayConfig, key: string): Config
             "  -H 'Content-Type: application/json' \\",
             `  -d ${shellQuote(JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }] }))}`,
           ].join('\n'),
+          requiresKey: true,
         },
       ]
     default:
@@ -235,7 +284,7 @@ export function gatewayImportURL(config: GatewayConfig, key: string): string {
   throw new Error('UNSUPPORTED_GATEWAY_IMPORT')
 }
 
-/* 这几个客户端自己会向网关拉模型列表，配置里不写死模型名。 */
+// These clients discover available models themselves, so their config omits model names.
 const modelFreeClients: readonly string[] = [
   'gemini-cli',
   'new-api',
@@ -255,8 +304,8 @@ export interface GatewayField {
   slot: GatewaySlot
   value: string
 }
-/* 图形客户端要手填的几项。模型名跟着 gatewayNeedsModel 走，
-   不再出现「界面让你选了模型、配置里却没有它」的情况。 */
+// GUI clients need individual fields. Include the model only when the generated
+// client config requires one, so the selector and output stay in sync.
 export function gatewayFields(config: GatewayConfig, key: string): GatewayField[] {
   const model = config.model.trim()
   return [

@@ -16,7 +16,7 @@ import (
 	subscriptionruntime "gpt-load/internal/subscription/runtime"
 )
 
-// 格式信息只属于本次导入结果，不进入 Stage 或持久凭据。
+// Format information belongs only to this import result; it does not enter the Stage or persisted credential.
 type CredentialImportBatchItem struct {
 	FileIndex int                    `json:"file_index"`
 	Index     int                    `json:"index"`
@@ -51,8 +51,8 @@ func normalizedSingleCredentialImport(channelID channel.ID, raw []byte, driver s
 	return append([]byte(nil), entry.Credential...), nil
 }
 
-// ImportCredentialBatch 逐项暂存已选渠道，其他渠道和无效条目保留可定位结果。
-// 同一批次串行处理，避免重复 Refresh Token 被并发轮换；整个批次有统一截止时间。
+// ImportCredentialBatch stages the selected channel item by item, preserving locatable results for other channels and invalid items.
+// Process one batch serially to prevent concurrent rotation of duplicate refresh tokens; the batch has a single deadline.
 func (s *Service) ImportCredentialBatch(
 	ctx context.Context,
 	channelID channel.ID,
@@ -151,7 +151,7 @@ func (s *Service) ImportCredentialFiles(
 		case entry.ChannelID != "" && entry.ChannelID != channelID:
 			item.Status, item.ErrorCode = "skipped", "channel_mismatch"
 		case entry.ErrorCode != "":
-			// 格式错误已由解析器归类，不能再次尝试另一种认证方式。
+			// The parser already classifies format errors, so another authentication method must not be attempted.
 		default:
 			if err := validateExistingCPAImport(entry.Entry, driver); err != nil {
 				item.ErrorCode = "invalid_credential"
@@ -181,7 +181,7 @@ func (s *Service) ImportCredentialFiles(
 				item.ErrorCode = credentialImportItemError(ctx, classifyCredentialImportError(driver, importErr))
 				break
 			}
-			// 刷新可能补全用户或组织身份，必须按准备完成后的身份判重。
+			// Refreshing may complete user or organisation identity; deduplicate using the prepared identity.
 			credential, importErr = s.prepareTransientSubscriptionCredential(ctx, channelID, driver, credential)
 			if importErr != nil {
 				item.ErrorCode = credentialImportItemError(ctx, importErr)
@@ -207,7 +207,7 @@ func (s *Service) ImportCredentialFiles(
 	return result, nil
 }
 
-// 新格式允许补全字段；原 CPA 合同继续保留原先的完整性校验。
+// New formats may complete fields; the original CPA contract retains its existing completeness validation.
 func validateExistingCPAImport(entry importfile.Entry, driver subscriptionruntime.Driver) error {
 	if entry.Format != "cpa" || (entry.ChannelID != channel.Codex && entry.ChannelID != channel.Claude) {
 		return nil
@@ -218,7 +218,7 @@ func validateExistingCPAImport(entry importfile.Entry, driver subscriptionruntim
 	return nil
 }
 
-// 不同格式可能带有同一份授权；即使前一次刷新结果不确定，也不能重用旧 RT。
+// Different formats may hold the same authorisation. Do not reuse an old refresh token even when the earlier refresh result is uncertain.
 func credentialImportTokenFingerprint(channelID channel.ID, raw []byte) [32]byte {
 	var value struct {
 		RefreshToken string `json:"refresh_token"`
@@ -253,7 +253,7 @@ func credentialImportDocumentError(err error) error {
 }
 
 func credentialImportItemError(ctx context.Context, err error) string {
-	// 内层可能已经把请求超时转换为上游或授权错误，批次截止状态优先。
+	// An inner layer may already have translated a request timeout to an upstream or authorisation error; the batch deadline takes precedence.
 	if ctx.Err() != nil {
 		return "import_timeout"
 	}

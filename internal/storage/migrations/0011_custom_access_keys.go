@@ -13,7 +13,7 @@ const accessKeySuffixCheck0011 = "chk_access_key_suffix"
 const accessKeySuffixExpression0011 = "length(key_suffix) = 4"
 const priorAccessKeySuffixExpression0011 = "length(key_suffix) = 4 AND substr(key_suffix, 1, 1) IN ('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f') AND substr(key_suffix, 2, 1) IN ('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f') AND substr(key_suffix, 3, 1) IN ('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f') AND substr(key_suffix, 4, 1) IN ('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f')"
 
-// Up0011 保留四位尾号字段，允许自定义字符及短密钥的全遮罩。
+// Up0011 retains the four-character suffix field, allowing custom characters and fully masking short keys.
 func Up0011(db *gorm.DB) error {
 	if err := ValidateRecoverable0011(db); err != nil {
 		return err
@@ -30,7 +30,7 @@ func Up0011(db *gorm.DB) error {
 		if dialector, ok := db.Dialector.(*gormmysql.Dialector); ok && dialector.Config != nil && mysqlRequiresCheckDropSyntax0003(dialector.ServerVersion) {
 			drop = "DROP CHECK"
 		}
-		// MySQL 在同一条 DDL 内原子替换，building 标记可安全恢复。
+		// MySQL atomically replaces within one DDL, allowing safe recovery from the building marker.
 		if err := db.Exec("ALTER TABLE access_keys " + drop + " chk_access_key_suffix, ADD CONSTRAINT chk_access_key_suffix CHECK (" + accessKeySuffixExpression0011 + ")").Error; err != nil {
 			return err
 		}

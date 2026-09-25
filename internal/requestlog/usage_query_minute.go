@@ -7,7 +7,7 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// 将请求级已保存数据投影为小时聚合相同的统计字段，在数据库内复用总览和分布查询。
+// Project persisted request-level data into the statistical fields used by hourly aggregates, reusing overview and distribution queries in the database.
 func usageRequestLogScope(db *gorm.DB, input UsageQuery, groupIDs ...uint) *gorm.DB {
 	logs := db.Session(&gorm.Session{NewDB: true}).Model(&models.RequestLog{}).
 		Where("completed_at_ms >= ? AND completed_at_ms < ?", input.FromMS, input.ToMS).
@@ -36,8 +36,8 @@ func usageRequestLogScope(db *gorm.DB, input UsageQuery, groupIDs ...uint) *gorm
 	return db.Session(&gorm.Session{NewDB: true}).Table("(? UNION ALL ?) AS usage_rows", projection, decisionRequestScope(db, input, groupIDs...))
 }
 
-// 与 usageStatDelta.addRow 保持一致：只统计已完成的最终归属，每个请求仅计一次；
-// missing/not_applicable 不累加 Token，missing 也不计入可报价用量的 unpriced 数量。
+// Consistent with usageStatDelta.addRow: count only completed final attribution and each request only once;
+// missing/not_applicable do not add tokens, and missing does not contribute to the unpriced count for quotable usage.
 const usageRequestLogProjection = `
 	completed_at_ms - completed_at_ms % ? AS bucket_start_ms,
 	group_id, access_key_id, upstream_model AS model,

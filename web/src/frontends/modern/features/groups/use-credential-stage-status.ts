@@ -12,8 +12,6 @@ interface AuthorizationPoll {
   failures: number
 }
 
-// 用户确认的唯一轮询例外：仅在订阅授权等待、兑换期间沿用旧版机制。
-// 其他列表、已就绪账号及全局 QueryClient 均不轮询。
 const POLL_FAILURE_LIMIT = 5
 
 export function useCredentialStageStatus(
@@ -86,7 +84,7 @@ export function useCredentialStageStatus(
     const current = stages.value.find((stage) => stage.id === id)
     if (disposed || paused(id) || polling.get(id) !== state || !current || !shouldPoll(current))
       return
-    // 状态同步可能更新服务商间隔，发请求前再核对一次。
+
     if (
       current.method === 'device_oauth' &&
       current.status === 'pending_authorization' &&
@@ -152,11 +150,10 @@ export function useCredentialStageStatus(
     { immediate: true },
   )
   function confirm(stage: CredentialStage): void {
-    // 提交回调后合并结果，并清理当前会话之前的同步错误。
     stopPolling(stage.id)
     merge([stage])
   }
-  // 到期计时只更新本地数据；就绪账号不再发送自动请求。
+
   watch(
     stages,
     () => {

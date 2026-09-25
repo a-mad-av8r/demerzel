@@ -125,7 +125,7 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 		recorder.completeCanceled(s.ctx, 0, -1)
 		return
 	}
-	// 首次绑定期间其余流只等待，不提前冻结配置或取得额度 Ticket。
+	// While the first binding is in progress, other streams only wait; do not freeze configuration or acquire quota tickets early.
 	select {
 	case s.bind <- struct{}{}:
 	case <-s.ctx.Done():
@@ -379,7 +379,7 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 			id = "untracked"
 		}
 		parsed := &dialect.ParsedRequest{Method: http.MethodPost, Path: "/v1/responses", RawQuery: s.request.URL.RawQuery, Header: s.request.Header.Clone(), Body: payload}
-		// 来源校验属于客户端连接；显式上游 HeaderRules 随后照常应用。
+		// Origin validation belongs to the client connection; explicit upstream HeaderRules still apply afterwards.
 		parsed.Header.Del("Origin")
 		input := ForwardInput{Dialect: dialect.NewOpenAIResponses(), ObserveUsage: effective.metadata.ObserveUsage, Group: selection.Group, APIKey: credential.apiKey, CredentialSecrets: credential.secrets, Request: parsed, ExternalModel: model, UpstreamModelID: optionalModelValue(selection.UpstreamModelID), RequestID: id, AttemptID: id + ":" + strconv.Itoa(sequence), AttemptSequence: uint32(sequence), ClientProtocol: protocol.OpenAIResponses, Operation: execution.OperationResponsesCreate, RouteRequirement: execution.RouteRequirementNative, ResponsesStorePreference: original.metadata.ResponsesStorePreference, ChannelID: string(selection.ChannelID), RouteMode: execution.RouteNative, TargetConfig: selection.ResolvedTarget.TargetConfig, Credential: execution.NewCredentialSnapshot(ref.ID, ref.Version, ref.IdentityGeneration, credential.payload), Proxy: proxy, ProxyFingerprint: fingerprint}
 		input.ForceCredentialRefresh = forceCredentialRefresh
@@ -481,7 +481,7 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 				return
 			}
 			var session execution.WebsocketSession
-			// 准入完成后才结束首轮等待；拨号至首事件共用同一首字节期限。
+			// End first-turn waiting only after admission; dialling through first event shares one first-byte deadline.
 			s.firstRequest.Stop()
 			openCtx := ctx
 			var openCancel context.CancelFunc
@@ -552,8 +552,8 @@ func (s *websocketConnection) executeTurn(turn websocketTurn) {
 				h.recordAffinitySuccess(affinity, selection, ref)
 			}
 		}
-		// 未绑定的串行首轮允许重试未发送失败或尚未交付的上游错误事件。
-		// 是否可重放仍由错误规则决定；续接和共享连接不能随某一轮切换身份。
+		// An unbound serial first turn can retry a not-sent failure or an upstream error event not yet delivered.
+		// Error rules still decide replayability; continuation and shared connections cannot change identity for one turn.
 		retryableTurn := result.DispatchState == execution.DispatchNotSent ||
 			(len(result.Body) > 0 && result.Stream.EndReason == StreamEndSSEError)
 		willRetry := retryableTurn && !result.Committed && newBinding &&
@@ -631,8 +631,8 @@ func prepareWebsocketPayload(body []byte, original websocketRequest, selection s
 	}
 	model, _ := json.Marshal(optionalModelValue(selection.UpstreamModelID))
 	effective.fields["model"] = model
-	delete(effective.fields, "type")   // Session 接收 Create 参数，传输层生成原生事件封套。
-	delete(effective.fields, "stream") // WS 固定返回事件流，兼容客户端复用的 HTTP 布尔参数。
+	delete(effective.fields, "type")   // Session receives Create parameters; the transport generates the native event envelope.
+	delete(effective.fields, "stream") // WS always returns an event stream, retaining compatibility with HTTP Boolean parameters.
 	for key := range effective.fields {
 		switch strings.ReplaceAll(strings.ToLower(key), "-", "_") {
 		case "provider", "fallback", "fallbacks", "authorization", "proxy_authorization", "api_key", "apikey", "x_api_key", "x_goog_api_key":
@@ -746,7 +746,7 @@ func (s *websocketConnection) runWebsocketAttempt(ctx context.Context, cancel co
 		}
 		observation := dialect.StreamEvent{Name: event.Type, Payload: body}
 		if event.Type == "response.done" {
-			// done 按真实 status 进入既有 usage/终态解析；下游仍收到原始事件。
+			// Process done through the existing usage/terminal parser using its real status; downstream still receives the raw event.
 			observation.Name = "response.failed"
 			if response.Status == "completed" {
 				observation.Name = "response.completed"
@@ -774,7 +774,7 @@ func (s *websocketConnection) runWebsocketAttempt(ctx context.Context, cancel co
 				return ErrUpstreamProtocol
 			}
 			if len(event.StreamID) > 0 {
-				// 流名已与客户端本轮核对，不能把合法标识误当密钥改写。
+				// The stream name has been checked against the client's turn, so do not rewrite a legitimate identifier as a secret.
 				fields["stream_id"] = event.StreamID
 				body, err = json.Marshal(fields)
 				if err != nil {
@@ -794,8 +794,8 @@ func (s *websocketConnection) runWebsocketAttempt(ctx context.Context, cancel co
 			result.ResponseModelMismatch = response.Model != input.UpstreamModelID
 		}
 		if providerError && !result.Committed && bufferFirstError {
-			// 先保留已脱敏的错误，待分类及候选选择结束后再决定是否交付。
-			// 失败响应不能登记为后续请求的续接目标。
+			// Retain the redacted error first; decide delivery only after classification and candidate selection finish.
+			// A failed response must not be recorded as a continuation target for later requests.
 			result.Body = append([]byte(nil), body...)
 			return nil
 		}
@@ -863,7 +863,7 @@ func (s *websocketConnection) runWebsocketAttempt(ctx context.Context, cancel co
 	result.Stream = observer.endObservation()
 	if !observer.sawTerminal {
 		if result.DispatchState == execution.DispatchNotSent && result.ExecutionError != nil {
-			// 握手/准备被明确拒绝，尚无业务流；保留原错误供健康和刷新判定。
+			// Handshake/preparation was explicitly rejected with no business stream; retain the original error for health and refresh decisions.
 			result.Stream = StreamObservation{}
 		} else {
 			result.Stream = streamTerminalObservation(StreamEndUpstreamTerminated)
@@ -877,7 +877,7 @@ func (s *websocketConnection) runWebsocketAttempt(ctx context.Context, cancel co
 		replaySafety := result.ExecutionError.ReplaySafety
 		result.ExecutionError = firstStreamErrorEvidence(result.Body, result.ExecutionError,
 			result.StatusCode, "", result.ErrorSummary, recorder.redactor, input.CredentialSecrets)
-		// 仅复用错误字段解析，不引入 HTTP 启动缓冲特有的容量拒绝证明。
+		// Reuse only error-field parsing; do not import capacity-rejection proof specific to HTTP startup buffering.
 		result.ExecutionError.ReplaySafety = replaySafety
 	}
 	if !observer.terminalForwarded && !knownUpstreamError && (timedOut.Load() || errors.Is(ctx.Err(), context.DeadlineExceeded)) {

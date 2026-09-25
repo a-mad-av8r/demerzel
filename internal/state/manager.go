@@ -139,7 +139,7 @@ func (m *Manager) publishCompiledLocked(next *ConfigSnapshot) *ConfigSnapshot {
 	return next
 }
 
-// SetSchedulingState 将分组配置发布与单实例调度状态衔接；不持有 Registry 锁。
+// SetSchedulingState links Group-configuration publication with single-instance scheduling state without holding the Registry lock.
 func (m *Manager) SetSchedulingState(scheduling *SchedulingState) {
 	m.publishMu.Lock()
 	defer m.publishMu.Unlock()

@@ -11,8 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// SQLite 重建被外键引用的表前，必须在事务外关闭外键执行，避免 DROP 级联删除子表数据。
-// 整条迁移链仍在 BEGIN IMMEDIATE 中串行执行，提交前统一校验全部外键。
+// Before SQLite rebuilds a table referenced by foreign keys, disable foreign-key enforcement outside the transaction to prevent DROP cascading child-table data.
+// The full migration chain still runs serially in BEGIN IMMEDIATE and verifies all foreign keys before commit.
 func applySQLiteMigrationRegistry(db *gorm.DB, entries []migration) error {
 	return db.Connection(func(connection *gorm.DB) (resultErr error) {
 		conn, ok := connection.Statement.ConnPool.(*sql.Conn)
@@ -45,7 +45,7 @@ func applySQLiteMigrationRegistry(db *gorm.DB, entries []migration) error {
 				cleanupErr = errors.Join(cleanupErr, fmt.Errorf("restore SQLite foreign key enforcement failed"))
 			}
 			if cleanupErr != nil {
-				// 丢弃清理失败的连接，不能将未知事务或外键状态交还连接池。
+				// Discard a connection whose cleanup failed; do not return unknown transaction or foreign-key state to the pool.
 				if err := conn.Raw(func(any) error { return driver.ErrBadConn }); err != nil && !errors.Is(err, driver.ErrBadConn) {
 					cleanupErr = errors.Join(cleanupErr, err)
 				}

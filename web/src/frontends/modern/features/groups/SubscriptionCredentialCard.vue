@@ -343,7 +343,7 @@ useLoadingActivity(() => Boolean(props.pending))
   gap: var(--modern-space-1);
   margin-left: auto;
 }
-/* 重置卡是刻意保留的醒目入口，描边不要去掉。 */
+
 .modern-subscription-card-actions .modern-subscription-card-reset {
   border-color: var(--modern-tooltip-border);
 }

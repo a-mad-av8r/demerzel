@@ -2,7 +2,7 @@ package execution
 
 import "strings"
 
-// ExplicitRequestRejection 识别具体代码及明确的上下文超限，不以通用错误类型或任意消息子串终止重试。
+// ExplicitRequestRejection recognises concrete codes and explicit context-limit failures; generic error types or arbitrary message substrings do not stop retries.
 func ExplicitRequestRejection(typeValue, codeValue, message string) bool {
 	for _, value := range []string{typeValue, codeValue} {
 		switch strings.ToLower(strings.TrimSpace(value)) {

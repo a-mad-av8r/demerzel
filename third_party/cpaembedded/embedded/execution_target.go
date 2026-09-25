@@ -2,7 +2,7 @@ package embedded
 
 import "strings"
 
-// targetContinuityScope 防止切换目标后复用原上游的会话或推理回放。
+// targetContinuityScope prevents the original upstream session or reasoning replay from being reused after the target changes.
 func targetContinuityScope(scope, baseURL string) string {
 	if strings.TrimSpace(scope) == "" {
 		return ""

@@ -41,7 +41,7 @@ func TestConsumeCredentialResetCreditRejectsChangedTarget(t *testing.T) {
 				_, firstErr := fixture.service.ConsumeCredentialResetCredit(t.Context(), groupID, credentialID, resetCreditTestKey)
 				assertAPIErrorCode(t, firstErr, app_errors.ErrResetCreditOutcomeUnknown.Code)
 				if state == models.CredentialResetOperationPrepared {
-					// 同时覆盖服务中断后，超时的 prepared 操作被重新领取的路径。
+					// Also cover reclaiming a timed-out prepared operation after a service interruption.
 					if err := fixture.db.Model(&models.CredentialResetOperation{}).
 						Where("idempotency_key = ?", resetCreditTestKey).
 						Updates(map[string]any{
@@ -65,7 +65,7 @@ func TestConsumeCredentialResetCreditRejectsChangedTarget(t *testing.T) {
 				if consumeCalls != 1 || !reflect.DeepEqual(before, after) {
 					t.Fatalf("cross-target retry changed operation or dispatched again: calls=%d", consumeCalls)
 				}
-				// 被拒绝后，切回原目标仍能用原请求 ID 继续确认结果。
+				// After rejection, switching back to the original target can still confirm the result using the original request ID.
 				setSubscriptionTestTarget(t, fixture, groupID, targets.before)
 				_, sameTargetErr := fixture.service.ConsumeCredentialResetCredit(t.Context(), groupID, credentialID, resetCreditTestKey)
 				assertAPIErrorCode(t, sameTargetErr, app_errors.ErrResetCreditOutcomeUnknown.Code)
@@ -114,7 +114,7 @@ func TestConsumeCredentialResetCreditPreservesLegacyOfficialOperations(t *testin
 			if err := fixture.db.Take(&credential, credentialID).Error; err != nil {
 				t.Fatal(err)
 			}
-			// 固定旧版摘要格式，避免测试跟随新实现一起改变而失去兼容性断言。
+			// Fix the legacy digest format so the test cannot follow a new implementation and lose its compatibility assertion.
 			digest := sha256.Sum256([]byte(fmt.Sprintf("gpt-load/credential-reset/v1/%d/%d/%s", groupID, credentialID, credential.IdentityFingerprint)))
 			staleMS := fixture.service.now().Add(-defaultSubscriptionControlTimeout - time.Second).UnixMilli()
 			operation := models.CredentialResetOperation{
@@ -142,7 +142,7 @@ func TestConsumeCredentialResetCreditPreservesLegacyOfficialOperations(t *testin
 			setCodexAccountObservation(fixture.service, func(context.Context, codex.Credential) (codex.AccountObservation, error) {
 				return codex.AccountObservation{Payload: []byte(`{}`)}, nil
 			})
-			// 旧记录只属于官方目标，不能被当前配置的自定义上游领取。
+			// A legacy record belongs only to the official target and cannot be claimed by the currently configured custom upstream.
 			setSubscriptionTestTarget(t, fixture, groupID, "https://relay.example")
 			_, customErr := fixture.service.ConsumeCredentialResetCredit(t.Context(), groupID, credentialID, resetCreditTestKey)
 			assertAPIErrorCode(t, customErr, app_errors.ErrIdempotencyKeyReused.Code)

@@ -114,7 +114,7 @@ export interface LogEntry {
   channel_id: string | null
   credential_id: number | null
   credential_name: string
-  // 前端内部展示标记，不读取或要求新的响应字段。
+
   credential_deleted: boolean
   route_mode: string | null
   usage_state: 'complete' | 'partial' | 'missing' | 'not_applicable'
@@ -183,7 +183,7 @@ export interface LogAttempt {
   channel_id: string | null
   credential_id: number | null
   credential_name: string
-  // 前端内部展示标记，不读取或要求新的响应字段。
+
   credential_deleted: boolean
   operation: string | null
   route_mode: string | null

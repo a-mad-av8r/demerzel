@@ -245,7 +245,7 @@ func applyMigration(db *gorm.DB, entry migration, useMigrationTransactions bool)
 	// MySQL DDL implicitly commits. Running the DDL and ledger insert in a
 	// GORM transaction would therefore make the final Commit fail with an
 	// already-committed transaction. PostgreSQL and SQLite retain transactional
-	// DDL, so preserve their all-or-nothing migration behavior.
+	// DDL, so preserve their all-or-nothing migration behaviour.
 	if !useMigrationTransactions || strings.EqualFold(db.Dialector.Name(), "mysql") {
 		return apply(db)
 	}

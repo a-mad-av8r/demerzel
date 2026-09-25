@@ -331,11 +331,11 @@ func (forwarder *ExecutionForwarder) ForwardStream(
 	result := upstreamFromExecutionStreamResult(ctx, input, terminal, streamUsage)
 	if input.ObserveUsage && input.ClientProtocol == protocol.Anthropic &&
 		input.RouteMode == execution.RouteNative && capturedUsage.State != usage.StateMissing {
-		// 原生 Anthropic 流以实际事件为用量依据。SDK 的最大值合并会丢失
-		// 输入修正、明确的零、缓存 TTL 明细，以及流是否完整结束的信息。
+		// Native Anthropic streams use actual events as usage evidence. The SDK's maximum-value merge loses
+		// input corrections, explicit zeroes, cache TTL detail, and whether the stream completed.
 		result.Usage = capturedUsage
 	} else {
-		// 未采集到用量时，保留执行层已经取得的证据。
+		// When usage was not captured, retain evidence already obtained by the execution layer.
 		result.Usage = preferCapturedStreamUsage(result.Usage, capturedUsage)
 	}
 	result.Committed = committed

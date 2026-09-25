@@ -31,7 +31,7 @@ func DeriveKey(
 	return deriveKey(hasher, accessKeyID, clientProtocol, keyDomain, prefix)
 }
 
-// DerivePromptCacheKey 与提示词使用不同命名空间，保持现有租户和协议隔离。
+// DerivePromptCacheKey uses a distinct namespace for prompt cache keys to preserve tenant and protocol isolation.
 func DerivePromptCacheKey(hasher Hasher, accessKeyID uint, clientProtocol protocol.Protocol, key string) Key {
 	return deriveKey(hasher, accessKeyID, clientProtocol, "gpt-load/affinity/prompt-cache-key/v1", []byte(key))
 }

@@ -14,7 +14,7 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// 与现有数据库合同共用入口，在真实驱动上验证混合查询和多天分桶 SQL。
+// Share the existing database-contract entry point to verify mixed queries and multi-day bucket SQL on real drivers.
 func TestExternalDatabaseUsageExactWindow(t *testing.T) {
 	dsn := strings.TrimSpace(os.Getenv("GPT_LOAD_DATABASE_TEST_DSN"))
 	if dsn == "" {
@@ -169,7 +169,7 @@ func TestExternalDatabaseUsageExactWindow(t *testing.T) {
 		})
 	}
 
-	// 中间日志已清理时仍只取小时聚合；首尾日志清理后直接返回剩余数据。
+	// When intermediate logs are pruned, use only hourly aggregates; after boundary logs are pruned, return remaining data directly.
 	fullFrom, fullTo := base.Add(time.Hour).UnixMilli(), to.Truncate(time.Hour).UnixMilli()
 	deleteLogs := func(scope *gorm.DB) {
 		t.Helper()

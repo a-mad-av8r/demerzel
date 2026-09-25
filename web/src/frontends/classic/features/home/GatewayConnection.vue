@@ -71,7 +71,7 @@ const feedback = ref<ActionFeedback | null>(null)
 const actionBusy = ref(false)
 const quickImportConfirmationOpen = ref(false)
 const ccSwitchTargetID = ref<CCSwitchTargetID>('claude')
-const ccSwitchModel = ref('')
+const clientModel = ref('')
 let resetTimer: number | undefined
 let actionController: AbortController | undefined
 let operationSequence = 0
@@ -88,7 +88,7 @@ const selectOptions = computed(() =>
     label: `${accessKey.name} · ${accessKey.masked_key}`,
   })),
 )
-const ccSwitchModelOptions = computed(() =>
+const clientModelOptions = computed(() =>
   orderModelSuggestions(selectedKey.value?.models ?? []).map((model) => ({
     value: model,
     label: model,
@@ -114,11 +114,14 @@ const quickImportAvailable = computed(() => Boolean(currentClient.value.quickImp
 const quickImportRequiresModel = computed(
   () => activeClient.value === 'cc-switch' && currentCCSwitchTarget.value.requiresModel,
 )
+const modelSelectionRequired = computed(
+  () => quickImportRequiresModel.value || currentClient.value.requiresModel === true,
+)
 const quickImportReady = computed(
   () =>
     quickImportAvailable.value &&
     selectedKeySupportsClient.value &&
-    (!quickImportRequiresModel.value || Boolean(ccSwitchModel.value.trim())),
+    (!quickImportRequiresModel.value || Boolean(clientModel.value.trim())),
 )
 const maskedSnippet = computed(() => {
   const key = selectedKey.value
@@ -128,7 +131,7 @@ const maskedSnippet = computed(() => {
     origin,
     key.masked_key,
     ccSwitchTargetID.value,
-    ccSwitchModel.value,
+    clientModel.value,
     `Demerzel · ${key.name}`,
   )
 })
@@ -147,7 +150,7 @@ function fieldCopyState(id: ActionTarget): 'idle' | 'success' {
 async function copyField(field: { id: 'baseUrl' | 'apiKey'; secret?: boolean }): Promise<void> {
   if (!selectedKeySupportsClient.value) return
   if (!field.secret) {
-    // 非密钥字段不需要解密，直接复制展示值即可。
+    // Non-secret fields use their displayed values; decryption is unnecessary.
     const entry = clientFieldList.value.find((candidate) => candidate.id === field.id)
     if (!entry) return
     try {
@@ -242,6 +245,7 @@ const quickImportClientLabel = computed(() => {
 const configurationLanguage = computed(() => {
   if (activeClient.value === 'new-api') return t('home.ledger.connection.connectionInfo')
   if (activeClient.value === 'cc-switch') return t('home.ledger.connection.importParameters')
+  if (activeClient.value === 'omp' || activeClient.value === 'openkai') return 'YAML'
   return t('home.ledger.connection.configuration')
 })
 
@@ -311,7 +315,7 @@ watch(
     if (value === previous) return
     invalidateSensitiveAction()
     quickImportConfirmationOpen.value = false
-    ccSwitchModel.value = preferredGPTModel(selectedKey.value?.models ?? [])
+    clientModel.value = preferredGPTModel(selectedKey.value?.models ?? [])
     selectFirstSupportedCCSwitchTarget()
   },
   { immediate: true },
@@ -330,7 +334,7 @@ watch(
 )
 
 watch(
-  () => [ccSwitchTargetID.value, ccSwitchModel.value, props.credential],
+  () => [ccSwitchTargetID.value, clientModel.value, props.credential],
   invalidateSensitiveAction,
   { flush: 'sync' },
 )
@@ -356,7 +360,7 @@ function selectCCSwitchTarget(value: string): void {
   invalidateSensitiveAction()
   quickImportConfirmationOpen.value = false
   ccSwitchTargetID.value = target.id
-  // 换目标应用不清空模型：同一个密钥下模型多半通用，清掉等于逼用户重打一遍。
+  // Retain the model when switching targets; the same access key usually supports it.
 }
 
 function selectFirstSupportedCCSwitchTarget(): void {
@@ -425,7 +429,7 @@ async function copyClientConfiguration(): Promise<void> {
   const clientID = activeClient.value
   if (!selectedKeySupportsClient.value) return
 
-  if (clientID === 'codex') {
+  if (clientID === 'codex' || clientID === 'omp' || clientID === 'openkai') {
     try {
       const result = await copy(maskedSnippet.value)
       if (result === 'success') setImmediateFeedback('configuration', 'success')
@@ -444,7 +448,7 @@ async function copyClientConfiguration(): Promise<void> {
         origin,
         key,
         ccSwitchTargetID.value,
-        ccSwitchModel.value,
+        clientModel.value,
         `Demerzel · ${selectedKey.value?.name ?? ''}`,
       )
       if (!isCurrent()) return
@@ -482,7 +486,7 @@ async function openQuickImport(): Promise<void> {
         origin,
         key,
         ccSwitchTargetID.value,
-        ccSwitchModel.value,
+        clientModel.value,
         `Demerzel · ${selectedKey.value?.name ?? ''}`,
       ) ?? undefined
     if (!target) throw new Error('QUICK_IMPORT_UNAVAILABLE')
@@ -579,8 +583,12 @@ onBeforeUnmount(() => {
         </header>
 
         <div class="gateway-connection__panel-body">
-          <div v-if="activeClient === 'cc-switch'" class="gateway-connection__cc-switch-options">
-            <div class="gateway-connection__cc-switch-target">
+          <div
+            v-if="activeClient === 'cc-switch' || currentClient.requiresModel"
+            class="gateway-connection__model-options"
+            :class="{ 'gateway-connection__model-options--single': activeClient !== 'cc-switch' }"
+          >
+            <div v-if="activeClient === 'cc-switch'" class="gateway-connection__cc-switch-target">
               <span class="gateway-connection__label">
                 {{ t('home.ledger.connection.targetApplication') }}
               </span>
@@ -607,18 +615,18 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div class="gateway-connection__cc-switch-model">
+            <div class="gateway-connection__model-picker">
               <span class="gateway-connection__label">
                 {{ t('home.ledger.connection.primaryModel') }}
-                <span v-if="quickImportRequiresModel">
+                <span v-if="modelSelectionRequired">
                   · {{ t('home.ledger.connection.required') }}
                 </span>
               </span>
               <AppCombobox
-                id="cc-switch-primary-model"
-                v-model="ccSwitchModel"
+                id="gateway-client-model"
+                v-model="clientModel"
                 :label="t('home.ledger.connection.primaryModel')"
-                :options="ccSwitchModelOptions"
+                :options="clientModelOptions"
                 :empty-text="t('home.ledger.connection.noModelMatches')"
                 :placeholder="t('home.ledger.connection.modelPlaceholder')"
                 :disabled="actionBusy"
@@ -640,16 +648,23 @@ onBeforeUnmount(() => {
           </InlineFeedback>
 
           <InlineFeedback
-            v-if="quickImportRequiresModel && !ccSwitchModel.trim()"
+            v-if="quickImportRequiresModel && !clientModel.trim()"
             tone="warning"
             appearance="hint"
           >
             {{ t('home.ledger.connection.ccSwitchModelRequired') }}
           </InlineFeedback>
+          <InlineFeedback
+            v-if="currentClient.requiresModel && !clientModel.trim()"
+            tone="warning"
+            appearance="hint"
+          >
+            {{ t('home.ledger.connection.modelRequired') }}
+          </InlineFeedback>
 
           <!--
-            左右分栏：左边是可直接拿走的配置，右边是照着做的步骤。没有配置代码
-            的客户端（只在图形界面填值）就让步骤占满整行。
+            The configuration is on the left; the matching setup steps are on the
+            right. Clients configured only through a GUI use the full row for steps.
           -->
           <div class="gateway-connection__guide">
             <CodeBlock
@@ -664,7 +679,7 @@ onBeforeUnmount(() => {
                   :disabled="
                     !selectedKeySupportsClient ||
                     actionBusy ||
-                    (quickImportRequiresModel && !ccSwitchModel.trim())
+                    (modelSelectionRequired && !clientModel.trim())
                   "
                   :busy="actionBusy"
                   :state="configurationCopyState"
@@ -673,7 +688,7 @@ onBeforeUnmount(() => {
               </template>
             </CodeBlock>
 
-            <!-- 图形界面客户端没有配置文件，但要填的值同样占左列，排版保持一致。 -->
+            <!-- GUI clients have no config file, so show their copyable fields in the left column. -->
             <section v-else class="gateway-connection__guide-config">
               <p class="gateway-connection__guide-caption">
                 {{ t('home.ledger.connection.fieldsTitle') }}
@@ -757,8 +772,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /*
- * 板块边界：原来板块之间 22px、板块内部 14–18px，只差 4px，眼睛靠邻近关系
- * 分不出组。这里把板块间距拉到 36px、板块内收到 12px，再补一条细线。
+ * Panel boundaries were too close to internal spacing to read as separate groups.
+ * Widen the external gap and add a fine divider while keeping internal spacing compact.
  */
 .gateway-connection {
   margin-top: 36px;
@@ -796,12 +811,12 @@ onBeforeUnmount(() => {
   background: var(--color-surface);
 }
 
-/* 两个字段必须等高，否则并排时一高一低。 */
+/* Keep the two controls at the same height when they share a row. */
 .gateway-connection__clients :deep(.client-picker__trigger) {
   min-height: var(--control-md);
 }
 
-/* 客户端与访问密钥并列成同一行的两个字段，两边都有标签、都左对齐。 */
+/* Align the client and access-key controls as labelled fields in one row. */
 .gateway-connection__clients {
   display: grid;
   min-width: 0;
@@ -819,15 +834,12 @@ onBeforeUnmount(() => {
 }
 
 /*
- * 标题条与监控/健康页的分区标题同款：加粗标题，底色只比面板深一点点，
- * 不再是整条灰色 header 压在灰色代码块上。
+ * Match the section heading used by the monitoring and health pages without a heavy
+ * grey bar behind the title and code panel.
  */
 .gateway-connection__panel-header {
   display: flex;
-  /*
-   * 固定高度：一键导入按钮（30px）加上下内边距正好把标题条撑到 42px，而没有
-   * 按钮的客户端只有 38px。写死成同一个高度，切换客户端时标题条不再跳动。
-   */
+  /* Keep the title bar height stable when the quick-import button is absent. */
   min-height: var(--control-lg);
   align-items: center;
   justify-content: space-between;
@@ -865,21 +877,24 @@ onBeforeUnmount(() => {
   padding: 0 2px 2px;
 }
 
-.gateway-connection__cc-switch-options {
+.gateway-connection__model-options {
   display: grid;
   grid-template-columns: auto minmax(200px, 1fr);
   align-items: end;
   gap: var(--space-3);
 }
+.gateway-connection__model-options--single {
+  grid-template-columns: minmax(200px, 1fr);
+}
 
 .gateway-connection__cc-switch-target,
-.gateway-connection__cc-switch-model {
+.gateway-connection__model-picker {
   display: grid;
   min-width: 0;
   gap: 6px;
 }
 
-/* 图形界面客户端的字段清单：值本身要能一眼读到，也能单独复制。 */
+/* GUI clients show readable values with an independent copy action for each field. */
 .gateway-connection__guide-config {
   min-width: 0;
 }
@@ -928,18 +943,18 @@ onBeforeUnmount(() => {
 }
 
 /*
- * 左右分栏：左列是可直接拿走的配置，右列是照着做的步骤。两列各带一行
- * caption，顶部才对得齐；顶对齐而非拉伸，避免步骤少时右边留一大片空白。
+ * Align the two columns at their captions. Stretch each body to fill its panel
+ * without leaving excess space when one client has fewer setup steps.
  */
 .gateway-connection__guide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-  /* stretch 让两列等高，短的那一侧由自己的底色补满。 */
+  /* Stretch both columns to the same height and let each panel fill its body. */
   align-items: stretch;
   gap: var(--space-4);
 }
 
-/* 两列都是「caption + 主体」，主体撑满剩余高度，两边的框才严丝合缝对齐。 */
+/* Each column uses a caption and a body so both panels share the same alignment. */
 .gateway-connection__guide > * {
   display: flex;
   min-height: 0;
@@ -955,8 +970,8 @@ onBeforeUnmount(() => {
 }
 
 /*
- * 与代码块 caption 同高同色，两列顶端才在一条线上。24px 取自代码块工具条里
- * 那颗复制按钮的高度——工具条本身没有 min-height，实际高度由它撑出来。
+ * Match the caption height and colour to the code panel; the copy control sets the
+ * caption height because its toolbar has no minimum height.
  */
 .gateway-connection__guide-caption {
   display: flex;
@@ -968,14 +983,14 @@ onBeforeUnmount(() => {
 }
 
 /*
- * 接入步骤：沿用首页欢迎区的 01/02/03 序号语言，与客户端标题条使用同一底色，
- * 逐步引导而不是把一整段话砸给用户。
+ * Reuse the numbered steps and panel background from the home welcome section.
+ * Short instructions guide users through each step without overwhelming them.
  */
 .gateway-connection__steps {
   display: grid;
   flex: 1;
   gap: var(--space-2);
-  /* 撑高后步骤仍靠上排列，多出来的高度留给底色，不把行距扯开。 */
+  /* Keep steps top-aligned as the panel grows, with the remaining space filled by its background. */
   align-content: start;
   margin: 0;
   border-radius: var(--radius-tag);
@@ -1006,13 +1021,13 @@ onBeforeUnmount(() => {
   line-height: var(--line-editorial);
 }
 
-/* 主模型输入与目标 chip 必须严格等高，否则并排时高低不齐。 */
-.gateway-connection__cc-switch-model :deep([data-input-shell]) {
+/* Keep the model input aligned with the target controls. */
+.gateway-connection__model-picker :deep([data-input-shell]) {
   min-height: var(--control-sm);
   height: var(--control-sm);
 }
 
-/* 目标应用与「导入渠道」的渠道选择器同款 chip，视觉语言全站一致。 */
+/* Match the target-application chips to the channel picker used by import flows. */
 .gateway-connection__targets {
   display: flex;
   flex-wrap: wrap;
@@ -1070,7 +1085,7 @@ onBeforeUnmount(() => {
   font-size: 7.5px;
 }
 
-/* 导入参数与接入步骤直接复用客户端标题条底色，保持整块连接说明视觉统一。 */
+/* Match the import parameters and setup steps to the client heading background. */
 .gateway-connection__panel :deep(.code-block--snippet pre) {
   border: 0;
   background: color-mix(in srgb, var(--color-surface-sunken) 52%, var(--color-surface));
@@ -1112,15 +1127,15 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .gateway-connection__cc-switch-options {
+  .gateway-connection__model-options {
     grid-template-columns: 1fr;
   }
 }
 
-/* 桌面收紧了控件高度，窄屏把触控目标还回到 44px。 */
+/* Restore 44px touch targets on narrow screens after reducing desktop control height. */
 @media (max-width: 560px) {
   .gateway-connection__cc-switch-target :deep(.segmented-control__trigger),
-  .gateway-connection__cc-switch-model :deep([data-input-shell]) {
+  .gateway-connection__model-picker :deep([data-input-shell]) {
     min-height: var(--touch-target);
   }
 }

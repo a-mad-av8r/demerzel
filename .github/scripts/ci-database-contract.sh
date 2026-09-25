@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 两组互补：增量迁移契约单独运行，其余（包括未来新增测试）自动归入另一组。
+# The two groups complement each other: incremental migration contracts run separately, while all other tests, including future additions, automatically belong to the other group.
 migrations='^TestExternal(AccessKeyPrefix|CustomAccessKey|PriceMultiplier|ModelCooldown|ValidationProtocol)MigrationContract$'
 run='^TestExternal'
 skip='^$'

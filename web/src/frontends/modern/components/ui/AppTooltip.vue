@@ -17,13 +17,11 @@ const props = defineProps<{
   disabled?: boolean
 }>()
 const open = ref(false)
-// 已启用过提示的控件保留组件树，避免菜单打开时禁用提示导致焦点节点被替换。
+
 const activated = ref(Boolean(props.label && !props.disabled))
 const { forwardRef } = useForwardExpose()
 const instance = getCurrentInstance()
 
-// Tooltip 的浮层使根节点成为 Fragment；把单根组件链的 scoped 样式传给真实触发元素。
-// 只沿根节点向上传递，避免将页面样式作用域扩散到无关的祖先或浮层。
 const triggerScopeAttrs = computed(() => {
   const attrs: Record<string, string> = {}
   let owner = instance

@@ -20,7 +20,7 @@ import (
 
 const quotaHistoryCapacity = 4096
 
-// QuotaHistoryMinimumWindowSeconds 仅为日级及更长周期保留额度历史。
+// QuotaHistoryMinimumWindowSeconds retains quota history only for daily and longer periods.
 const QuotaHistoryMinimumWindowSeconds int64 = 24 * 60 * 60
 
 type quotaHistoryKey struct {
@@ -45,7 +45,7 @@ type quotaHistoryState struct {
 	latest quotaHistorySample
 }
 
-// QuotaHistoryTargetIdentity 与 Token 版本独立，切换账号或上游目标时隔离历史。
+// QuotaHistoryTargetIdentity is independent of token version and isolates history when an account or upstream target changes.
 func QuotaHistoryTargetIdentity(generation uint64) string {
 	return fmt.Sprintf("%016x", generation)
 }
@@ -67,13 +67,13 @@ func quotaHistoryWindowKey(window providerobservation.QuotaWindow) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// quotaHistoryDisplayedRemainingPercent 与前端额度标签的 Math.round 保持一致。
+// quotaHistoryDisplayedRemainingPercent matches Math.round for the frontend quota label.
 func quotaHistoryDisplayedRemainingPercent(usedBasisPoints int64) int64 {
 	return (10_000 - usedBasisPoints + 50) / 100
 }
 
-// recordHistorySampleLocked 仅在前端显示的剩余额度整数变化时保留真实观测。
-// 最新观测与待写历史分别有界，跳过同一显示值不影响实时额度更新。
+// recordHistorySampleLocked retains real observations only when the frontend's displayed remaining-quota integer changes.
+// Latest observations and pending-to-write history are separately bounded; skipping the same display value does not affect live quota updates.
 func (pending *passiveQuotaPending) recordHistorySampleLocked(groupID, credentialID uint, identity uint64, observedAtMS int64, version uint64, windows []providerobservation.QuotaWindow) {
 	if observedAtMS < 0 {
 		return
@@ -94,7 +94,7 @@ func (pending *passiveQuotaPending) recordHistorySampleLocked(groupID, credentia
 	}
 	for index, window := range windows {
 		key := keys[index]
-		// 与实时快照一致：具名窗口优先，多个同级副本属于歧义。
+		// Consistent with the live snapshot: named windows take precedence, and multiple peer copies are ambiguous.
 		if counts[key] != 1 || (window.SourceName == "" && named[key]) {
 			continue
 		}
@@ -188,7 +188,7 @@ func (pending *passiveQuotaPending) hasReadyHistory() bool {
 	if len(pending.history) > 0 {
 		return true
 	}
-	// 未解析观测等待后续工作线程唤醒；冷却期间不触发立即自重试。
+	// Unresolved observations wait for a later worker wake-up; the cooldown does not trigger an immediate retry.
 	now := time.Now()
 	for key := range pending.historyObservations {
 		if pending.historyObservationReadyLocked(key, now) {
@@ -198,8 +198,8 @@ func (pending *passiveQuotaPending) hasReadyHistory() bool {
 	return false
 }
 
-// flushQuotaHistory 不持有入队内存锁或凭据 mutation 锁执行数据库操作。
-// 历史使用独立 INSERT，不阻塞/回滚最新额度快照的保存。
+// flushQuotaHistory performs database work without holding the queued-memory or credential-mutation lock.
+// History uses independent INSERTs and does not block or roll back saving the latest quota snapshot.
 func (manager *CredentialManager) flushQuotaHistory(ctx context.Context) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
@@ -212,7 +212,7 @@ func (manager *CredentialManager) flushQuotaHistory(ctx context.Context) (bool, 
 			manager.passiveQuota.ackHistory(sample)
 			continue
 		}
-		// 在后台补充展示元数据；只保存该次响应实际观测到的百分比。
+		// Complete display metadata in the background; retain only percentages actually observed in this response.
 		var observation models.CredentialObservation
 		if err := manager.db.WithContext(ctx).Select("snapshot_json").Take(&observation, "credential_id = ?", sample.row.CredentialID).Error; err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -224,7 +224,7 @@ func (manager *CredentialManager) flushQuotaHistory(ctx context.Context) (bool, 
 			manager.passiveQuota.rememberHistorySources(sample.row.CredentialID, sample.key.identity, sample.row.ObservedAtMS, snapshot.QuotaWindows)
 			if index := matchPassiveQuotaWindow(snapshot.QuotaWindows, sample.window); index >= 0 {
 				window := snapshot.QuotaWindows[index]
-				// 来源身份已在采样前确定；这里只更新展示元数据。
+				// Source identity was determined before sampling; update only display metadata here.
 				sample.row.WindowID = window.ID
 				sample.row.Label, sample.row.LabelKey, sample.row.Scope = window.Label, window.LabelKey, window.Scope
 			}
@@ -259,7 +259,7 @@ func (manager *CredentialManager) flushQuotaHistory(ctx context.Context) (bool, 
 			manager.passiveQuota.ackHistory(sample)
 			continue
 		}
-		// 再次核对目标；旧目标的行即使随后落盘，也被 TargetIdentity 隔离。
+		// Confirm the target again; even a subsequently persisted old-target row remains isolated by TargetIdentity.
 		ref, ok = manager.registry.CredentialRef(sample.row.CredentialID)
 		if !ok || ref.IdentityGeneration != sample.key.identity {
 			manager.passiveQuota.ackHistory(sample)

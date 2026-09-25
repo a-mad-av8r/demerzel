@@ -34,7 +34,7 @@ const oauthResultScript = `function closeThisWindow() {
     if (hint) hint.hidden = false
     if (button) {
       button.disabled = true
-      button.textContent = "请手动关闭此页面"
+      button.textContent = "Please close this page manually"
     }
   }, 100)
 }
@@ -335,42 +335,42 @@ func presentOAuthCallbackOutcome(outcome oauthCallbackOutcome) oauthCallbackPres
 	switch outcome.Kind {
 	case oauthOutcomeSuccess:
 		return oauthCallbackPresentation{
-			Title:     "授权已完成",
-			Message:   "授权信息已安全返回 GPT-Load。请返回 GPT-Load 添加账号，这个页面可以关闭了。",
-			Status:    "已完成",
+			Title:     "Authorisation complete",
+			Message:   "Your authorisation details have been securely returned to GPT-Load. Return to GPT-Load to add your account; you can now close this page.",
+			Status:    "Completed",
 			Tone:      "success",
 			Icon:      `<path d="m6.5 12.5 3.5 3.5 7.5-8"/>`,
 			AutoClose: true,
 		}
 	case oauthOutcomeDenied:
 		return oauthCallbackPresentation{
-			Title:   "授权未完成",
-			Message: "上游账号服务没有完成这次授权。回到 GPT-Load 重新开始一次即可。",
-			Status:  "已取消",
+			Title:   "Authorisation incomplete",
+			Message: "The upstream account service did not complete this authorisation. Return to GPT-Load and start again.",
+			Status:  "Cancelled",
 			Tone:    "warning",
 			Icon:    oauthWarningIconPath,
 		}
 	case oauthOutcomeExpired:
 		return oauthCallbackPresentation{
-			Title:   "授权会话已过期",
-			Message: "这次授权花的时间超过了有效期。回到 GPT-Load 重新开始一次即可，之前的账号不受影响。",
-			Status:  "已过期",
+			Title:   "Authorisation session expired",
+			Message: "This authorisation exceeded its time limit. Return to GPT-Load and start again; existing accounts are unaffected.",
+			Status:  "Expired",
 			Tone:    "warning",
 			Icon:    oauthWarningIconPath,
 		}
 	case oauthOutcomeExchangeFailed:
 		return oauthCallbackPresentation{
-			Title:   "换取凭据时失败",
-			Message: "GPT-Load 未能确认凭据交换结果。请回到 GPT-Load 查看状态，并重新发起授权；本页面的回调地址不能重复使用。",
-			Status:  "需要处理",
+			Title:   "Credential exchange failed",
+			Message: "GPT-Load could not confirm the credential exchange result. Return to GPT-Load to check the status and begin authorisation again; this page's callback address cannot be reused.",
+			Status:  "Action required",
 			Tone:    "danger",
 			Icon:    `<path d="M8 8l8 8M16 8l-8 8"/>`,
 		}
 	default:
 		return oauthCallbackPresentation{
-			Title:   "无法识别这次授权",
-			Message: "这个授权请求的信息不完整或已失效。回到 GPT-Load 重新开始一次即可。",
-			Status:  "无效请求",
+			Title:   "Unrecognised authorisation",
+			Message: "This authorisation request is incomplete or has expired. Return to GPT-Load and start again.",
+			Status:  "Invalid request",
 			Tone:    "warning",
 			Icon:    oauthWarningIconPath,
 		}
@@ -443,22 +443,22 @@ h1 { margin: 0; font-size: clamp(1.45rem, 5vw, 1.85rem); line-height: 1.25; lett
 func writeOAuthResult(writer http.ResponseWriter, outcome oauthCallbackOutcome) {
 	presentation := presentOAuthCallbackOutcome(outcome)
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	writer.Header().Set("Content-Language", "zh-CN")
+	writer.Header().Set("Content-Language", "en-GB")
 	writer.WriteHeader(http.StatusOK)
 	autoCloseAttr := "0"
-	autoCloseNote := `<p class="auto-close-note">处理完成后可安全关闭此页面。</p>`
+	autoCloseNote := `<p class="auto-close-note">It is safe to close this page when processing is complete.</p>`
 	if presentation.AutoClose {
 		autoCloseAttr = "1"
-		autoCloseNote = `<p class="auto-close-note">页面将在 2 秒后自动关闭。</p>`
+		autoCloseNote = `<p class="auto-close-note">This page will close automatically in 2 seconds.</p>`
 	}
 	accountChip := ""
 	if outcome.Kind == oauthOutcomeSuccess && outcome.AccountMask != "" {
-		accountChip = `<div class="account-chip"><span>已授权账号</span><code>` + html.EscapeString(outcome.AccountMask) + `</code></div>`
+		accountChip = `<div class="account-chip"><span>Authorised account</span><code>` + html.EscapeString(outcome.AccountMask) + `</code></div>`
 	}
 	title := html.EscapeString(presentation.Title)
 	status := html.EscapeString(presentation.Status)
 	page := `<!doctype html>
-<html lang="zh-CN">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -476,7 +476,7 @@ func writeOAuthResult(writer http.ResponseWriter, outcome oauthCallbackOutcome) 
         <div class="result-summary">
           <div class="status-icon"><svg viewBox="0 0 24 24" aria-hidden="true">` + presentation.Icon + `</svg></div>
           <div class="result-copy">
-            <p class="eyebrow">订阅账号授权</p>
+            <p class="eyebrow">Subscription account authorisation</p>
             <h1 id="result-title">` + title + `</h1>
             <p id="result-message" class="message">` + html.EscapeString(presentation.Message) + `</p>
           </div>
@@ -486,9 +486,9 @@ func writeOAuthResult(writer http.ResponseWriter, outcome oauthCallbackOutcome) 
       <footer class="actions">
         <div class="action-note">
           ` + autoCloseNote + `
-          <p id="close-hint" class="close-hint" role="status" aria-live="polite" hidden>浏览器未允许自动关闭，请手动关闭此页面。</p>
+          <p id="close-hint" class="close-hint" role="status" aria-live="polite" hidden>Your browser did not permit automatic closure. Please close this page manually.</p>
         </div>
-        <button id="close-and-return" class="close-button" type="button">关闭并返回</button>
+        <button id="close-and-return" class="close-button" type="button">Close and return</button>
       </footer>
     </section>
   </main>

@@ -10,9 +10,9 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// 首页的「X/Y 个凭据可用」必须和健康页 classifyHealthKey 用同一套分桶：
-// 只看 status/拉黑/冷却会把「待重新授权」和「权重手动置 0」的凭据算成可用，
-// 而调度器根本不会选中它们，两页并排就会自相矛盾。
+// The home page's “X/Y credentials available” must use the same classifyHealthKey buckets as the health page:
+// checking only status, blacklist, and cooldown would treat “reauthorisation required” and “weight manually set to zero” credentials as available,
+// while the scheduler will never select them, making the two pages contradictory side by side.
 func TestReadHomeBaseAvailableCredentialsMatchHealthClassification(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
@@ -44,7 +44,7 @@ func TestReadHomeBaseAvailableCredentialsMatchHealthClassification(t *testing.T)
 			AuthState:          state.CredentialAuthStateReady,
 		})
 	}
-	// 2 号待重新授权，3 号被手动停用（权重 0）；两者都不参与调度。
+	// Credential 2 requires reauthorisation; credential 3 was manually disabled (weight 0). Neither participates in scheduling.
 	entries[1].AuthState = state.CredentialAuthStateReauthorizationRequired
 	entries[2].WeightManual = &zeroWeight
 	if err := fixture.registry.ReplaceCredentials(entries); err != nil {
@@ -70,12 +70,12 @@ func TestReadHomeBaseAvailableCredentialsMatchHealthClassification(t *testing.T)
 	}
 	if base.Inventory.AvailableCredentialCount != 1 {
 		t.Fatalf(
-			"AvailableCredentialCount = %d, want 1 (待重新授权与权重 0 的凭据不可用)",
+			"AvailableCredentialCount = %d, want 1 (credentials requiring reauthorisation and with weight 0 are unavailable)",
 			base.Inventory.AvailableCredentialCount,
 		)
 	}
 
-	// 与健康页的分桶逐条比对，确保两处结论一致而不只是数字凑巧相等。
+	// Compare each bucket with the health page to ensure both conclusions agree, not merely that the totals happen to match.
 	snapshot := fixture.manager.Current()
 	var healthAvailable int64
 	for _, view := range fixture.registry.Snapshot() {
@@ -89,7 +89,7 @@ func TestReadHomeBaseAvailableCredentialsMatchHealthClassification(t *testing.T)
 	}
 	if base.Inventory.AvailableCredentialCount != healthAvailable {
 		t.Fatalf(
-			"home available = %d, health available = %d; 两处口径必须一致",
+			"home available = %d, health available = %d; both definitions must agree",
 			base.Inventory.AvailableCredentialCount,
 			healthAvailable,
 		)

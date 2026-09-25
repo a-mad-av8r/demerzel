@@ -33,9 +33,9 @@ export default {
     type: 'problem',
     schema: [],
     messages: {
-      boundary: '{{from}} 不能依赖 {{to}}；公共能力应放在 shared 内。',
+      boundary: '{{from}} must not depend on {{to}}; place shared capabilities in shared.',
       component:
-        '新版公共组件不能依赖业务、布局、应用状态或 HTTP 层；通过 props、slots 和 events 组合。',
+        'Shared modern components must not depend on feature, layout, application-state, or HTTP layers; compose them with props, slots, and events.',
     },
   },
   create(context) {

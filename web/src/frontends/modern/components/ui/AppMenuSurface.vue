@@ -6,7 +6,6 @@ import { Primitive } from 'reka-ui'
   <Primitive as-child class="modern-menu-surface"><slot /></Primitive>
 </template>
 
-<!-- 菜单与选择器的 Portal 共用面板及选项样式。 -->
 <style>
 .modern-menu-surface {
   z-index: var(--modern-layer-menu);

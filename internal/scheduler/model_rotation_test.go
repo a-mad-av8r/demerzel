@@ -74,7 +74,7 @@ func TestModelRotationSharesProgressAcrossInterleavedRequestsAndCredentials(t *t
 		for range 9 {
 			modelRotationPick(t, snapshot, registry, modelRotationQuery(3))
 		}
-		// 查询路由和配置重新发布不能消费或重置轮次。
+		// Query routing and configuration republication must not consume or reset the rotation.
 		if _, err := Inspect(snapshot, registry.Snapshot(), query, time.Now()); err != nil {
 			t.Fatal(err)
 		}
@@ -204,7 +204,7 @@ func TestModelRotationCheckpointPreservesPendingOrderAfterLocalCooldown(t *testi
 		modelRotationPick(t, snapshot, registry, modelRotationQuery(id))
 	}
 	checkpoint := registry.SchedulingState().CaptureCheckpoint()
-	// 检查点必须独立于后续分配对共享队列的修改。
+	// A checkpoint must be independent of later allocation changes to the shared queue.
 	modelRotationPick(t, snapshot, registry, modelRotationQuery(2))
 	raw, err := json.Marshal(checkpoint)
 	if err != nil {

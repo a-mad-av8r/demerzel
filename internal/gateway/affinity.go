@@ -33,7 +33,7 @@ func (handler *Handler) resolveRequestAffinity(
 		clientProtocol,
 		prefix,
 	)
-	// 执行层私有 replay scope 仍由提示词派生，不把客户端缓存分组当作会话身份。
+	// The execution layer's private replay scope still derives from the prompt; do not treat the client cache group as session identity.
 	result := requestAffinity{continuityKey: string(key), kind: telemetry.AffinityPromptPrefix}
 	if promptCacheKey != "" {
 		key = affinity.DerivePromptCacheKey(handler.encryption, accessKeyID, clientProtocol, promptCacheKey)

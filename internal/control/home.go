@@ -494,8 +494,8 @@ func countAvailableHomeCredentialsInGroups(
 			)
 		}
 		_, groupAllowed := allowedGroups[row.GroupID]
-		// 与健康页共用 classifyHealthKey：只看 status/拉黑/冷却会把「待重新授权」
-		// 和「权重手动置 0」的凭据算成可用，而调度器根本不会选中它们。
+		// Share classifyHealthKey with the health page: checking only status, blacklist, and cooldown would treat “reauthorisation required”
+		// and “weight manually set to zero” credentials as available even though the scheduler will never select them.
 		if (allowedGroups == nil || groupAllowed) &&
 			classifyHealthKey(group, credential, now) == healthBucketAvailable {
 			available++

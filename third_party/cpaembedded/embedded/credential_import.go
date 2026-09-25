@@ -15,7 +15,7 @@ import (
 	codexauth "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/codex"
 )
 
-// ImportCodexCredential 将导入字段补全为已有的持久凭据。
+// ImportCodexCredential completes imported data into the established persistent credential.
 func ImportCodexCredential(ctx context.Context, raw []byte, options Options) (CodexCredential, error) {
 	fields, err := credentialImportFields(raw, codexauth.ClientID)
 	if err != nil {
@@ -25,7 +25,7 @@ func ImportCodexCredential(ctx context.Context, raw []byte, options Options) (Co
 	if err := json.Unmarshal(raw, &original); err != nil {
 		return CodexCredential{}, fmt.Errorf("decode imported credential: %w", err)
 	}
-	// 先沿用原校验检查类型、时间及禁用的配置字段；占位值只用于校验。
+	// First retain the type, time, and disabled configuration fields checked by the original validation; placeholders are used only for validation.
 	if strings.TrimSpace(original.AccessToken) == "" {
 		fields["access_token"] = json.RawMessage(`"import-validation"`)
 	}
@@ -49,7 +49,7 @@ func ImportCodexCredential(ctx context.Context, raw []byte, options Options) (Co
 	if err := validateCredential(current); err == nil {
 		return current, nil
 	}
-	// 只有不完整凭据需要在导入时刷新；完整凭据的刷新仍由调用方生命周期管理。
+	// Only incomplete credentials refresh during import; the caller lifecycle still manages refreshes for complete credentials.
 	refreshed, err := exchangeToken(ctx, url.Values{
 		"client_id": {codexauth.ClientID}, "grant_type": {"refresh_token"},
 		"refresh_token": {current.RefreshToken}, "scope": {"openid profile email"},
@@ -81,7 +81,7 @@ func ImportCodexCredential(ctx context.Context, raw []byte, options Options) (Co
 	return refreshed, nil
 }
 
-// ImportClaudeCredential 将导入字段补全为已有的持久凭据。
+// ImportClaudeCredential completes imported data into the established persistent credential.
 func ImportClaudeCredential(ctx context.Context, raw []byte, options ClaudeOptions) (ClaudeCredential, error) {
 	fields, err := credentialImportFields(raw, claudeauth.ClientID)
 	if err != nil {
@@ -100,7 +100,7 @@ func ImportClaudeCredential(ctx context.Context, raw []byte, options ClaudeOptio
 		return ClaudeCredential{}, fmt.Errorf("decode imported credential: %w", err)
 	}
 	normalizeClaudeCredential(&current)
-	// 仅为缺少的必需字段生成校验占位，其他原有字段继续使用严格解析。
+	// Generate validation placeholders only for missing mandatory fields; strict parsing continues for every other existing field.
 	for key, value := range map[string]string{
 		"access_token": current.AccessToken, "account_uuid": current.AccountUUID,
 		"expired": current.Expire,
@@ -233,7 +233,7 @@ func credentialImportFields(raw []byte, expectedClientID string) (map[string]jso
 	return fields, nil
 }
 
-// JWT claims 仅用于取回导入文件中的身份元数据，不作为认证或签名验证。
+// JWT claims are used only to recover identity metadata from the imported file, not for authentication or signature verification.
 func completeCodexImportClaims(credential *CodexCredential) error {
 	for _, token := range []string{credential.IDToken, credential.AccessToken} {
 		parts := strings.Split(token, ".")

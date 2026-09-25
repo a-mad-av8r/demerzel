@@ -62,14 +62,14 @@ func TestAntigravityImagesConvertsGenerationAndPreservesUsage(t *testing.T) {
 		`{"promptTokenCount":100,"cachedContentTokenCount":40,"candidatesTokenCount":20,"thoughtsTokenCount":5,"totalTokenCount":125}`,
 	)}
 	bridge := &antigravityProviderBridge{executor: executor}
-	request := antigravityImagesRequest(`{"model":"gemini-3.1-flash-image","prompt":"  画一只猫  ","n":1,"stream":false,"size":"auto","quality":"auto","response_format":"b64_json"}`)
+	request := antigravityImagesRequest(`{"model":"gemini-3.1-flash-image","prompt":"  Draw a cat  ","n":1,"stream":false,"size":"auto","quality":"auto","response_format":"b64_json"}`)
 	original := bytes.Clone(request.Payload)
 	before := time.Now().Unix()
 	response, err := bridge.Execute(t.Context(), "17", antigravityProviderTestCredential(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPayload := `{"contents":[{"role":"user","parts":[{"text":"  画一只猫  "}]}],"generationConfig":{"responseModalities":["TEXT","IMAGE"]}}`
+	wantPayload := `{"contents":[{"role":"user","parts":[{"text":"  Draw a cat  "}]}],"generationConfig":{"responseModalities":["TEXT","IMAGE"]}}`
 	var got, want any
 	if err := json.Unmarshal(executor.request.Payload, &got); err != nil {
 		t.Fatal(err)

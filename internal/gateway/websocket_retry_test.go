@@ -36,7 +36,7 @@ func TestWebsocketUnavailableBindingPreventsDispatch(t *testing.T) {
 		bindingStopped: make(chan struct{}, 1)}
 	s.bind <- struct{}{}
 	defer func() { cancel(); s.workers.Wait() }()
-	// 通知仍未消费时，已经登记的排队请求也不得派发。
+	// While the notification remains unconsumed, queued requests already registered must not dispatch either.
 	s.markBindingUnavailable(s.binding)
 	s.bindingStopped <- struct{}{}
 	if s.dispatchTurn(websocketTurn{}, make(chan websocketFinished, 1)) {
@@ -145,7 +145,7 @@ func TestWebsocketReadFailuresStayRegisteredUntilCanceled(t *testing.T) {
 				}
 				defer conn.Close()
 				s := &websocketConnection{handler: h, conn: conn, ctx: ctx, accepting: true, registered: 1}
-				// 保留一个活动请求，把读错误收尾停在取消前，检验并发重连门禁。
+				// Retain one active request and stop read-error cleanup before cancellation to test the concurrent-reconnection gate.
 				s.cancel = sync.OnceFunc(func() { close(stopping); <-release; cancel() })
 				s.workers.Add(1)
 				ready <- s
@@ -161,7 +161,7 @@ func TestWebsocketReadFailuresStayRegisteredUntilCanceled(t *testing.T) {
 			defer conn.Close()
 			s := <-ready
 			if test.closeCode == 0 {
-				// 声明两个字节的掩码文本帧，只发送一个字节，触发正文读取失败。
+				// Declare a two-byte masked text frame but send one byte, triggering a body-read failure.
 				if _, err := conn.UnderlyingConn().Write([]byte{0x81, 0x82, 1, 2, 3, 4, '{' ^ 1}); err != nil {
 					t.Fatal(err)
 				}
@@ -613,7 +613,7 @@ func TestWebsocketStreamLimitRejectionStaysRegisteredUntilFinalized(t *testing.T
 	case <-time.After(2 * time.Second):
 		t.Fatal("stream-limit rejection did not reach finalization")
 	}
-	// 将超限请求停在日志提交处，再让活动请求遇到可重试错误。
+	// Hold the over-limit request at log submission, then let the active request hit a retryable error.
 	close(releaseError)
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if _, body, err := conn.ReadMessage(); err != nil || !strings.Contains(string(body), "quota exhausted") {

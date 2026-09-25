@@ -184,7 +184,7 @@ func parseEntry(value any, format string) Entry {
 		mapped, entry.ErrorCode = mapSub2API(object, entry.ChannelID)
 	} else if channelID := cpaChannel(stringValue(object["type"])); channelID != "" {
 		entry.Format, entry.ChannelID = "cpa", channelID
-		// 保留全部字段，不能绕开现有 CPA 解析器的字段与控制元数据校验。
+		// Retain all fields; do not bypass the existing CPA parser's validation of fields and control metadata.
 		mapped = object
 		if _, ok := object["refresh_token"].(string); !ok || strings.TrimSpace(stringValue(object["refresh_token"])) == "" {
 			entry.ErrorCode = "missing_refresh_token"

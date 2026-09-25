@@ -36,7 +36,7 @@ type ForwardInput struct {
 	UpstreamModelID   string
 	OnStreamReady     func()
 	OnFirstResponse   func()
-	// OnResponse 在原生 Response 对象下发前登记归属，不承担上游执行。
+	// OnResponse records ownership before delivering a native Response object; it does not execute upstream work.
 	OnResponse func([]byte) error
 
 	RequestID                string

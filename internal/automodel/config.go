@@ -121,7 +121,7 @@ func Compile(config Config, ordinaryModels, decisionModels map[string]struct{}) 
 			compileErr = fmt.Errorf("%w: %v", ErrInvalidConfig, compileErr)
 		}
 	}()
-	// 深拷贝自由 JSON 字段，保证请求使用不可变的配置版本。
+	// Deep-copy free-form JSON fields so requests use an immutable configuration version.
 	raw, err := json.Marshal(config)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func Compile(config Config, ordinaryModels, decisionModels map[string]struct{}) 
 			return nil, fmt.Errorf("Jev decision model does not have an enabled Decisions route")
 		}
 	}
-	// 自动模型只有系统级总开关；保留字段用于读取早期实验配置，但入口始终随总开关启用。
+	// Auto-model has only a system-wide switch. Retain this field for reading early experimental configurations, but always enable entries with the master switch.
 	for index := range config.Models {
 		config.Models[index].Enabled = true
 	}

@@ -25,7 +25,7 @@ import (
 	subscriptionruntime "gpt-load/internal/subscription/runtime"
 )
 
-// 同一账号来自不同格式时仍只暂存一次，其他条目的错误不阻止有效账号。
+// The same account from different formats is still staged only once; errors in other items do not block valid accounts.
 func TestCredentialImportBatchKeepsPartialResultsAndDeduplicatesIdentity(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
@@ -388,7 +388,7 @@ func TestCredentialImportBatchDeadlinePreservesCompletedAndPendingResults(t *tes
 				return subscriptionruntime.Credential{}, fmt.Errorf("refresh request: %w", ctx.Err())
 			}
 			raw := []byte(`[{"tokens":{"refresh_token":"first-refresh"}},{"tokens":{"refresh_token":"second-refresh"}},{"tokens":{"refresh_token":"third-refresh"}}]`)
-			// 缩短父请求期限，实际等到正在处理的请求被取消，避免等待默认 30 秒。
+			// Shorten the parent-request limit while still waiting for the active request to cancel, rather than the default 30 seconds.
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 			batch, err := fixture.service.ImportCredentialBatch(ctx, channel.Codex, raw, 0, nil)

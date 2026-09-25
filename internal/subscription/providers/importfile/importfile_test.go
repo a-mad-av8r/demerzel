@@ -9,10 +9,10 @@ import (
 	"gpt-load/internal/channel"
 )
 
-// 测试凭据均为人工占位值；sub2api 结构固定核对到提交
-// 772a0382f079676983c06f24b0d41e09139a8462 的 account_data.go、
-// useOpenAIOAuth.ts、useGrokOAuth.ts、useAntigravityOAuth.ts 与 useAccountOAuth.ts。
-// 历史容器由 37047919abef5ec425882dbd9b449fd9165c0a87 的变更确认。
+// Test credentials are manual placeholders. The sub2api structure is fixed against commit
+// 772a0382f079676983c06f24b0d41e09139a8462's account_data.go,
+// useOpenAIOAuth.ts, useGrokOAuth.ts, useAntigravityOAuth.ts, and useAccountOAuth.ts.
+// The historical container is confirmed by commit 37047919abef5ec425882dbd9b449fd9165c0a87.
 func TestParseMapsSupportedExports(t *testing.T) {
 	tests := []struct {
 		name, raw, format string

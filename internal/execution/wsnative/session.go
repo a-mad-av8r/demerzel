@@ -1,4 +1,4 @@
-// Package wsnative 提供单个已选上游的原生 Responses WS 传输，不选号或重放请求。
+// Package wsnative provides native Responses WS transport to one selected upstream without choosing routes or replaying requests.
 package wsnative
 
 import (
@@ -46,7 +46,7 @@ type session struct {
 	closeErr         error
 }
 
-// Dial 只建立选定的连接，握手失败不会改发 HTTP 或跟随重定向。
+// Dial establishes only the selected connection; handshake failure neither switches to HTTP nor follows redirects.
 func Dial(ctx context.Context, endpoint string, header http.Header, effective outboundproxy.Effective) (execution.WebsocketSession, execution.WebsocketResult) {
 	result := execution.WebsocketResult{DispatchState: execution.DispatchNotSent}
 	parsed, err := url.Parse(endpoint)
@@ -202,7 +202,7 @@ func (s *session) readLoop() {
 		case <-s.done:
 			return
 		}
-		// 消费者处理完当前事件再读取下一帧，避免终态尚未交付就因紧随的 Close 丢失。
+		// Read the next frame only after consumers handle the current event, preventing a close immediately after terminal state from dropping it.
 		select {
 		case <-item.done:
 		case <-s.done:
@@ -298,7 +298,7 @@ func (s *session) ExecuteTurn(ctx context.Context, payload []byte, emit func(con
 		select {
 		case item := <-ch:
 			var event envelope
-			_ = json.Unmarshal(item.payload, &event) // readLoop 已校验 JSON。
+			_ = json.Unmarshal(item.payload, &event) // readLoop already validated JSON.
 			id := event.Response.ID
 			if id == "" {
 				id = event.ResponseID
@@ -339,10 +339,10 @@ func (s *session) ExecuteTurn(ctx context.Context, payload []byte, emit func(con
 					result.Error = failure(execution.ErrorKindProvider, code, event.Status)
 					if event.Type == "error" || event.Type == "response.failed" ||
 						(event.Type == "response.done" && event.Response.Status == "failed") {
-						// 明确错误事件交由共享规则判断；断流和不完整响应仍保持结果未知。
+						// Send explicit error events to the shared rules; disconnection and incomplete responses remain outcome-unknown.
 						result.Error.ReplaySafety = ""
 					}
-					// 原生请求错误的健康作用域由既有分类器结合错误码确定。
+					// The existing classifier determines native-request error health scope from error codes.
 					result.Error.ScopeHint = ""
 				}
 				if responseID == "" && result.Error == nil {

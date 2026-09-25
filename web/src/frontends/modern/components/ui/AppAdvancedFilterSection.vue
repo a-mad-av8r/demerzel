@@ -35,7 +35,7 @@ defineProps<{ title: string }>()
   gap: var(--modern-space-2) var(--modern-space-4);
   min-width: 0;
 }
-/* 仅直接字段使用横排标签；范围输入内部的字段保持自身布局。 */
+
 .modern-advanced-filter-fields > :deep(.modern-field) {
   grid-template-columns: 58px minmax(0, 1fr);
   align-items: center;

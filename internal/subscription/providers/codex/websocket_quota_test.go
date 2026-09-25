@@ -94,7 +94,7 @@ func TestWebsocketQuotaDropsSameEventCopyWithinResetPrecision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 同一事件里的副本允许 1 秒 reset_at 精度差；用量值不参与窗口身份判断。
+	// Copies in the same event permit one-second reset_at precision differences; usage values do not participate in window identity.
 	var event map[string]any
 	if err := json.Unmarshal(payload, &event); err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestWebsocketQuotaDropsSameEventCopyWithinResetPrecision(t *testing.T) {
 	}
 }
 
-// testdata 为 2026-09-12 对同一账号实测得到的额度字段，不包含身份和凭据。
+// testdata contains quota fields observed for one account on 2026-09-12, without identity or credentials.
 func TestWebsocketQuotaCapturedAccountAndSparkEvents(t *testing.T) {
 	for _, test := range []struct {
 		file         string

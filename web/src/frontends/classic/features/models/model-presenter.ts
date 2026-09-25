@@ -7,7 +7,7 @@ export type ModelPriceRowStatus = 'configured' | 'pending' | 'unpriced'
 export interface ModelUpstreamRow {
   upstream: ModelUpstreamDto
   status: ModelPriceRowStatus
-  /** 基础价格槽位；null 表示未设置，由视图渲染占位符。 */
+
   prices: Record<ModelPriceField, string | null>
   modePrices: { mode: 'fast' | 'ultrafast'; prices: Record<ModelPriceField, string | null> }[]
   tierCount: number

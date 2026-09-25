@@ -47,7 +47,7 @@ export function readGatewayPreferences(admin: boolean): GatewayPreferences {
 
 export function rememberGatewayPreferences(admin: boolean, value: GatewayPreferences): void {
   const key = storageKey(admin)
-  // 只记住选择及密钥标识，不保存密钥正文；禁用浏览器存储时仍能跨页面恢复。
+
   memory.set(key, { ...value })
   try {
     window.localStorage.setItem(key, JSON.stringify(value))

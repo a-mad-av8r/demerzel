@@ -83,7 +83,7 @@ func (o Operation) Valid() bool {
 type ReplayPolicy uint8
 
 const (
-	// ReplayPolicyLegacy preserves the established behavior of existing
+	// ReplayPolicyLegacy preserves the established behaviour of existing
 	// operations. Individual health rules still decide whether retry is safe.
 	ReplayPolicyLegacy ReplayPolicy = iota
 	// ReplayPolicyRequireRejectedBeforeProcessing permits another dispatch only
@@ -159,7 +159,7 @@ type ResponsesStorePreference string
 const (
 	ResponsesStorePreferenceNone         ResponsesStorePreference = ""
 	ResponsesStorePreferencePreferStored ResponsesStorePreference = "prefer_stored"
-	// 续接上一轮响应必须保留状态语义，不允许降级为无状态。
+	// Continuing a prior response must retain state semantics and cannot degrade to stateless handling.
 	ResponsesStorePreferenceRequireStored ResponsesStorePreference = "require_stored"
 )
 
@@ -245,7 +245,7 @@ type AttemptSpec struct {
 	RawQuery string      `json:"raw_query,omitempty"`
 	Header   http.Header `json:"header,omitempty"`
 	Body     []byte      `json:"body,omitempty"`
-	// ConfiguredHeaders 记录显式请求头规则的字段；最终值由 Header 提供，缺失表示移除。
+	// ConfiguredHeaders records fields with explicit request-header rules; Header provides final values and absence means removal.
 	ConfiguredHeaders []string `json:"-"`
 	// IncludeUsage asks the executor to request provider usage details when the
 	// selected operation supports an explicit wire option.

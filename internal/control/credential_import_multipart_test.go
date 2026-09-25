@@ -31,7 +31,7 @@ func TestCredentialImportMultipartAcceptsMaximumContentAndMetadata(t *testing.T)
 	t.Parallel()
 	for _, filename := range []string{
 		"codex-" + strings.Repeat("x", 72) + ".json",
-		"codex-" + strings.Repeat("订阅", 100) + ".json",
+		"codex-" + strings.Repeat("☃☃", 100) + ".json",
 	} {
 		t.Run(fmt.Sprintf("filename-bytes-%d", len(filename)), func(t *testing.T) {
 			t.Parallel()
@@ -76,7 +76,7 @@ func TestCredentialImportMultipartReportsRequestBodyLimit(t *testing.T) {
 	if err := writer.WriteField("channel_id", "codex"); err != nil {
 		t.Fatal(err)
 	}
-	// 合成一个超过整包预算的 MIME 头，验证未知 Content-Length 时的流式限制。
+	// Construct a MIME header larger than the whole-request budget to verify streaming limits with an unknown Content-Length.
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Disposition", `form-data; name="file"; filename="account.json"`)
 	header.Set("X-Padding", strings.Repeat("x", 9*1024*1024))

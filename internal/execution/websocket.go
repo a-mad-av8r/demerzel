@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// WebsocketCapabilities 是执行路径承诺的原生 Responses WS 能力，不由 HTTP 存储声明推导。
+// WebsocketCapabilities declares native Responses WS capabilities promised by the execution path, rather than deriving them from HTTP storage declarations.
 type WebsocketCapabilities struct {
 	Native          bool
 	Continuation    bool
@@ -21,7 +21,7 @@ func (c WebsocketCapabilities) Supports(required WebsocketCapabilities) bool {
 		(!required.Prewarm || c.Prewarm) && (!required.Multiplex || c.Multiplex)
 }
 
-// WebsocketResult 只报告本轮发送证据和错误；usage/响应 ID 由原生事件提供。
+// WebsocketResult reports only this turn's send evidence and errors; native events provide usage and response IDs.
 type WebsocketResult struct {
 	DispatchState    DispatchState
 	Header           http.Header
@@ -29,16 +29,16 @@ type WebsocketResult struct {
 	Error            *ErrorEvidence
 }
 
-// WebsocketSession 固定已选目标；同流顺序由网关保证，支持的不同流可并发调用。
-// payload 为不含 type 的 Responses Create 参数；原生 stream_id 保留。
-// emit 同步消费一个完整原生 JSON 事件，必须响应 ctx，返回错误将终止连接。
+// WebsocketSession fixes the selected target; the gateway guarantees same-stream order while supported distinct streams may run concurrently.
+// payload is Responses Create parameters without type; the native stream_id is retained.
+// emit synchronously consumes one complete native JSON event, must observe ctx, and terminates the connection on error.
 type WebsocketSession interface {
 	ExecuteTurn(ctx context.Context, payload []byte, emit func(context.Context, []byte) error) WebsocketResult
 	Done() <-chan struct{}
 	Close() error
 }
 
-// WebsocketOpener 不进行选号、业务重放或 HTTP 回退。
+// WebsocketOpener does not choose routes, replay business traffic, or fall back to HTTP.
 type WebsocketOpener interface {
 	OpenWebsocket(context.Context, AttemptSpec) (WebsocketSession, WebsocketResult)
 }

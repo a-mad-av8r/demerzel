@@ -17,7 +17,7 @@ const props = withDefaults(
     disabled?: boolean
     mode: 'total' | 'cursor'
     total?: number
-    // 只用于游标模式；总量模式根据 total 计算翻页能力。
+
     hasPrevious?: boolean
     hasNext?: boolean
   }>(),

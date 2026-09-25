@@ -44,7 +44,7 @@ func (s *Service) CreateAccessKeyIdempotent(
 		if !validAccessKeyPlaintext(request.Key) {
 			return AccessKeyCreateResult{}, app_errors.ErrInvalidCustomAccessKey
 		}
-		// 使用带密钥的指纹区分请求，避免幂等摘要成为弱密钥的离线猜测凭据。
+		// Use a key-bound fingerprint to prevent an idempotency digest from becoming an offline oracle for weak keys.
 		keyHash = s.encryption.Hash(request.Key)
 	}
 	name, err := normalizeAccessKeyName(request.Name)

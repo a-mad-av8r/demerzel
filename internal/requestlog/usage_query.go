@@ -38,7 +38,7 @@ func (service *Service) QueryUsage(ctx context.Context, input UsageQuery) (Usage
 		Operation:      "usage read transaction",
 	}, func(connection *gorm.DB) error {
 		scope := usageWindowScope(connection, input)
-		// 5 分钟趋势不能由小时汇总还原；总览、趋势与分布共用请求明细来源。
+		// Five-minute trends cannot be reconstructed from hourly aggregates; overview, trends, and distribution share request-detail sources.
 		if bucketWidthMS == UsageFiveMinuteBucketMS {
 			scope = usageRequestLogScope(connection, input)
 		}
@@ -166,7 +166,7 @@ func validateUsageIntegrity(scope *gorm.DB, bucketAlignmentMS int64) error {
 	alignmentExpression := "?"
 	var arguments []any
 	if bucketAlignmentMS == 0 {
-		// 混合行集携带原始来源的桶宽，不能把损坏的小时记录按分钟桶放行。
+		// Mixed rows carry their source bucket width; do not admit corrupt hourly records as minute buckets.
 		alignmentExpression = "bucket_alignment_ms"
 	} else {
 		arguments = append(arguments, bucketAlignmentMS)

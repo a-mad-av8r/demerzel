@@ -12,7 +12,7 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// ModernGroupItem 只提供工作区需要的展示事实，不改变分组的配置或健康状态。
+// ModernGroupItem provides only the display facts needed by the workspace; it does not change group configuration or health state.
 type ModernGroupItem struct {
 	ID                     uint                            `json:"id"`
 	Name                   string                          `json:"name"`

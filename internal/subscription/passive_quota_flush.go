@@ -51,8 +51,8 @@ func (manager *CredentialManager) flushOnePassiveQuotaObservation(
 	observation PassiveQuotaObservation,
 ) error {
 	var err error
-	// 身份校验、CAS 重试和额度投影必须与目标切换处于同一互斥边界，
-	// 避免旧目标已落盘的结果在切换之后继续写入新目标的运行时额度。
+	// Identity validation, CAS retry, and quota projection must share a mutual-exclusion boundary with target switching
+	// to prevent results persisted for an old target from continuing to write new-target runtime quota after a switch.
 	manager.mutations.Do(observation.CredentialID, func() {
 		err = manager.flushOnePassiveQuotaObservationLocked(ctx, observation)
 	})
@@ -101,8 +101,8 @@ func (manager *CredentialManager) flushOnePassiveQuotaObservationLocked(
 			return nil
 		}
 		if !merge.Matched {
-			// 未能唯一匹配已有窗口的样本不能推进同步时间。
-			// 窗口创建和身份变更仍由主动观测负责。
+			// A sample that cannot uniquely match an existing window cannot advance synchronisation time.
+			// Active observation remains responsible for window creation and identity changes.
 			manager.passiveQuota.ack(observation.CredentialID, observation.Version)
 			return nil
 		}
@@ -144,8 +144,8 @@ func (manager *CredentialManager) flushOnePassiveQuotaObservationLocked(
 	return fmt.Errorf("passive quota observation for credential %d conflicted with a concurrent write", observation.CredentialID)
 }
 
-// mergePassiveQuotaSamples 按原始时间处理握手和事件，再通过同一次 CAS 写入。
-// 每份样本都与数据库中的时间比较，避免把旧握手改记为事件时间、覆盖期间的主动刷新。
+// mergePassiveQuotaSamples processes handshakes and events by original time, then writes both through the same CAS.
+// Compare each sample with the database time to prevent recording an old handshake as an event time or overwriting an active refresh in between.
 func mergePassiveQuotaSamples(raw []byte, storedAtMS *int64, observation PassiveQuotaObservation) (passiveQuotaMerge, int64, error) {
 	result := passiveQuotaMerge{Encoded: raw}
 	var observedAtMS int64
@@ -183,9 +183,9 @@ type passiveQuotaMerge struct {
 	Changed bool
 }
 
-// mergePassiveQuotaSnapshot 仅更新已有且唯一匹配的窗口，不创建或改换窗口。
-// 无变化时直接返回原始 raw，保持字节不变；仅在窗口数据变化时重新编码，
-// 此时保留其他字段的值，但不保证原始键顺序或格式。
+// mergePassiveQuotaSnapshot updates only existing uniquely matched windows; it neither creates nor changes windows.
+// Return original raw bytes unchanged when nothing changes; re-encode only when window data changes,
+// retaining other field values without guaranteeing original key order or formatting.
 func mergePassiveQuotaSnapshot(
 	raw []byte,
 	patches []providerobservation.QuotaWindow,
@@ -217,8 +217,8 @@ func mergePassiveQuotaSnapshot(
 		if position < 0 {
 			continue
 		}
-		// 仅 WS 带有 SourceName。来源解析后，同一目标的顶层副本让位给具名窗口；
-		// 不同来源、不同周期不会互相去重，数值差异也不改变这一优先级。
+		// Only WS carries SourceName. After resolving sources, a same-target top-level copy yields to a named window;
+		// different sources or periods are not deduplicated, and numeric differences do not change that priority.
 		if patches[index].SourceName == "" && namedTargets[position] {
 			positions[index] = -1
 			continue
@@ -228,18 +228,18 @@ func mergePassiveQuotaSnapshot(
 	outcome := passiveQuotaMerge{Encoded: raw, Windows: existing}
 	for index, patch := range patches {
 		position := positions[index]
-		// 多个响应窗口指向同一目标也是歧义，不能取最后一个值覆盖。
+		// Multiple response windows pointing to the same target are also ambiguous; do not overwrite with the final value.
 		if position < 0 || matches[position] != 1 {
 			continue
 		}
 		previous := merged[position]
-		// primary/secondary 只是上游槽位；周期冲突时连用量、重置时间和状态也不能合并。
+		// primary/secondary are upstream slots only; when periods conflict, do not merge usage, reset time, or state either.
 		if previous.WindowSeconds != nil && patch.WindowSeconds != nil &&
 			*previous.WindowSeconds != *patch.WindowSeconds {
 			continue
 		}
 		outcome.Matched = true
-		patch.ID = previous.ID // 响应槽位可以变化，卡片窗口身份不变。
+		patch.ID = previous.ID // Response slots can change; card-window identity cannot.
 		next := providerobservation.MergeQuotaWindow(previous, patch)
 		if !reflect.DeepEqual(next, previous) {
 			outcome.Changed = true
@@ -262,8 +262,8 @@ func mergePassiveQuotaSnapshot(
 	return outcome, nil
 }
 
-// matchPassiveQuotaWindow 按来源和实际周期对齐主动/被动数据；槽位不参与推断。
-// 其他未提供 SourceID 的渠道保留 ID 匹配，但不能覆盖带来源标识的窗口。
+// matchPassiveQuotaWindow aligns active and passive data by source and actual period; slots do not participate in inference.
+// Other channels without SourceID retain ID matching but cannot overwrite windows carrying a source identifier.
 func matchPassiveQuotaWindow(windows []providerobservation.QuotaWindow, patch providerobservation.QuotaWindow) int {
 	if patch.SourceID == "" && patch.SourceName != "" {
 		patch.SourceID = passiveQuotaSourceByName(windows, patch)
@@ -290,8 +290,8 @@ func matchPassiveQuotaWindow(windows []providerobservation.QuotaWindow, patch pr
 	return matched
 }
 
-// Codex WS 的附加额度只报告原始 limit_name。利用主动观测已保存的名称和周期
-// 解析来源，再走既有 SourceID 匹配；不使用格式化后的 Label，也不推测名称别名。
+// Additional Codex WS quota reports only raw limit_name. Resolve the source using names and periods saved by active observation,
+// then use existing SourceID matching; do not use formatted Label or infer name aliases.
 func passiveQuotaSourceByName(windows []providerobservation.QuotaWindow, patch providerobservation.QuotaWindow) string {
 	if patch.WindowSeconds == nil || *patch.WindowSeconds <= 0 {
 		return ""

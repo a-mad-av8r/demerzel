@@ -33,9 +33,7 @@ export function credentialCount(raw: string, channel: GroupChannel | undefined):
     try {
       const parsed: unknown = JSON.parse(value)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return 1
-    } catch {
-      /* 多行 JSON 凭据继续按行统计，完整校验交给后端。 */
-    }
+    } catch {}
   }
   return value.split(/\r?\n/u).filter((line) => line.trim()).length
 }

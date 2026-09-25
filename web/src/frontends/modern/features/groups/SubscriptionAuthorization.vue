@@ -47,9 +47,7 @@ async function copyAuthorizationURL(): Promise<void> {
   let copied = false
   try {
     copied = await copyText(value, undefined, isCurrent)
-  } catch {
-    // 浏览器拒绝两种复制方式时，展开并选中完整链接供手动复制。
-  }
+  } catch {}
   if (!isCurrent()) return
   copying.value = false
   copyState.value = copied ? 'success' : 'manual'

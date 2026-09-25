@@ -3,33 +3,29 @@ require "json"
 require "pathname"
 
 class Demerzel < Formula
-  desc "Private local-first LLM gateway"
+  desc "Local-first LLM gateway"
   homepage "https://github.com/a-mad-av8r/demerzel"
   license "MIT"
   version "2.0.0"
 
-  # Stage this private tap formula locally; the authenticated install step obtains
-  # and verifies the actual release binary, without a pre-verification web download.
+  # Homebrew stages the tap formula locally; installation fetches signed release assets.
   url "file://#{File.expand_path(__FILE__)}"
   sha256 Digest::SHA256.file(__FILE__).hexdigest
 
   depends_on "age"
   depends_on "cosign" => :build
-  depends_on "gh" => :build
 
   def install
     asset = Hardware::CPU.arm? ? "demerzel-macos-arm64" : "demerzel-macos-amd64"
-    token = ENV["HOMEBREW_GITHUB_API_TOKEN"] || ENV["GH_TOKEN"]
-    odie "set HOMEBREW_GITHUB_API_TOKEN for the private Demerzel release" if token.to_s.empty?
-
+    release_base = "https://github.com/a-mad-av8r/demerzel/releases/download/v#{version}"
     artifacts = buildpath/"demerzel-release"
     artifacts.mkpath
-    previous_gh_token = ENV["GH_TOKEN"]
-    begin
-      ENV["GH_TOKEN"] = token
-      system "gh", "release", "download", "v#{version}", "--repo", "a-mad-av8r/demerzel", "--pattern", "manifest.json", "--pattern", "manifest.sigstore.json", "--pattern", asset, "--dir", artifacts.to_s
-    ensure
-      ENV["GH_TOKEN"] = previous_gh_token
+    ["manifest.json", "manifest.sigstore.json", asset].each do |name|
+      system "curl",
+        "--fail", "--location", "--silent", "--show-error",
+        "--proto", "=https", "--tlsv1.2",
+        "--output", (artifacts/name).to_s,
+        "#{release_base}/#{name}"
     end
 
     expected_tag = "v#{version}"

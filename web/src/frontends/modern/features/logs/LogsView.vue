@@ -71,7 +71,6 @@ const query = useQuery(
     return {
       queryKey: [...logsKey, admin.value, filters, preset ?? null, page],
       queryFn: ({ signal }: { signal: AbortSignal }) => {
-        // URL 保存相对预设，实际请求（包括页面重新可见）始终按当前时间解析。
         range.value = resolveTimeRange({ ...filters, preset })
         return getLogs(client, { ...filters, ...range.value }, page, signal)
       },
@@ -533,7 +532,7 @@ useMessageSource(() =>
   outline: var(--modern-focus-width) solid var(--modern-accent);
   outline-offset: var(--modern-focus-offset);
 }
-/* 数字按位比较，列与表头一起右对齐。 */
+
 .modern-log-cell.is-numeric {
   justify-items: end;
   text-align: right;

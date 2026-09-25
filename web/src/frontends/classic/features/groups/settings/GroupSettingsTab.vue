@@ -187,7 +187,7 @@ const proxyState = computed(() =>
     ? proxyDraftState(saved.value.proxy, proxyMode.value, proxyEndpoint.value)
     : { dirty: false, invalid: false, value: undefined },
 )
-// 代理沿用其它设置项的覆盖语义：inherit 即“继承全局”，direct/custom 即“本分组覆盖”。
+
 const proxyOverridden = computed(() => proxyMode.value !== 'inherit')
 const proxyPendingRestore = computed(
   () => saved.value?.proxy.configured_mode !== 'inherit' && proxyMode.value === 'inherit',
@@ -532,7 +532,6 @@ function requestSave(): void {
   void save()
 }
 
-// 切换渠道是独立写入：不并入设置草稿，成功后由后端回填参数与测试协议。
 const switchableChannels = computed(() =>
   (channelsQuery.data.value?.items ?? []).filter(({ connection }) => connection.type === 'api_key'),
 )
@@ -546,7 +545,7 @@ const requestedChannelName = computed(
     switchableChannels.value.find(({ channel_id }) => channel_id === requestedChannel.value)
       ?.name ?? '',
 )
-// 地址按原样保留，但各渠道对地址格式的要求不同，切换时提醒复核。
+
 const keepsBaseURL = computed(() => Boolean((draft.value?.params.base_url ?? '').trim()))
 function requestChannelSwitch(value: string): void {
   if (!value || value === saved.value?.channel_id || mutationPending.value || dirty.value) {

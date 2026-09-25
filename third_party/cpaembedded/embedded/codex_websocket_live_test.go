@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// 此合同需要单独授权的真实账号和模型；默认跳过，不刷新 token、不输出凭据。
+// This contract requires a separately authorised real account and model; it is skipped by default and neither refreshes tokens nor outputs credentials.
 func TestLiveCodexWSSessionContract(t *testing.T) {
 	path := strings.TrimSpace(os.Getenv("CPA_LIVE_CODEX_WS_CREDENTIAL_FILE"))
 	if path == "" {

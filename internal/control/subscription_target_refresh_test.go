@@ -33,7 +33,7 @@ func TestOldTargetUnauthorizedObservationDoesNotForceCredentialRefresh(t *testin
 	) (subscriptionruntime.Observation, error) {
 		observationCalls++
 		if observationCalls == 1 {
-			// 旧目标响应返回前已切换 URL，迟到的 401 不再具有刷新当前凭据的依据。
+			// The URL switched before the old target responded, so a late 401 no longer justifies refreshing the current credential.
 			setSubscriptionTestTarget(t, fixture, groupID, "https://relay.example/current")
 			return subscriptionruntime.Observation{}, &subscriptionruntime.UpstreamHTTPError{StatusCode: http.StatusUnauthorized}
 		}

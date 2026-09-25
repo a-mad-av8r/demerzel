@@ -58,7 +58,7 @@ func TestNormalizePassiveQuotaWindowsMapsAdditionalLimitNamespaces(t *testing.T)
 	// limit_name "GPT 5.3 Codex Spark" arrives on the HTTP path under a short
 	// namespace plus an X-Codex-<ns>-Limit-Name header.
 	windows := NormalizePassiveQuotaWindows(map[string]string{
-		// 请求计费到普通额度，通用组报告的就是账号自身的窗口。
+		// The request is billed to ordinary quota, so the generic group reports the account's own window.
 		"X-Codex-Active-Limit":                       "premium",
 		"X-Codex-Primary-Used-Percent":               "20",
 		"X-Codex-Primary-Window-Minutes":             "300",
@@ -74,7 +74,7 @@ func TestNormalizePassiveQuotaWindowsMapsAdditionalLimitNamespaces(t *testing.T)
 	if _, ok := byID["primary"]; !ok {
 		t.Fatalf("windows = %#v, want the account-scope primary window", windows)
 	}
-	// 保留原有 ID 格式；实际匹配使用 SourceID 和周期，不使用展示名称。
+	// Retain the existing ID format; actual matching uses SourceID and period rather than display name.
 	spark, ok := byID["gpt-5-3-codex-spark-primary"]
 	if !ok || spark.Used == nil || *spark.Used != 33 {
 		t.Fatalf("additional primary window = %#v (all=%#v)", spark, windows)
@@ -86,7 +86,7 @@ func TestNormalizePassiveQuotaWindowsMapsAdditionalLimitNamespaces(t *testing.T)
 }
 
 func TestNormalizePassiveQuotaWindowsAdditionalIDMatchesActiveJSON(t *testing.T) {
-	// 保留现有窗口 ID 的兼容性；来源与周期的匹配另有回归测试。
+	// Retain compatibility with existing window IDs; source and period matching have separate regression coverage.
 	raw, err := NormalizeQuota([]byte(`{
 		"plan_type":"pro",
 		"additional_rate_limits":[{
@@ -117,7 +117,7 @@ func TestNormalizePassiveQuotaWindowsAdditionalIDMatchesActiveJSON(t *testing.T)
 }
 
 func TestNormalizePassiveQuotaWindowsKeepsSourceWithoutLimitName(t *testing.T) {
-	// 命名空间足以标识来源；缺少展示名称不应丢弃额度信息。
+	// Namespace alone identifies the source; missing a display name must not discard quota information.
 	windows := NormalizePassiveQuotaWindows(map[string]string{
 		"X-Codex-Mysteryns-Primary-Used-Percent": "33",
 	}, time.Now())

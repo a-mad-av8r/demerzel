@@ -69,7 +69,7 @@ const pageLoading = useLoadingFeedback(
 )
 const removeBeforeEach = router.beforeEach((to, from) => {
   navigationTarget = to.fullPath
-  // query/hash 是页内状态，只有路径变化才作为页面导航。
+
   navigating.value = to.path !== from.path
 })
 watch(
@@ -84,7 +84,7 @@ watch(
   async ([navigationPending, requestsPending]) => {
     if (navigationPending || requestsPending) return
     const path = route.path
-    // 等待新页面挂载并登记请求；首轮加载完成后，局部请求不再点亮顶部进度条。
+
     await nextTick()
     if (route.path === path && !navigating.value && !contentPending.value) {
       loadingPage.value = false
@@ -114,7 +114,7 @@ const removeAfterEach = router.afterEach((to, from, failure) => {
   if (navigationTarget === to.fullPath) navigating.value = false
   if (failure) return
   failedNavigation.value = null
-  // 同页搜索和筛选只更新查询参数，保留当前控件的输入焦点。
+
   if (to.path === from.path) return
   requestAnimationFrame(() =>
     document.getElementById('modern-content')?.focus({ preventScroll: true }),
@@ -136,7 +136,7 @@ async function logout(): Promise<void> {
   loggingOut.value = true
   try {
     const failure = await router.replace(loginLocation())
-    // 路由守卫阻止离开时仍保留会话，后续业务页可继续使用未保存修改保护。
+
     if (!isNavigationFailure(failure)) session.clear()
   } catch {
     failedNavigation.value = pagePath('login')
@@ -350,7 +350,7 @@ useMessageSource(() =>
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
 }
-/* 顶栏是所有页面共用的固定结构：标题 | 刷新与时间 | 竖线 | 全局控件。 */
+
 .modern-topbar {
   position: sticky;
   z-index: var(--modern-layer-header);
@@ -431,7 +431,7 @@ useMessageSource(() =>
   .modern-sidebar-toggle {
     display: none;
   }
-  /* 侧栏不可见时，抽屉入口回到标题行。 */
+
   .modern-toolbar .modern-mobile-toggle {
     display: inline-flex;
   }
@@ -443,7 +443,7 @@ useMessageSource(() =>
     gap: var(--modern-space-2);
     padding-block: var(--modern-space-2);
   }
-  /* 移动端顶栏只留刷新按钮，时间文字和竖线让位给标题。 */
+
   .modern-topbar-refresh span,
   .modern-topbar-divider {
     display: none;

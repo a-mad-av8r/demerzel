@@ -21,7 +21,6 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ open: [upstream: ModelUpstreamDto] }>()
 
-// 一行里的分组必定同渠道，两枚足够点出归属，其余在抽屉里看。
 const visibleRouteGroupCount = 2
 
 function visibleRouteGroups(upstream: ModelUpstreamDto): ModelRouteGroupDto[] {
@@ -32,7 +31,6 @@ function hiddenRouteGroups(upstream: ModelUpstreamDto): ModelRouteGroupDto[] {
   return upstream.route_groups.slice(visibleRouteGroupCount)
 }
 
-// narrow 去掉“和 / and”只留分隔符；unit 类型在中日文下不插分隔符，不能用。
 function formatGroupNames(names: string[]): string {
   try {
     return new Intl.ListFormat(locale.value, { style: 'narrow', type: 'conjunction' }).format(names)
@@ -268,7 +266,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
 
 <style scoped>
 .model-tree {
-  /* 树线锚点：客户端模型行的主干与上游行的转角共用同一条竖线位置。 */
   --model-tree-rail: 20px;
   min-width: 0;
   border: 1px solid var(--color-border-subtle);
@@ -283,7 +280,7 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
 
 .model-tree__grid {
   display: grid;
-  /* 名称吸收剩余空间；4 个价格列等宽，状态与箭头列按内容。 */
+
   min-width: 760px;
   grid-template-columns:
     minmax(220px, 1fr)
@@ -329,7 +326,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   justify-self: end;
 }
 
-/* 表头：小号、faint，作为列语义的唯一来源。 */
 .model-tree__row--head {
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-surface-sunken);
@@ -342,7 +338,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   padding-block: var(--space-2);
 }
 
-/* 客户端模型行是分组标题：底色比表头浅一级、比数据行深一级，价格列留空。 */
 .model-tree__row--client {
   border-top: 1px solid var(--color-border-control);
   background: color-mix(in srgb, var(--color-surface-sunken) 55%, var(--color-surface));
@@ -363,7 +358,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   padding-right: var(--space-3-5);
 }
 
-/* 树干从组标题行内长出，延伸到行底，交给下方第一个上游行接续转角。 */
 .model-tree__client::after {
   position: absolute;
   top: 62%;
@@ -381,7 +375,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   font-weight: 600;
 }
 
-/* 名字与复制键自成一组：CopyChip 自带命中区留白，这里只需极小的视觉间距。 */
 .model-tree__ident {
   display: inline-flex;
   min-width: 0;
@@ -425,7 +418,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   transition: background-color var(--duration-fast) var(--easing-standard);
 }
 
-/* 组内子行之间保留分隔线；组标题与首个子行贴合，靠底色过渡分组。 */
 .model-tree__row--upstream + .model-tree__row--upstream {
   border-top: 1px solid var(--color-border-subtle);
 }
@@ -434,8 +426,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   background: var(--color-interactive-hover);
 }
 
-/* 上游行缩进一级，用连续竖线把它归到上方的客户端模型下；
-   用 .model-tree__cell 叠加类名提高特异性，否则会被 :first-child 的 padding-left 盖掉。 */
 .model-tree__cell.model-tree__upstream {
   position: relative;
   display: flex;
@@ -446,7 +436,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   padding-left: calc(var(--model-tree-rail) + var(--space-4));
 }
 
-/* 中间子行：├ ——竖线跨过行边框保持连续，再接一段横向短线。 */
 .model-tree__row--upstream:not(.model-tree__row--last)
   .model-tree__cell.model-tree__upstream::before {
   position: absolute;
@@ -469,7 +458,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   content: '';
 }
 
-/* 末个子行：└ ——圆角收笔，一个伪元素画完竖线转横线。 */
 .model-tree__row--last .model-tree__cell.model-tree__upstream::before {
   position: absolute;
   top: -1px;
@@ -591,7 +579,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
   color: var(--color-text-faint);
 }
 
-/* 列标签只在窄屏卡片布局里出现，宽屏由表头承担。 */
 .model-tree__price-label {
   display: none;
 }
@@ -628,7 +615,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
     padding: var(--space-1);
   }
 
-  /* 卡片布局没有树形结构，树干线不出现。 */
   .model-tree__client::after {
     display: none;
   }
@@ -638,7 +624,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
     padding-inline: var(--space-2-5);
   }
 
-  /* 卡片布局：价格铺成 2×2，箭头脱离网格钉在右上角，避免占掉一整列。 */
   .model-tree__row--upstream {
     position: relative;
     display: grid;
@@ -651,7 +636,6 @@ function pricingIdentityTooltip(upstream: ModelUpstreamDto): string {
     padding: var(--space-3);
   }
 
-  /* 用 .model-tree__cell 叠加类名匹配宽屏规则的特异性，否则宽屏的缩进会盖过这里的重置。 */
   .model-tree__cell.model-tree__upstream {
     grid-column: 1 / -1;
     padding-right: var(--control-xs);

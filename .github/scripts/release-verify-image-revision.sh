@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 断言多架构镜像的 linux/amd64 与 linux/arm64 两个 config 标签
-# org.opencontainers.image.revision 都等于期望的 commit SHA。
+# Assert that the org.opencontainers.image.revision config label for both linux/amd64 and linux/arm64 images equals the expected commit SHA.
 #
-# registry 返回的标签值是不可信输入，只允许在 jq 比较内部使用：进入 shell 的
-# 永远只有受信的 ${expected} 或字面量 mismatch，实际读到的值仅直接写入 stderr。
+# The registry-provided label value is untrusted input and may only be used inside the jq comparison. Only trusted ${expected} or the literal mismatch enters the shell; the observed value is written directly to stderr.
 #
-# 退出码约定，调用方据此区分「确实不匹配」与「无法完成检查」：
-#   0 = 两个架构都匹配，stdout 输出该 revision
-#   1 = 镜像可读但 revision 不匹配，stderr 输出实际读到的标签
-#   2 = 无法读取镜像清单（网络、认证或镜像缺失），stderr 输出原始错误
+# Exit statuses let callers distinguish an actual mismatch from an incomplete check:
+#   0 = both architectures match; stdout prints the revision
+#   1 = the image is readable but the revision does not match; stderr prints the observed label
+#   2 = the image manifest cannot be read (network, authentication, or a missing image); stderr prints the original error
 
 image="${1:?image is required}"
 expected="${2:?expected revision is required}"

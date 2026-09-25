@@ -34,11 +34,6 @@ const { locale, t } = useI18n()
 
 const tiered = computed(() => draft.value.tiers.length > 0)
 
-/**
- * 新增档位固定追加到末尾，用户填入的阈值可能比上面已有档位更小，
- * 导致编辑区行序与下方按阈值排序的派生说明相互矛盾。失焦时才重排，
- * 避免每次按键都重排导致正在编辑的行跳动。
- */
 function reorderTiers(): void {
   draft.value.tiers = [...draft.value.tiers].sort(
     (left, right) => tierDisplayOrder(left.threshold) - tierDisplayOrder(right.threshold),
@@ -60,7 +55,6 @@ function tierSlotError(key: string, field: ModelPriceField): string | undefined 
   return code ? t(`modelPrices.matrix.errors.${code}`) : undefined
 }
 
-/** 输入框组共享外框，逐格挂错误文案会撑破布局；改为按行汇总去重后展示。 */
 function dedupe(messages: (string | undefined)[]): string[] {
   return [...new Set(messages.filter((message): message is string => Boolean(message)))]
 }
@@ -105,7 +99,6 @@ const tierRules = computed<TierRule[]>(() => {
     <InlineFeedback v-if="failure" appearance="ledger" tone="danger">{{ failure }}</InlineFeedback>
 
     <div class="model-price-matrix__grid" :class="{ 'model-price-matrix__grid--tiered': tiered }">
-      <!-- 纯视觉列标签；每个输入的可访问名称由 AppTextInput 自带的 sr-only label 承担。 -->
       <div class="model-price-matrix__row model-price-matrix__row--header" aria-hidden="true">
         <span v-if="tiered">{{ t('modelPrices.matrix.thresholdColumn') }}</span>
         <div class="model-price-matrix__header-cells">
@@ -127,7 +120,7 @@ const tierRules = computed<TierRule[]>(() => {
             readonly
           />
         </div>
-        <!-- 一横排为一个输入框组：共享外框，内部竖线分隔，无间隙。 -->
+
         <div class="model-price-group" role="group" :aria-label="t('modelPrices.matrix.baseRow')">
           <AppTextInput
             v-for="field in modelPriceFields"
@@ -143,7 +136,7 @@ const tierRules = computed<TierRule[]>(() => {
             :invalid="Boolean(baseFieldError(field))"
           />
         </div>
-        <!-- 增删都落在同一列：无档位时基础行就是最后一行，由它承载加号。 -->
+
         <div class="model-price-matrix__actions">
           <IconButton
             v-if="!tiered"
@@ -267,11 +260,6 @@ const tierRules = computed<TierRule[]>(() => {
   gap: var(--space-1-75) var(--space-2);
 }
 
-/*
- * 每行外层列结构统一为 [阈值/行标签] [价格组] [增删位]，
- * 表头复用同一套列定义，内部再等分 4 格，确保标签与组内单元格对齐。
- * 增删列常驻，让加号和叉号落在同一竖线上。
- */
 .model-price-matrix__row {
   display: grid;
   min-width: 0;
@@ -287,11 +275,10 @@ const tierRules = computed<TierRule[]>(() => {
 .model-price-matrix__header-cells {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  /* 对齐 AppTextInput 的 padding-left 与组边框 1px。 */
+
   padding-left: calc(var(--space-2) + 1px);
 }
 
-/* 固定两个槽位：删除永远占第一格，新增永远占第二格，各行按钮才能纵向对齐。 */
 .model-price-matrix__actions {
   display: grid;
   grid-auto-flow: column;
@@ -325,13 +312,12 @@ const tierRules = computed<TierRule[]>(() => {
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* 组内单元格去掉自身边框，仅保留竖线分隔，形成一体化输入框组。 */
 .model-price-group :deep(.app-text-input) {
   border: 0;
   border-left: 1px solid var(--color-border-subtle);
   border-radius: 0;
   background: none;
-  /* 抽屉只有 480px，四格并排时收紧内边距换取数字可见宽度。 */
+
   padding-left: var(--space-2);
 }
 
@@ -339,7 +325,6 @@ const tierRules = computed<TierRule[]>(() => {
   border-left: 0;
 }
 
-/* 组合控件统一由外框表达焦点，子输入仅保留单元格分隔线。 */
 .model-price-group :deep(.app-text-input[data-input-shell]:focus-within) {
   border-color: var(--color-border-subtle);
   outline: 0;
@@ -393,7 +378,6 @@ const tierRules = computed<TierRule[]>(() => {
   line-height: 1.55;
 }
 
-/* 抽屉在小屏铺满视口，四格并排放不下：阈值与增删占第一行，价格组换到第二行。 */
 @media (max-width: 560px) {
   .model-price-matrix__row,
   .model-price-matrix__grid--tiered .model-price-matrix__row {

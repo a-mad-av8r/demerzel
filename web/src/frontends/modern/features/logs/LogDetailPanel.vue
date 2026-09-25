@@ -85,7 +85,7 @@ const tokenFields = computed<LogColumnId[]>(() => [
   'cache_read_tokens',
   'cache_hit_rate',
   'cache_write_tokens',
-  // 细分写入绝大多数请求都是 0，只在确实写过缓存时才展开。
+
   ...(log.value && logCacheWrites(log.value) !== '0'
     ? (['cache_write_5m_tokens', 'cache_write_1h_tokens', 'cache_write_unknown_tokens'] as const)
     : []),
@@ -152,7 +152,7 @@ function decisionRouteText(
       .join(' · ') || '—'
   )
 }
-// 表格按 强度 > 预算 > 开关 只取一个值，详情面板给出完整拆解。
+
 function reasoningText(value: LogReasoning): string {
   const budget =
     value.budget_tokens && value.budget_tokens !== '0'
@@ -798,10 +798,7 @@ function resolveRedactedLog(): Promise<string> {
   gap: var(--modern-space-2) var(--modern-space-4);
   margin: 0;
 }
-/* 标签列定宽右对齐：每行标签与取值都贴合，整个面板只有一条竖向基线。
-   非中文标签更长，允许换行而不是溢出。 */
-/* 取值里混着纯文本、20px 协议标签和 24px 渠道图标，基线对齐会被图标压低，
-   同一行的标签高低不齐；统一按行居中并锁定行高。 */
+
 .modern-log-detail-grid > div {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -824,12 +821,11 @@ function resolveRedactedLog(): Promise<string> {
   font-size: var(--modern-font-size-secondary);
   font-variant-numeric: tabular-nums;
 }
-/* 纯数值分段用等宽字，和列表里的数字列保持一致。 */
+
 .modern-log-detail-grid.is-numeric dd {
   font-family: var(--modern-font-mono);
 }
-/* 整行字段（错误代码、上游请求 ID 等）取值会换行，且不含图标，
-   用基线让标签跟住首行，而不是被居中挤到多行的正中间。 */
+
 .modern-log-detail-grid .is-wide {
   grid-column: 1 / -1;
   align-items: baseline;

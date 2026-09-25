@@ -190,7 +190,7 @@ func TestCodexIsTheOnlySubscriptionChannelWithoutExposingExecutor(t *testing.T) 
 	}
 	if got := descriptor.Connection.AuthorizationMethods; len(got) != 2 ||
 		got[0] != "browser_oauth" || got[1] != "oauth_file" {
-		t.Fatalf("subscription authorization methods = %#v", got)
+		t.Fatalf("subscription authorisation methods = %#v", got)
 	}
 	if !descriptor.Capabilities.ModelDiscovery || !descriptor.Capabilities.QuotaObservation ||
 		!reflect.DeepEqual(descriptor.Capabilities.CredentialActions, []CredentialAction{CredentialActionResetCredit}) {

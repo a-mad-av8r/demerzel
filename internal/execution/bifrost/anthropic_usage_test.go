@@ -16,7 +16,7 @@ import (
 	"gpt-load/internal/usage"
 )
 
-// 经过真实 SDK 和网关，避免正确的原始用量又被 SDK 的最大值结果覆盖。
+// Exercise the real SDK and gateway so correct raw usage cannot be overwritten by the SDK's maximum-value result.
 func TestNativeAnthropicGatewayUsage(t *testing.T) {
 	for _, channelID := range []channel.ID{channel.Anthropic, channel.NewAPI, channel.Sub2API, channel.CLIProxyAPI, channel.GPTLoad} {
 		for _, test := range []struct {

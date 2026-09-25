@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// inspectPromptCacheKey 只提取有界、无歧义的顶层软亲和信号，不修改客户端请求。
+// inspectPromptCacheKey extracts only a bounded, unambiguous top-level soft-affinity signal without changing the client request.
 func inspectPromptCacheKey(body []byte) string {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	token, err := decoder.Token()

@@ -110,7 +110,7 @@ func TestGroupCollectionHTTPRoutesDeclareStaticOptionsBeforeDynamicDetail(t *tes
 }
 
 func TestSystemInfoHTTPContract(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	cfg := &config.Config{
@@ -155,7 +155,7 @@ func TestSystemInfoHTTPContract(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequest(test.method, "/api/system/info", nil)
-			request.Header.Set("Accept-Language", "en-US")
+			request.Header.Set("Accept-Language", "en-GB")
 			if test.auth != "" {
 				request.Header.Set("Authorization", test.auth)
 			}
@@ -656,47 +656,37 @@ func TestControlJSONBodyLimitContentLengthFastPathPreservesAuthenticationPriorit
 	}
 }
 
-func TestControlJSONBodyLimitLocalizes413(t *testing.T) {
+func TestControlJSONBodyLimitUsesBritishEnglish(t *testing.T) {
 	t.Parallel()
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	engine := gin.New()
 	NewServer(&config.Config{AuthKey: "test-auth-key"}, fixture.service).RegisterRoutes(engine)
 
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "请求体过大"},
-		{language: "en-US", message: "Request body is too large"},
-		{language: "ja-JP", message: "リクエストボディが大きすぎます"},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			const prefix = `{"name":"localized-limit","upstream_url":"https://localized-limit.example.com/v1",` +
-				`"protocols":["openai-completions"],"models":[],"keys":"sk-localized-limit"}`
-			request := httptest.NewRequest(http.MethodPost, "/api/groups", oversizedControlJSONBody(prefix))
-			request.ContentLength = -1
-			request.Header.Set("Authorization", "Bearer test-auth-key")
-			request.Header.Set("Accept-Language", test.language)
-			setRequiredTestIdempotencyHeader(request)
-			recorder := httptest.NewRecorder()
+	const prefix = `{"name":"english-limit","upstream_url":"https://english-limit.example.com/v1",` +
+		`"protocols":["openai-completions"],"models":[],"keys":"sk-english-limit"}`
+	request := httptest.NewRequest(http.MethodPost, "/api/groups", oversizedControlJSONBody(prefix))
+	request.ContentLength = -1
+	request.Header.Set("Authorization", "Bearer test-auth-key")
+	request.Header.Set("Accept-Language", "*")
+	setRequiredTestIdempotencyHeader(request)
+	recorder := httptest.NewRecorder()
 
-			engine.ServeHTTP(recorder, request)
+	engine.ServeHTTP(recorder, request)
 
-			if recorder.Code != http.StatusRequestEntityTooLarge {
-				t.Fatalf("response = %d %s, want 413", recorder.Code, recorder.Body.String())
-			}
-			var envelope struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			}
-			if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
-				t.Fatalf("decode response: %v", err)
-			}
-			if envelope.Code != app_errors.ErrRequestTooLarge.Code || envelope.Message != test.message {
-				t.Fatalf("envelope = %#v, want code %q message %q", envelope, app_errors.ErrRequestTooLarge.Code, test.message)
-			}
-		})
+	if recorder.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("response = %d %s, want 413", recorder.Code, recorder.Body.String())
+	}
+	var envelope struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if envelope.Code != app_errors.ErrRequestTooLarge.Code ||
+		envelope.Message != "Request body is too large" {
+		t.Fatalf("envelope = %#v, want British English 413 response", envelope)
 	}
 }
 
@@ -743,32 +733,25 @@ func TestManagementAuthRequiresConstantShapeBearerToken(t *testing.T) {
 	}
 }
 
-func TestManagementAuthLocalizesUnauthorized(t *testing.T) {
+func TestManagementAuthUsesBritishEnglish(t *testing.T) {
 	t.Parallel()
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	engine := gin.New()
 	NewServer(&config.Config{AuthKey: "test-auth-key"}, fixture.service).RegisterRoutes(engine)
 
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "en-US", message: "Invalid authorization key"},
-		{language: "zh-CN", message: "无效的授权密钥"},
-	} {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/api/groups", nil)
-		request.Header.Set("Accept-Language", test.language)
-		engine.ServeHTTP(recorder, request)
-		if !strings.Contains(recorder.Body.String(), test.message) {
-			t.Fatalf("%s body = %s, want message %q", test.language, recorder.Body.String(), test.message)
-		}
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/groups", nil)
+	request.Header.Set("Accept-Language", "*")
+	engine.ServeHTTP(recorder, request)
+	const want = "Invalid authorisation key"
+	if !strings.Contains(recorder.Body.String(), want) {
+		t.Fatalf("body = %s, want message %q", recorder.Body.String(), want)
 	}
 }
 
 func TestManagementAuthDoesNotLogSecretOrDigest(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	const authKey = "distinctive-control-auth-key"
 	fixture := newServiceFixture(t)
@@ -1036,7 +1019,7 @@ func TestImportGroupCredentialsEndpointReturnsGroupNotFound(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/api/groups/999/credentials/import", strings.NewReader(`{"credentials":"sk-new"}`))
 	request.Header.Set("Authorization", "Bearer test-auth-key")
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept-Language", "zh-CN")
+	request.Header.Set("Accept-Language", "*")
 	setRequiredTestIdempotencyHeader(request)
 	engine.ServeHTTP(recorder, request)
 
@@ -1050,7 +1033,7 @@ func TestImportGroupCredentialsEndpointReturnsGroupNotFound(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if envelope.Code != "NOT_FOUND" || envelope.Message != "分组不存在" {
+	if envelope.Code != "NOT_FOUND" || envelope.Message != "Group not found" {
 		t.Fatalf("not-found envelope = %#v", envelope)
 	}
 }
@@ -1276,7 +1259,7 @@ func TestUpdateGroupSettingsEndpointRejectsTopLevelNullWithoutMutation(t *testin
 	request.Header.Set("Authorization", "Bearer test-auth-key")
 	request.Header.Set("Content-Type", "application/json")
 	engine.ServeHTTP(recorder, request)
-	assertUpdateGroupErrorResponse(t, recorder, http.StatusBadRequest, app_errors.ErrInvalidJSON.Code, "请求错误")
+	assertUpdateGroupErrorResponse(t, recorder, http.StatusBadRequest, app_errors.ErrInvalidJSON.Code, "Bad request")
 
 	var afterGroup models.Group
 	if err := fixture.db.First(&afterGroup, groupID).Error; err != nil {
@@ -1330,7 +1313,7 @@ func TestUpdateGroupSettingsEndpointAllowsURLReuseAndPreservesI18nAndAuth(t *tes
 	))
 	request.Header.Set("Authorization", "Bearer test-auth-key")
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept-Language", "ja-JP")
+	request.Header.Set("Accept-Language", "*")
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -1366,14 +1349,14 @@ func TestUpdateGroupSettingsEndpointAllowsURLReuseAndPreservesI18nAndAuth(t *tes
 	request.Header.Set("Content-Type", "application/json")
 	recorder = httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
-	assertUpdateGroupErrorResponse(t, recorder, http.StatusConflict, app_errors.ErrDuplicateResource.Code, "分组名称已存在")
+	assertUpdateGroupErrorResponse(t, recorder, http.StatusConflict, app_errors.ErrDuplicateResource.Code, "Group name already exists")
 
 	request = httptest.NewRequest(http.MethodPut, path, strings.NewReader(
 		`{"params":{"base_url":" HTTPS://UNIQUE.example.com/v1/ "},"enabled":false}`,
 	))
 	request.Header.Set("Authorization", "Bearer test-auth-key")
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept-Language", "ja-JP")
+	request.Header.Set("Accept-Language", "*")
 	recorder = httptest.NewRecorder()
 	engine.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
@@ -1387,7 +1370,7 @@ func TestUpdateGroupSettingsEndpointAllowsURLReuseAndPreservesI18nAndAuth(t *tes
 	if err := json.Unmarshal(recorder.Body.Bytes(), &success); err != nil {
 		t.Fatal(err)
 	}
-	if success.Code != 0 || success.Message != "成功" || success.Data.Enabled ||
+	if success.Code != 0 || success.Message != "Success" || success.Data.Enabled ||
 		string(success.Data.Params) != `{"base_url":"https://unique.example.com/v1"}` {
 		t.Fatalf("success envelope = %#v", success)
 	}
@@ -1421,7 +1404,7 @@ func TestUpdateGroupSettingsEndpointRejectsOversizedJSON(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	request.ContentLength = -1
 	engine.ServeHTTP(recorder, request)
-	assertUpdateGroupErrorResponse(t, recorder, http.StatusRequestEntityTooLarge, app_errors.ErrRequestTooLarge.Code, "请求体过大")
+	assertUpdateGroupErrorResponse(t, recorder, http.StatusRequestEntityTooLarge, app_errors.ErrRequestTooLarge.Code, "Request body is too large")
 	if fixture.manager.Current().Revision != before {
 		t.Fatal("oversized update published a Snapshot")
 	}
@@ -1467,7 +1450,7 @@ func TestUpdateGroupModelsEndpointRejectsStrictInvalidBodiesWithoutMutation(t *t
 				t,
 				engine,
 				"test-auth-key",
-				"en-US",
+				"en-GB",
 				strconv.FormatUint(uint64(created.GroupID), 10),
 				test.body,
 			)
@@ -1498,7 +1481,7 @@ func TestGroupModelsHTTPAcceptsSharedNamesAndDeduplicatesMappings(t *testing.T) 
 	engine := gin.New()
 	NewServer(&config.Config{AuthKey: "test-auth-key"}, fixture.service).RegisterRoutes(engine)
 	beforeRevision := fixture.manager.Current().Revision
-	recorder := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "en-US", strconv.FormatUint(uint64(groupID), 10),
+	recorder := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "en-GB", strconv.FormatUint(uint64(groupID), 10),
 		`{"models":[{"id":"a","alias":"discarded","alias_enabled":false},{"id":"b","alias":"a","alias_enabled":true},{"id":"b","alias":"a","alias_enabled":true}]}`)
 	var envelope struct {
 		Code int                 `json:"code"`
@@ -1537,7 +1520,7 @@ func TestGroupModelsHTTPRejectsMissingAliasEnabledWithoutMutation(t *testing.T) 
 		t,
 		engine,
 		"test-auth-key",
-		"en-US",
+		"en-GB",
 		strconv.FormatUint(uint64(groupID), 10),
 		`{"models":[{"id":"gpt-4o","alias":"legacy-name"}]}`,
 	)
@@ -1576,7 +1559,7 @@ func TestUpdateGroupModelsEndpointIDsAuthNotFoundAndSuccessDTO(t *testing.T) {
 
 	for _, rawID := range []string{"0", "-1", "not-a-number", "18446744073709551616"} {
 		beforeRevision := fixture.manager.Current().Revision
-		recorder := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "en-US", rawID, body)
+		recorder := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "en-GB", rawID, body)
 		if recorder.Code != http.StatusBadRequest ||
 			!strings.Contains(recorder.Body.String(), `"code":"BAD_REQUEST"`) {
 			t.Fatalf("Group ID %q response = %d %s", rawID, recorder.Code, recorder.Body.String())
@@ -1591,7 +1574,7 @@ func TestUpdateGroupModelsEndpointIDsAuthNotFoundAndSuccessDTO(t *testing.T) {
 		t,
 		engine,
 		"",
-		"en-US",
+		"en-GB",
 		strconv.FormatUint(uint64(created.GroupID), 10),
 		body,
 	)
@@ -1603,10 +1586,10 @@ func TestUpdateGroupModelsEndpointIDsAuthNotFoundAndSuccessDTO(t *testing.T) {
 		t.Fatal("unauthorized models save published a Snapshot")
 	}
 
-	missing := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "zh-CN", "999", body)
+	missing := serveRawGroupModelsUpdateRequest(t, engine, "test-auth-key", "*", "999", body)
 	if missing.Code != http.StatusNotFound ||
 		!strings.Contains(missing.Body.String(), `"code":"NOT_FOUND"`) ||
-		!strings.Contains(missing.Body.String(), "分组不存在") {
+		!strings.Contains(missing.Body.String(), "Group not found") {
 		t.Fatalf("missing Group response = %d %s", missing.Code, missing.Body.String())
 	}
 
@@ -1614,7 +1597,7 @@ func TestUpdateGroupModelsEndpointIDsAuthNotFoundAndSuccessDTO(t *testing.T) {
 		t,
 		engine,
 		"test-auth-key",
-		"ja-JP",
+		"*",
 		strconv.FormatUint(uint64(created.GroupID), 10),
 		body,
 	)
@@ -1629,7 +1612,7 @@ func TestUpdateGroupModelsEndpointIDsAuthNotFoundAndSuccessDTO(t *testing.T) {
 	if err := json.Unmarshal(success.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if envelope.Code != 0 || envelope.Message != "成功" {
+	if envelope.Code != 0 || envelope.Message != "Success" {
 		t.Fatalf("success envelope = %#v", envelope)
 	}
 	var fields map[string]json.RawMessage
@@ -1909,7 +1892,7 @@ func TestModelDiscoveryHTTPContract(t *testing.T) {
 		}
 	})
 
-	t.Run("upstream failures map to localized bad gateway", func(t *testing.T) {
+	t.Run("upstream failures map to the British English bad gateway response", func(t *testing.T) {
 		service, engine := newServer(&recordingDiscoveryExecutorTarget{
 			value: protocol.OpenAICompletions,
 			listFn: func(context.Context, string, string, state.HeaderRules) ([]string, error) {
@@ -1917,27 +1900,19 @@ func TestModelDiscoveryHTTPContract(t *testing.T) {
 			},
 		})
 		service.modelDiscoveryTimeout = 20 * time.Millisecond
-		for _, test := range []struct {
-			language string
-			message  string
-		}{
-			{language: "en-US", message: "Upstream service error"},
-			{language: "zh-CN", message: "上游服务错误"},
-		} {
-			recorder := serveDiscoveryRequestWithLanguage(t, engine, authKey,
-				`{"channel_id":"openai_compatible","connection_type":"api_key","params":{"base_url":"https://api.example.com"},`+
-					`"credentials":"secret-key"}`,
-				test.language,
-			)
-			if recorder.Code != http.StatusBadGateway ||
-				!strings.Contains(recorder.Body.String(), `"code":"BAD_GATEWAY"`) ||
-				!strings.Contains(recorder.Body.String(), test.message) {
-				t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
-			}
-			for _, forbidden := range []string{"secret-key", "query-secret", "secret-body", "raw upstream failure"} {
-				if strings.Contains(recorder.Body.String(), forbidden) {
-					t.Fatalf("response exposes %q: %s", forbidden, recorder.Body.String())
-				}
+		recorder := serveDiscoveryRequestWithLanguage(t, engine, authKey,
+			`{"channel_id":"openai_compatible","connection_type":"api_key","params":{"base_url":"https://api.example.com"},`+
+				`"credentials":"secret-key"}`,
+			"*",
+		)
+		if recorder.Code != http.StatusBadGateway ||
+			!strings.Contains(recorder.Body.String(), `"code":"BAD_GATEWAY"`) ||
+			!strings.Contains(recorder.Body.String(), "Upstream service error") {
+			t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
+		}
+		for _, forbidden := range []string{"secret-key", "query-secret", "secret-body", "raw upstream failure"} {
+			if strings.Contains(recorder.Body.String(), forbidden) {
+				t.Fatalf("response exposes %q: %s", forbidden, recorder.Body.String())
 			}
 		}
 	})
@@ -1987,7 +1962,7 @@ func TestModelDiscoveryHTTPContract(t *testing.T) {
 }
 
 func TestServerDraftModelDiscoveryLogsOnlyMetadata(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	const (
 		authSecret = "distinctive-auth-secret"
@@ -2078,7 +2053,7 @@ func TestServerGroupModelDiscoveryBodyContract(t *testing.T) {
 			{name: "empty object", payload: stringPointer("{}")},
 		} {
 			t.Run(test.name, func(t *testing.T) {
-				recorder := serveGroupDiscoveryRequest(t, engine, authKey, "en-US", groupID, test.payload)
+				recorder := serveGroupDiscoveryRequest(t, engine, authKey, "en-GB", groupID, test.payload)
 				if recorder.Code != http.StatusOK {
 					t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 				}
@@ -2106,7 +2081,7 @@ func TestServerGroupModelDiscoveryBodyContract(t *testing.T) {
 		for _, payload := range []string{"null", "[]", `{"refresh":true}`, "{} {}"} {
 			t.Run("reject "+payload, func(t *testing.T) {
 				recorder := serveGroupDiscoveryRequest(
-					t, engine, authKey, "en-US", groupID, stringPointer(payload),
+					t, engine, authKey, "en-GB", groupID, stringPointer(payload),
 				)
 				if recorder.Code != http.StatusBadRequest ||
 					!strings.Contains(recorder.Body.String(), `"code":"INVALID_JSON"`) {
@@ -2119,7 +2094,7 @@ func TestServerGroupModelDiscoveryBodyContract(t *testing.T) {
 	t.Run("invalid Group IDs return bad request", func(t *testing.T) {
 		_, engine, _ := newServer(t, true)
 		for _, rawID := range []string{"0", "not-a-number", "18446744073709551616"} {
-			recorder := serveRawGroupDiscoveryRequest(t, engine, authKey, "en-US", rawID, nil)
+			recorder := serveRawGroupDiscoveryRequest(t, engine, authKey, "en-GB", rawID, nil)
 			if recorder.Code != http.StatusBadRequest ||
 				!strings.Contains(recorder.Body.String(), `"code":"BAD_REQUEST"`) {
 				t.Fatalf("Group ID %q response = %d %s", rawID, recorder.Code, recorder.Body.String())
@@ -2127,34 +2102,23 @@ func TestServerGroupModelDiscoveryBodyContract(t *testing.T) {
 		}
 	})
 
-	t.Run("missing Group is localized not found", func(t *testing.T) {
+	t.Run("missing Group returns British English not found", func(t *testing.T) {
 		_, engine, _ := newServer(t, true)
-		recorder := serveRawGroupDiscoveryRequest(t, engine, authKey, "zh-CN", "999", nil)
+		recorder := serveRawGroupDiscoveryRequest(t, engine, authKey, "*", "999", nil)
 		if recorder.Code != http.StatusNotFound ||
 			!strings.Contains(recorder.Body.String(), `"code":"NOT_FOUND"`) ||
-			!strings.Contains(recorder.Body.String(), "分组不存在") {
+			!strings.Contains(recorder.Body.String(), "Group not found") {
 			t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 		}
 	})
 
-	t.Run("no active key is localized conflict", func(t *testing.T) {
+	t.Run("no active key returns a British English conflict", func(t *testing.T) {
 		_, engine, groupID := newServer(t, false)
-		for _, test := range []struct {
-			language string
-			message  string
-		}{
-			{language: "en-US", message: "No active credential is available for this group"},
-			{language: "zh-CN", message: "该分组没有可用凭据"},
-			{language: "ja-JP", message: "このグループには利用可能な認証情報がありません"},
-		} {
-			recorder := serveGroupDiscoveryRequest(
-				t, engine, authKey, test.language, groupID, nil,
-			)
-			if recorder.Code != http.StatusConflict ||
-				!strings.Contains(recorder.Body.String(), `"code":"NO_ACTIVE_CREDENTIAL"`) ||
-				!strings.Contains(recorder.Body.String(), test.message) {
-				t.Fatalf("%s response = %d %s", test.language, recorder.Code, recorder.Body.String())
-			}
+		recorder := serveGroupDiscoveryRequest(t, engine, authKey, "*", groupID, nil)
+		if recorder.Code != http.StatusConflict ||
+			!strings.Contains(recorder.Body.String(), `"code":"NO_ACTIVE_CREDENTIAL"`) ||
+			!strings.Contains(recorder.Body.String(), "No active credential is available for this group") {
+			t.Fatalf("response = %d %s", recorder.Code, recorder.Body.String())
 		}
 	})
 }
@@ -2203,7 +2167,7 @@ func serveRawGroupDiscoveryRequest(
 
 func serveDiscoveryRequest(t *testing.T, engine *gin.Engine, authKey, payload string) *httptest.ResponseRecorder {
 	t.Helper()
-	return serveDiscoveryRequestWithLanguage(t, engine, authKey, payload, "en-US")
+	return serveDiscoveryRequestWithLanguage(t, engine, authKey, payload, "en-GB")
 }
 
 func serveDiscoveryRequestWithLanguage(
@@ -2269,7 +2233,7 @@ func TestSettingsHTTPContract(t *testing.T) {
 			if test.auth != "" {
 				request.Header.Set("Authorization", test.auth)
 			}
-			request.Header.Set("Accept-Language", "en-US")
+			request.Header.Set("Accept-Language", "en-GB")
 			request.Header.Set("Content-Type", "application/json")
 			engine.ServeHTTP(recorder, request)
 			if recorder.Code != test.wantStatus {
@@ -2309,7 +2273,7 @@ func TestSettingsHTTPSuccessEnvelopeUpdateAndReset(t *testing.T) {
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("Settings response = %d %s", recorder.Code, recorder.Body.String())
 		}
-		assertSettingsResponseHeaders(t, recorder, "en-US")
+		assertSettingsResponseHeaders(t, recorder, "en-GB")
 		var envelope struct {
 			Code    int              `json:"code"`
 			Message string           `json:"message"`
@@ -2354,7 +2318,7 @@ func TestSettingsHTTPBodyLimitRejectsBeforeMutation(t *testing.T) {
 	)
 	request.ContentLength = -1
 	request.Header.Set("Authorization", "Bearer test-auth-key")
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	request.Header.Set("Content-Type", "application/json")
 	engine.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusRequestEntityTooLarge ||
@@ -2374,7 +2338,7 @@ func TestSettingsHTTPBodyLimitRejectsBeforeMutation(t *testing.T) {
 }
 
 func TestSettingsHTTPFiltersPrivateRowsAndDoesNotLogValues(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	const (
 		authKey          = "settings-auth-key"
@@ -2486,7 +2450,7 @@ func serveSettingsRequest(
 	if authKey != "" {
 		request.Header.Set("Authorization", "Bearer "+authKey)
 	}
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	request.Header.Set("Content-Type", "application/json")
 	engine.ServeHTTP(recorder, request)
 	return recorder

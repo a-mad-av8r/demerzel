@@ -87,7 +87,7 @@ func TestRequestUserAgentOnWire(t *testing.T) {
 					runtime := newTestRuntime(t)
 					spec := compatibleSpec(server.URL)
 					if route == "typed" {
-						// 非 /v1 前缀走 SDK typed fallback，覆盖不同的 HTTP 构造路径。
+						// A non-/v1 prefix takes the SDK typed fallback, covering a distinct HTTP construction path.
 						spec.TargetConfig = json.RawMessage(`{"base_url":"` + server.URL + `/tenant/openai"}`)
 					}
 					spec.Header.Set("User-Agent", "client/1.0")

@@ -4,7 +4,6 @@ import { useRoute } from 'vue-router'
 
 import { findNavigationItem } from './navigation'
 
-// 文档标题、面包屑和路由播报共用同一份标题推导，避免多处各写一遍回退顺序。
 export function usePageTitle() {
   const route = useRoute()
   const { t } = useI18n()

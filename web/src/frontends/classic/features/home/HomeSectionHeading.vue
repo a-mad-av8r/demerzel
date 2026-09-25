@@ -15,10 +15,6 @@ defineProps<{
 </template>
 
 <style scoped>
-/*
- * 与监控页分区标题同款：圆点 + 加粗。原来的「淡色图标 + serif 500」比板块
- * 内容还轻，扫视时抓不住锚点，这里把标题的视觉重量补回来。
- */
 .home-section-heading {
   display: flex;
   min-width: 0;

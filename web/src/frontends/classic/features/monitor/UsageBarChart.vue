@@ -27,7 +27,7 @@ const props = withDefaults(
     grouped?: boolean
   }>(),
   {
-    locale: 'en-US',
+    locale: 'en-GB',
     grouped: false,
     secondaryLabel: undefined,
     primaryZeroDisplay: undefined,

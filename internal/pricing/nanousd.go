@@ -91,7 +91,7 @@ func QuoteComponent(tokens int64, price NanoUSD, multiplier Multiplier) (NanoUSD
 	return NanoUSD(quotient.Int64()), true
 }
 
-// quoteComponentWithPriceMultipliers 仅用于验证历史 v5 的分项倍率回执。
+// quoteComponentWithPriceMultipliers is used only to validate historical v5 component-multiplier receipts.
 func quoteComponentWithPriceMultipliers(tokens int64, price NanoUSD, multiplier Multiplier, priceMultipliers PriceMultipliers) (NanoUSD, bool) {
 	if tokens < 0 || price < 0 || multiplier.Numerator <= 0 || multiplier.Denominator <= 0 {
 		return 0, false

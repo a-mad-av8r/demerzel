@@ -1,4 +1,3 @@
-// 展示统一使用协议枚举的小写名称，接口值始终保留原始枚举。
 export const protocolOrder = [
   'openai-responses',
   'anthropic',

@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// SchedulingProgress 使用固定 128 位坐标，避免长期运行时浮点小步长失效。
-// 整数部分每次最多加一；百万次分配/秒也需要超过五十万年才耗尽范围。
+// SchedulingProgress uses fixed 128-bit coordinates to avoid small floating-point increments failing over long runtimes.
+// The whole part increases by at most one per allocation; even one million allocations a second requires over half a million years to exhaust it.
 type SchedulingProgress struct {
 	Whole    uint64 `json:"whole"`
 	Fraction uint64 `json:"fraction"`
@@ -72,8 +72,8 @@ type SerialGroupState struct {
 	Accounts                 map[uint]*SerialAccountState
 }
 
-// SchedulingLedger 只在 SchedulingState.WithLock 回调内访问。
-// 凭据事实属于 Registry；本表独立保存分配历史，不随凭据配置替换而回退。
+// SchedulingLedger is accessed only within a SchedulingState.WithLock callback.
+// Credential facts belong to Registry; this table independently retains allocation history and does not roll back with credential configuration replacement.
 type SchedulingLedger struct {
 	Members       map[uint]*SchedulingMember
 	ModelCursors  map[GroupModelKey][]string
@@ -117,7 +117,7 @@ func (s *SchedulingState) syncCredentialLocked(view CredentialRuntimeView) {
 				groups.CursorCredentialID, groups.CursorIdentityGeneration = 0, 0
 			}
 		}
-		// 启动先发布分组再加载凭据，尚未分配也要保留停用组的恢复边界。
+		// Startup publishes Groups before loading credentials; retain the recovery boundary for disabled Groups even before their first allocation.
 		m = &SchedulingMember{ID: view.ID, GroupID: view.GroupID,
 			IdentityGeneration: view.IdentityGeneration,
 			Pending:            d.Started || d.GroupsKnown && !d.Groups[view.GroupID]}
@@ -130,7 +130,7 @@ func (s *SchedulingState) syncCredentialLocked(view CredentialRuntimeView) {
 		view.AuthState != "" && view.AuthState != CredentialAuthStateRefreshing
 	suspended := view.Status != CredentialStatusActive || view.Blacklisted || authUnavailable ||
 		view.WeightManual != nil && *view.WeightManual <= 0 || view.CooldownUntil.After(time.Now())
-	// 记录冷却事件本身，避免到期与下一次选择之间没有管理更新而丢失恢复边界。
+	// Record the cooldown event itself so the recovery boundary is not lost between expiry and the next selection without a management update.
 	if suspended || m.suspended || !view.CooldownUntil.IsZero() && !view.CooldownUntil.Equal(m.cooldownUntil) {
 		m.Pending = true
 	}
@@ -141,7 +141,7 @@ func (s *SchedulingState) SyncCredential(view CredentialRuntimeView) {
 	s.WithLock(func(*SchedulingLedger) { s.syncCredentialLocked(view) })
 }
 
-// SyncCredentials 对齐成员集合；groupID=0 表示完整替换，其他值只协调该分组。
+// SyncCredentials aligns the member set; groupID=0 means a complete replacement, while other values reconcile only that Group.
 func (s *SchedulingState) SyncCredentials(groupID uint, views []CredentialRuntimeView) {
 	s.WithLock(func(d *SchedulingLedger) {
 		seen := make(map[uint]struct{}, len(views))
@@ -180,7 +180,7 @@ func (s *SchedulingState) removeLocked(id uint) {
 	}
 }
 
-// SyncGroups 由配置发布路径调用，避免两次请求之间禁用再启用时漏掉校准。
+// SyncGroups is called by the configuration-publication path to avoid missing calibration when a Group is disabled and re-enabled between requests.
 func (s *SchedulingState) SyncGroups(snapshot *ConfigSnapshot) {
 	if snapshot == nil {
 		return
@@ -191,7 +191,7 @@ func (s *SchedulingState) SyncGroups(snapshot *ConfigSnapshot) {
 		}
 		groups := make(map[uint]bool, len(snapshot.GroupCatalog))
 		for id, group := range snapshot.GroupCatalog {
-			// 与路由编译保持一致：空模型分组整体暂停，普通候选变化仍保留历史。
+			// Consistent with routing compilation: Groups without models are entirely paused, while normal candidate changes retain history.
 			groups[id] = group.Enabled && len(snapshot.Groups[id].Models) > 0 &&
 				(group.WeightManual == nil || *group.WeightManual > 0)
 		}
@@ -224,8 +224,8 @@ func (r *CredentialRegistry) syncSchedulingGroupLocked(groupID uint) {
 	r.scheduling.SyncCredentials(groupID, views)
 }
 
-// WithCredentialCandidates 固定本次凭据身份与权重，回调中只允许内存调度。
-// 锁顺序为 Registry 读锁 -> SchedulingState；不得反向获取 Registry 锁。
+// WithCredentialCandidates fixes identity and weight for this credential set; the callback permits in-memory scheduling only.
+// Lock order is Registry read lock -> SchedulingState; never acquire the Registry lock in reverse order.
 func (r *CredentialRegistry) WithCredentialCandidates(groupIDs []uint, excluded func(uint) bool,
 	now time.Time, fn func([]CredentialMeta),
 ) {

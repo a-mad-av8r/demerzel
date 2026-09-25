@@ -265,7 +265,7 @@ func (s *Service) prepareAccessKeyCredential(plaintext string) (generatedAccessK
 	if err != nil {
 		return generatedAccessKeyCredential{}, fmt.Errorf("encrypt access key: %w", err)
 	}
-	// 短密钥全部隐藏，避免尾号披露全部或大部分凭据。
+	// Fully mask short keys to prevent their suffixes revealing all or most of a credential.
 	suffix := "****"
 	prefix := ""
 	if len(plaintext) > 8 {

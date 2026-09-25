@@ -71,11 +71,6 @@ const updatedTitle = computed(() =>
   justify-content: space-between;
   gap: 22px;
   flex-wrap: wrap;
-  /*
-   * 不画下边线：分隔线一律由「开启新板块」的元素自己的 border-top 承担。
-   * 否则没有告警时，这条线会和下一个板块的上边线并排出现两条。
-   * 下方间距同样交给板块的 margin-top，这里不再重复留白。
-   */
 }
 
 .home-summary__facts {

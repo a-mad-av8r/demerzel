@@ -26,7 +26,7 @@ watch(
   border-radius: var(--modern-radius-panel);
   background: var(--modern-surface);
   padding-inline: var(--modern-space-3);
-  /* 仅作小屏兜底，正常内容不产生内层滚动。 */
+
   max-height: 60dvh;
   overflow-y: auto;
   overscroll-behavior: contain;

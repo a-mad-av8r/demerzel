@@ -23,7 +23,7 @@ func TestPassiveQuotaMatchesSourceAndPeriodAcrossSlots(t *testing.T) {
 		t.Fatal(err)
 	}
 	patches := codex.NormalizePassiveQuotaWindows(map[string]string{
-		// 本次请求计费到普通额度，通用组报告账号自身窗口，Spark 另有命名空间。
+		// This request is billed to ordinary quota, so the generic group reports the account's own window; Spark has a separate namespace.
 		"X-Codex-Active-Limit":                       "premium",
 		"X-Codex-Primary-Used-Percent":               "5",
 		"X-Codex-Primary-Window-Minutes":             "300",
@@ -118,8 +118,8 @@ func TestPassiveQuotaSourceMatchingRejectsUncertainTargets(t *testing.T) {
 	}
 }
 
-// 复现维护者现场：普通 7d 用尽后请求 Spark，上游只在通用组里回本次计费到的
-// Spark 周窗口。按普通额度收下会把 7d 刷成满额，必须落到 Spark 自己的窗口上。
+// Reproduce a maintainer report: after ordinary 7d is exhausted, a Spark request returns only the Spark weekly window
+// in the generic group. Treating it as ordinary quota would refill 7d, so it must land in Spark's own window.
 func TestPassiveQuotaMeteredRequestDoesNotRefillAccountWeekly(t *testing.T) {
 	raw, err := codex.NormalizeQuota([]byte(`{"plan_type":"pro",
 		"rate_limit":{"primary_window":{"used_percent":100,"limit_window_seconds":604800,"reset_at":1788700000}},

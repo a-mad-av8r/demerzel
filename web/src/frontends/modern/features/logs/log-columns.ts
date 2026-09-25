@@ -54,7 +54,7 @@ export interface LogColumn {
   admin: boolean
   grow: number
 }
-// 表格列：细分缓存写入与两个完整性状态只在详情面板展示，不进表格与列选择器。
+
 const definitions: readonly [LogColumnId, number, LogColumnSection, boolean, boolean?, number?][] =
   [
     ['completed_at_ms', 80, 'request', true],
@@ -78,7 +78,7 @@ const definitions: readonly [LogColumnId, number, LogColumnSection, boolean, boo
     ['cache_read_tokens', 60, 'tokens', true],
     ['cache_hit_rate', 56, 'tokens', true],
     ['estimated_cost_nano_usd', 76, 'billing', true],
-    // 用户额外选择的字段统一追加，不打断默认列和错误摘要区域。
+
     ['request_id', 180, 'request', false],
     ['operation', 88, 'request', false],
     ['upstream_reported_model', 152, 'models', false, true],
@@ -109,7 +109,7 @@ const previousDefaultColumns: readonly LogColumnId[] = [
   'output_tokens',
   'estimated_cost_nano_usd',
 ]
-// 右对齐并使用等宽数字的字段，便于按位比较。
+
 export const numericColumns: ReadonlySet<LogColumnId> = new Set([
   'status_code',
   'attempt_count',
@@ -161,9 +161,7 @@ export function useLogColumns(admin: boolean) {
       if (saved.length && !savedPreviousDefaults)
         initial = available.filter((column) => saved.includes(column.id)).map((column) => column.id)
     }
-  } catch {
-    /* 存储不可用时继续使用默认列。 */
-  }
+  } catch {}
   const selected = ref<LogColumnId[]>(initial)
   watch(
     selected,
@@ -179,9 +177,7 @@ export function useLogColumns(admin: boolean) {
     { deep: true },
   )
   const visible = computed(() => available.filter((column) => selected.value.includes(column.id)))
-  // 选择仍按字段保存，只有同时可见的相关字段才合并为双行。
-  // 每个字段都归入一组语义相近的搭档，避免非默认列各占一列。
-  // 两边同等重要的配对，第二行不降级为附属信息。
+
   const peerPairs: ReadonlySet<string> = new Set([
     'reasoning_mode-stream',
     'duration_ms-first_response_ms',
@@ -230,7 +226,6 @@ export function useLogColumns(admin: boolean) {
     })
   })
   const errorStart = computed(() => {
-    // 已单独展示错误时不再重复；隐藏列不参与占位和合并。
     if (selected.value.includes('error_code') || selected.value.includes('error_summary')) return -1
     const groups: readonly (readonly LogColumnId[])[] = [
       ['input_tokens', 'output_tokens'],

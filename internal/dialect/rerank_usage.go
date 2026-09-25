@@ -21,7 +21,7 @@ func (*Rerank) ExtractUsage(body []byte) (usage.Result, error) {
 	diagnostics.Merge(billedDiagnostics)
 	var input *int64
 	invalid := !usageIntegerUsable(diagnostics)
-	// 只采用明确且一致的 Token 证据；search_units 不属于 Token。
+	// Accept only explicit, consistent token evidence; search_units are not tokens.
 	for _, source := range []struct {
 		value *int64
 		diag  usage.Diagnostics

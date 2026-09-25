@@ -8,7 +8,7 @@ import (
 	"gpt-load/internal/protocol"
 )
 
-// OpenWebsocket 仅转交已声明的原生能力，不从 HTTP 能力推断支持。
+// OpenWebsocket forwards only declared native capabilities; it does not infer support from HTTP capabilities.
 func (registry *Registry) OpenWebsocket(ctx context.Context, spec execution.AttemptSpec) (execution.WebsocketSession, execution.WebsocketResult) {
 	adapter, evidence := registry.resolve(spec)
 	if evidence != nil {

@@ -9,7 +9,7 @@ import (
 
 const compactLogTimestampFormat = "2006-01-02 15:04:05"
 
-// compactTextFormatter 保留 logrus 的级别着色和字段格式，只移除彩色文本模式的固定消息填充。
+// compactTextFormatter retains logrus level colouring and field formatting while removing fixed message padding in colour-text mode.
 type compactTextFormatter struct {
 	textFormatter logrus.TextFormatter
 }
@@ -25,7 +25,7 @@ func newCompactTextFormatter() *compactTextFormatter {
 }
 
 var compactLogFieldPriority = map[string]int{
-	// logrus 固定字段必须保持在日志头部。
+	// Fixed logrus fields must remain at the beginning of log entries.
 	"time":  -600,
 	"level": -500,
 	"msg":   -400,
@@ -33,7 +33,7 @@ var compactLogFieldPriority = map[string]int{
 	"func":  -200,
 	"file":  -100,
 
-	// 请求完成日志按事件、结果、请求、性能、路由和诊断信息分组。
+	// Group request-completion logs by event, result, request, performance, routing, and diagnostic information.
 	"event":      0,
 	"status":     10,
 	"http":       20,

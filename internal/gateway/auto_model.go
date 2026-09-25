@@ -75,7 +75,7 @@ func allowedAutoPresets(snapshot *state.ConfigSnapshot, key state.AccessKeyView,
 	return presets, fallback
 }
 
-// 续接仍限制原凭据所在的 Group，不能把其他 Group 的模型交给 Jev 选择。
+// Continuations remain limited to the Group holding the original credential; do not give Jev models from other Groups to choose.
 func hasAutoModelCandidates(snapshot *state.ConfigSnapshot, query scheduler.Query) bool {
 	for _, groupID := range scheduler.CandidateGroupIDsForQuery(snapshot, query) {
 		if query.AllowedCredentialRefs == nil {
@@ -145,7 +145,7 @@ func (handler *Handler) prepareAutoModel(ctx context.Context, snapshot *state.Co
 		}
 	}
 	if bound != nil && (reuse || !fallbackAllowed) {
-		// 只有无新任务的工具续接沿用上一档；新任务会重新判断。
+		// Only tool continuation with no new task retains the previous tier; a new task is judged again.
 		model := bound.TargetModel
 		query.ExternalModel = &model
 		if len(key.Filters.Models) > 0 {
@@ -245,7 +245,7 @@ func (handler *Handler) prepareAutoModel(ctx context.Context, snapshot *state.Co
 		handler.autoTasks.record(cacheKey, autoTaskPreset{presetID: chosen.ID, prewarm: prewarm}, handler.now())
 	}
 	if !prewarm {
-		// 正式请求到达后消费关联的预热选择，新任务不能重新捡起旧预热。
+		// Consume associated prewarmed selections when the real request arrives; a new task cannot resurrect an old prewarm.
 		for _, selection := range []*automodel.Selection{bound, &decision.Selection} {
 			if selection == nil {
 				continue
@@ -491,7 +491,7 @@ func (recorder *requestRecorder) autoLogDecision() *automodel.Decision {
 	return &copy
 }
 
-// 保留原有分量的报价和舍入；只将两笔已知金额安全相加。
+// Retain existing component quoting and rounding; safely add only the two known amounts.
 func addDecisionCost(answer int64, decision *automodel.Decision) int64 {
 	return telemetry.TotalPricing(telemetry.PricingObservation{EstimatedCostNanoUSD: answer}, decision).EstimatedCostNanoUSD
 }

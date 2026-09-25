@@ -232,7 +232,6 @@ async function changePage(nextPage: number): Promise<void> {
   navigate({ filters: { ...filters.value, page: nextPage }, selectedPriceID: undefined })
 }
 
-/** 列表条件变化会让抽屉里的草稿失去上下文，先确认再放弃并关闭。 */
 async function confirmDiscard(): Promise<boolean> {
   if (!drawerOpen.value || !drawer.value) return true
   if (!(await drawer.value.confirmDiscardSwitch())) return false

@@ -19,7 +19,7 @@ const (
 	maxResponseBindingIDBytes      = 16 << 20
 )
 
-// ResponseBinding 只保存响应归属；可用性仍由当前路由和凭据运行态决定。
+// ResponseBinding stores only response ownership; current routing and credential runtime state still decide availability.
 type ResponseBinding struct {
 	AutoSelection      *automodel.Selection `json:"auto_selection,omitempty"`
 	AccessKeyID        uint                 `json:"access_key_id"`
@@ -35,7 +35,7 @@ type responseBindingKey struct {
 	responseID  string
 }
 
-// ResponseBindings 是有界的内存归属索引，不持有 DB、文件或软亲和配置。
+// ResponseBindings is a bounded in-memory ownership index and holds no database, file, or soft-affinity configuration.
 type ResponseBindings struct {
 	mu       sync.Mutex
 	entries  map[responseBindingKey]*list.Element
@@ -91,7 +91,7 @@ func (bindings *ResponseBindings) Lookup(accessKeyID uint, responseID string) (R
 	return cloneBinding(binding), true
 }
 
-// Record 在响应下发前登记；不同归属冲突时拒绝当前响应，不覆盖已有归属。
+// Record stores ownership before a response is delivered; reject conflicting ownership rather than overwriting an existing binding.
 func (bindings *ResponseBindings) Record(accessKeyID uint, responseID string, ref CredentialRef, autoSelections ...*automodel.Selection) bool {
 	if bindings == nil || accessKeyID == 0 || responseID == "" || ref.ID == 0 ||
 		ref.GroupID == 0 || ref.IdentityGeneration == 0 || len(responseID) > maxResponseIDBytes {
@@ -151,7 +151,7 @@ func (bindings *ResponseBindings) CaptureCheckpoint() []ResponseBinding {
 	return checkpoint
 }
 
-// RestoreCheckpoint 只恢复归属，不在这里复制路由、权限和健康判断。
+// RestoreCheckpoint restores ownership only and does not copy routing, authorisation, or health judgements here.
 func (bindings *ResponseBindings) RestoreCheckpoint(checkpoint []ResponseBinding) error {
 	ordered := append([]ResponseBinding(nil), checkpoint...)
 	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].ExpiresAt.Before(ordered[j].ExpiresAt) })

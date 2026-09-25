@@ -19,7 +19,7 @@ import (
 )
 
 func TestModelPriceSyncRouteSanitizesFailure(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	const rawFailure = "secret upstream response body"
@@ -62,7 +62,7 @@ func serveModelPriceSyncRequest(engine *gin.Engine, authKey string) *httptest.Re
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/api/model-prices/sync", nil)
 	request.Header.Set("Authorization", "Bearer "+authKey)
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	engine.ServeHTTP(recorder, request)
 	return recorder
 }

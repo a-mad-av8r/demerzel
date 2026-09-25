@@ -531,7 +531,7 @@ watch(
   () => route.fullPath,
   (_path, previousPath) => {
     if (route.name !== 'modern-groups') return
-    // 仅重置仍在编辑的行内控件；普通筛选复用已有列表行，避免图标重复挂载。
+
     if (weightEditors.value.size) rowRevision.value++
     clearTimeout(searchTimer)
     search.value = filters.value.q

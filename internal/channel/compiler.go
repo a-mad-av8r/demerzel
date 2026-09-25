@@ -233,10 +233,10 @@ func validateConnection(source spec.Definition) error {
 	seen := make(map[spec.AuthorizationMethod]struct{}, len(connection.AuthorizationMethods))
 	for _, method := range connection.AuthorizationMethods {
 		if !method.Valid() {
-			return fmt.Errorf("channel %q has invalid authorization method %q", id, method)
+			return fmt.Errorf("channel %q has invalid authorisation method %q", id, method)
 		}
 		if _, duplicate := seen[method]; duplicate {
-			return fmt.Errorf("channel %q has duplicate authorization method %q", id, method)
+			return fmt.Errorf("channel %q has duplicate authorisation method %q", id, method)
 		}
 		seen[method] = struct{}{}
 	}

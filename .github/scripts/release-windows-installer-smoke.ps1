@@ -128,7 +128,7 @@ try {
   try { $rng.GetBytes($masterBytes) } finally { $rng.Dispose() }
   $smokeMaster = [System.BitConverter]::ToString($masterBytes).Replace("-", "").ToLowerInvariant()
   [System.IO.File]::WriteAllText($installOwnerMarker, $installOwnerToken)
-  # 同盘准备完整归属凭据后再公开固定目录，避免中断留下半初始化状态。
+  # Prepare complete ownership proof on the same volume before publishing the fixed directory, preventing an interruption from leaving it partially initialised.
   New-Item -ItemType Directory -Path $preparedConfig | Out-Null
   $ownsPreparedConfig = $true
   [System.IO.File]::WriteAllText((Join-Path $preparedConfig ".installer-smoke-owner"), $installOwnerToken)
@@ -140,12 +140,12 @@ try {
     [System.Net.IPAddress]::Loopback,
     0
   )
-  # 由系统分配可用端口，避开自托管 Windows 的端口排除范围。
+  # Let the system assign an available port, avoiding the exclusion ranges on self-hosted Windows.
   $listener.ExclusiveAddressUse = $true
   $listener.Start()
   try {
     $port = $listener.LocalEndpoint.Port
-    # 测试服务读取同一端口；独占监听保持到安装失败回滚验收结束。
+    # The test service uses the same port; keep the exclusive listener until installation-failure rollback acceptance completes.
     @(
       "HOST=127.0.0.1",
       "PORT=$port",

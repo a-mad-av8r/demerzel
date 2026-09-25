@@ -46,7 +46,7 @@ func TestErrorI18nFromAPIErrorIncludesOptionalData(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	context, _ := gin.CreateTestContext(recorder)
 	context.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	context.Request.Header.Set("Accept-Language", "en-US")
+	context.Request.Header.Set("Accept-Language", "en-GB")
 	i18n.Middleware()(context)
 
 	apiErr := app_errors.NewAPIErrorWithData(app_errors.ErrChannelTargetConflict, map[string]any{

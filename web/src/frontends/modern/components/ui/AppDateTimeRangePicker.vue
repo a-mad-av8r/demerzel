@@ -100,7 +100,6 @@ function confirmKey(event: KeyboardEvent): void {
   apply()
 }
 function apply(): void {
-  // 确认当前输入始终固定为自定义区间，即使它来自先前的快捷日期。
   submit(undefined)
 }
 function submit(preset: DateRangePreset | undefined): void {

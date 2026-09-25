@@ -15,7 +15,6 @@ import {
 import { safeRedirect } from '@modern/app/redirect'
 import { RequestCancelledError } from '@shared/http/errors'
 import AuthCard from './AuthCard.vue'
-import LoginMascot from './LoginMascot.vue'
 import { authFailure, authRetrySeconds, type AuthFailure } from './auth-errors'
 import { useAuthSession } from './auth-session'
 import { useCountdown } from './use-countdown'
@@ -28,7 +27,6 @@ const candidate = ref('')
 const remember = ref(false)
 const input = ref<InstanceType<typeof AppTextField>>()
 const visible = ref(false)
-const typing = ref(false)
 const submitting = ref(false)
 const fieldError = ref<'required' | 'invalidFormat'>()
 const feedback = ref<AuthFailure>()
@@ -36,7 +34,6 @@ const authenticated = ref(false)
 const navigationFailed = ref(false)
 const controller = new AbortController()
 const countdown = useCountdown()
-let typingTimer: ReturnType<typeof setTimeout> | undefined
 const helpOpen = computed(() => route.query.help === 'auth')
 const locked = computed(() => feedback.value === 'locked' && countdown.active.value)
 const disabled = computed(() => submitting.value || locked.value)
@@ -63,11 +60,6 @@ watch(
   { immediate: true },
 )
 watch(candidate, () => {
-  typing.value = true
-  clearTimeout(typingTimer)
-  typingTimer = setTimeout(() => {
-    typing.value = false
-  }, 1200)
   fieldError.value = undefined
   if (feedback.value !== 'locked') feedback.value = undefined
 })
@@ -82,7 +74,6 @@ onMounted(() => {
 })
 onScopeDispose(() => {
   controller.abort()
-  clearTimeout(typingTimer)
 })
 
 async function focusInput(): Promise<void> {
@@ -138,7 +129,7 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="modern-login-stage">
-    <LoginMascot :quiet="typing || submitting" />
+    <img class="modern-login-logo" src="/assets/demerzel_logo.png?v=eb7f04c2e92e" alt="Demerzel" />
     <AuthCard
       class="modern-login-card"
       :title="t('auth.title')"
@@ -235,11 +226,13 @@ async function submit(): Promise<void> {
 
 <style scoped>
 .modern-login-stage {
-  --modern-login-mascot-width: 120px;
-  --modern-login-mascot-seat: 0.435;
-  position: relative;
   width: min(100%, 440px);
-  padding-top: calc(var(--modern-login-mascot-width) * var(--modern-login-mascot-seat));
+}
+.modern-login-logo {
+  display: block;
+  width: min(65%, 232px);
+  height: auto;
+  margin: 0 auto var(--modern-space-6);
 }
 .modern-login-card {
   border-color: var(--modern-login-card-border);
@@ -287,10 +280,5 @@ async function submit(): Promise<void> {
   width: fit-content;
   color: var(--modern-accent);
   text-decoration: underline;
-}
-@media (max-width: 760px) {
-  .modern-login-stage {
-    --modern-login-mascot-width: 108px;
-  }
 }
 </style>

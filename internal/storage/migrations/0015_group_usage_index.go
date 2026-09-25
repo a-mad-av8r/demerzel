@@ -16,7 +16,7 @@ type requestLog0015 struct {
 
 func (requestLog0015) TableName() string { return "request_logs" }
 
-// Up0015 只新增精确窗口查询索引，不改日志、用量或转发语义。
+// Up0015 adds only an index for exact-window queries and does not change log, usage, or forwarding semantics.
 func Up0015(db *gorm.DB) error {
 	if err := ValidateRecoverable0015(db); err != nil {
 		return err

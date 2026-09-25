@@ -12,7 +12,7 @@ const ID0018 = "0018_auto_model"
 
 var autoModelColumns0018 = []string{"AutoDecision", "DecisionModel", "DecisionCostNanoUSD", "DecisionPricingCompleteness"}
 
-// 冻结本次迁移的字段，后续运行模型变化不能改写历史 DDL。
+// Freeze fields for this migration so subsequent runtime model changes cannot rewrite historical DDL.
 type autoLog0018 struct {
 	AutoDecision                models.JSON `gorm:"type:json"`
 	DecisionModel               string      `gorm:"type:varchar(512);not null;default:''"`

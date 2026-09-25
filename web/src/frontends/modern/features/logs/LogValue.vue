@@ -105,7 +105,6 @@ const display = computed(() => {
     case 'status_code':
       return row.status_code ? String(row.status_code) : '—'
     case 'reasoning_mode': {
-      // 三者很少同时出现，按 强度 > 预算 > 开关 取其一；等级保留上游原值（low / high…）。
       const reasoning = row.reasoning
       if (!reasoning) return '—'
       if (reasoning.effort) return reasoning.effort

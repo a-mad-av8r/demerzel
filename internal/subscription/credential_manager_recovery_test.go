@@ -101,7 +101,7 @@ func TestCredentialManagerManualRecoveryDefinitiveRejectionOverridesOriginalStat
 	assertStoredAuthState(t, db, row.ID, models.CredentialAuthStateReauthorizationRequired, "refresh_rejected")
 }
 
-// 上游已经返回新凭据时不适用「保持原状态」：新凭据必须留在库里并标记结果未知。
+// “Retain the original state” does not apply once the upstream returns a new credential: retain it in the database and mark the outcome unknown.
 func TestCredentialManagerManualRecoveryKeepsRotatedSecretWhenRegistryPublicationFails(t *testing.T) {
 	manager, db, registry, keyService, row := newCredentialManagerFixture(t, credentialJSON("old-access", "old-refresh", time.Now().Add(time.Hour)))
 	markCredentialAuthState(t, db, registry, row.ID, models.CredentialAuthStateOutcomeUnknown, "refresh_outcome_unknown")
@@ -163,7 +163,7 @@ func TestCredentialManagerRejectsRecoveryOutsideManualEntry(t *testing.T) {
 	}
 }
 
-// 残留 refreshing 是瞬时状态，不能作为原状态写回，否则界面会永远显示正在刷新。
+// Residual refreshing is transient and cannot be written back as the original state, or the UI would display refreshing forever.
 func TestCredentialManagerManualRecoveryNormalizesResidualRefreshing(t *testing.T) {
 	manager, db, registry, keyService, row := newCredentialManagerFixture(t, credentialJSON("old-access", "old-refresh", time.Now().Add(time.Hour)))
 	markCredentialAuthState(t, db, registry, row.ID, models.CredentialAuthStateRefreshing, "")
@@ -180,7 +180,7 @@ func TestCredentialManagerManualRecoveryNormalizesResidualRefreshing(t *testing.
 	assertStoredAuthState(t, db, row.ID, models.CredentialAuthStateOutcomeUnknown, "refresh_interrupted")
 }
 
-// 数据库版本变大不代表认证已恢复：运行时落后时必须先重建，不能直接判定成功。
+// A higher database version does not mean authentication recovered: rebuild first when runtime lags rather than reporting success.
 func TestCredentialManagerManualRecoveryRejectsInconsistentRuntimeVersion(t *testing.T) {
 	manager, db, _, keyService, row := newCredentialManagerFixture(t, credentialJSON("old-access", "old-refresh", time.Now().Add(time.Hour)))
 	if err := db.Model(&models.Credential{}).Where("id = ?", row.ID).
@@ -202,7 +202,7 @@ func TestCredentialManagerManualRecoveryRejectsInconsistentRuntimeVersion(t *tes
 	}
 }
 
-// 手动恢复只保证串行，不合并并发请求：前一笔失败后，后一笔仍会请求上游。
+// Manual recovery guarantees serialisation only, not merging concurrent requests: a later request still reaches upstream after the first fails.
 func TestCredentialManagerManualRecoverySerializesWithoutMergingRequests(t *testing.T) {
 	manager, db, registry, keyService, row := newCredentialManagerFixture(t, credentialJSON("old-access", "old-refresh", time.Now().Add(time.Hour)))
 	markCredentialAuthState(t, db, registry, row.ID, models.CredentialAuthStateOutcomeUnknown, "refresh_outcome_unknown")
@@ -237,8 +237,8 @@ func TestCredentialManagerManualRecoverySerializesWithoutMergingRequests(t *test
 	assertStoredAuthState(t, db, row.ID, models.CredentialAuthStateOutcomeUnknown, "refresh_outcome_unknown")
 }
 
-// ReconcileGroup 只比较持久化配置，运行时版本已是最新、仅认证状态落后时会被
-// 判定为无需变更，因此复用新版本前必须定向修复并重新确认。
+// ReconcileGroup compares only persisted configuration. It deems a current runtime version with a lagging authentication state unchanged,
+// so repair it selectively and confirm again before reusing the new version.
 func TestCredentialManagerManualRecoveryRepairsRuntimeAuthStateAtSameVersion(t *testing.T) {
 	manager, db, registry, keyService, row := newCredentialManagerFixture(t, credentialJSON("old-access", "old-refresh", time.Now().Add(time.Hour)))
 	snapshot := credentialSnapshot(t, row, keyService)
@@ -268,7 +268,7 @@ func TestCredentialManagerManualRecoveryRepairsRuntimeAuthStateAtSameVersion(t *
 	}
 }
 
-// 账号状态与本次操作结果必须分离：保留历史认证问题，但报告这一次的失败。
+// Account state and this operation's outcome must remain separate: retain historical authentication problems but report this failure.
 func TestCredentialManagerManualRecoveryReportsCurrentFailureNotStoredCode(t *testing.T) {
 	for _, testCase := range []struct {
 		name      string

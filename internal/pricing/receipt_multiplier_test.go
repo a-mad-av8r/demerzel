@@ -86,7 +86,7 @@ func TestReceiptJSONRejectsNullMultipliersAndHistoricalInjectedFields(t *testing
 		})
 	}
 
-	// 自定义解码仍须保留请求日志现有的未知字段拒绝行为。
+	// Custom decoding must retain the request log's existing unknown-field rejection behaviour.
 	var receipt Receipt
 	decoder := json.NewDecoder(strings.NewReader(`{"schema_version":4,"unknown":1}`))
 	decoder.DisallowUnknownFields()
@@ -114,7 +114,7 @@ func TestValidateHistoricalV5ReceiptKeepsOriginalComponentRounding(t *testing.T)
 	if receipt.BaseTotalNanoUSD != nil || receipt.TotalNanoUSD != 2 {
 		t.Fatalf("historical receipt was reinterpreted: %#v", receipt)
 	}
-	// 相同已存分项，v5 总额不能套用 v6 的总额倍率算法改成 4。
+	// With the same persisted components, a v5 total cannot use the v6 total-multiplier algorithm to become 4.
 	receipt.TotalNanoUSD = 4
 	if err := ValidateReceipt(receipt); err == nil {
 		t.Fatal("historical v5 accepted total-adjustment calculation")

@@ -268,7 +268,7 @@ async function requestSave(): Promise<void> {
   try {
     if (!current || patch?.key) {
       const payload = JSON.stringify(patch ?? input)
-      // 同一内容再次保存时复用幂等键，避免网络异常后重复创建或替换。
+
       if (submission?.payload !== payload) submission = { payload, operation: createOperationKey() }
     }
     saved = current

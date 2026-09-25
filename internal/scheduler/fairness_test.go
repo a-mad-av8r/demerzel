@@ -318,7 +318,7 @@ func TestFairnessInitiallyDisabledGroupJoinsCurrentProgress(t *testing.T) {
 		}
 		return snapshot
 	}
-	// 与启动加载顺序一致：先发布分组，再加载凭据。
+	// Match startup loading order: publish groups before loading credentials.
 	snapshot := publish(false)
 	if err := registry.ReplaceCredentials([]state.CredentialEntry{
 		{ID: 11, GroupID: 1, Version: 1, IdentityGeneration: 1, Status: state.CredentialStatusActive,
@@ -371,7 +371,7 @@ func TestFairnessHeavyWeightIsNotLimitedToOneHundred(t *testing.T) {
 func TestFairnessChargesRetriesButKeepsTriedRequestLocal(t *testing.T) {
 	r := newFairnessRegistry(t)
 	snapshot := schedulerSnapshot()
-	// 模拟首个候选失败、第二个成功，且健康机制未触发跨请求暂退。
+	// Simulate the first candidate failing and the second succeeding without health triggering cross-request backoff.
 	for range 10 {
 		iterator := New(snapshot, r, fairnessQuery(0))
 		for _, want := range []uint{11, 12} {

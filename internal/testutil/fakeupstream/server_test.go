@@ -59,29 +59,29 @@ func TestServerServesSuccessFixturesAndRecordsRequests(t *testing.T) {
 			requestBody := []byte(`{"model":"test-model","messages":[{"role":"user","content":"ping"}]}`)
 			req, err := http.NewRequest(http.MethodPost, server.URL+tc.jsonPath, bytes.NewReader(requestBody))
 			if err != nil {
-				t.Fatalf("创建请求失败: %v", err)
+				t.Fatalf("create request: %v", err)
 			}
 			req.Header.Set("Authorization", "Bearer secret-token")
 			req.Header.Set("X-Test-Request", tc.name)
 
 			resp, err := server.Client().Do(req)
 			if err != nil {
-				t.Fatalf("请求 fake upstream 失败: %v", err)
+				t.Fatalf("request fake upstream: %v", err)
 			}
 			defer resp.Body.Close()
 
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				t.Fatalf("读取响应失败: %v", err)
+				t.Fatalf("read response: %v", err)
 			}
 			if resp.StatusCode != http.StatusOK {
-				t.Fatalf("响应状态 = %d, want %d", resp.StatusCode, http.StatusOK)
+				t.Fatalf("response status = %d, want %d", resp.StatusCode, http.StatusOK)
 			}
 			assertFixtureBody(t, body, tc.name, "success.json")
 
 			requests := server.Requests()
 			if len(requests) != 1 {
-				t.Fatalf("记录请求数 = %d, want 1", len(requests))
+				t.Fatalf("recorded request count = %d, want 1", len(requests))
 			}
 			recorded := requests[0]
 			if recorded.Method != http.MethodPost {
@@ -91,21 +91,21 @@ func TestServerServesSuccessFixturesAndRecordsRequests(t *testing.T) {
 				t.Errorf("path = %q, want %q", recorded.Path, tc.jsonPath)
 			}
 			if recorded.Headers.Get("Authorization") != "Bearer secret-token" {
-				t.Errorf("Authorization header 未被记录")
+				t.Errorf("Authorization header was not recorded")
 			}
 			if !bytes.Equal(recorded.Body, requestBody) {
 				t.Errorf("body = %s, want %s", recorded.Body, requestBody)
 			}
 
-			// Requests 必须返回快照，避免测试调用方意外篡改服务器内部记录。
+			// Requests must return snapshots so test callers cannot accidentally mutate the server's internal records.
 			requests[0].Headers.Set("Authorization", "changed")
 			requests[0].Body[0] = 'x'
 			fresh := server.Requests()[0]
 			if fresh.Headers.Get("Authorization") != "Bearer secret-token" {
-				t.Errorf("修改请求快照污染了内部 header 记录")
+				t.Errorf("mutating the request snapshot polluted the internal header record")
 			}
 			if !bytes.Equal(fresh.Body, requestBody) {
-				t.Errorf("修改请求快照污染了内部 body 记录")
+				t.Errorf("mutating the request snapshot polluted the internal body record")
 			}
 		})
 	}
@@ -137,15 +137,15 @@ func TestServerServesScriptedErrorsInOrder(t *testing.T) {
 			for i, wantStatus := range wantStatuses {
 				resp, err := server.Client().Post(server.URL+tc.jsonPath, "application/json", strings.NewReader(`{}`))
 				if err != nil {
-					t.Fatalf("第 %d 个请求失败: %v", i+1, err)
+					t.Fatalf("request %d failed: %v", i+1, err)
 				}
 				body, readErr := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				if readErr != nil {
-					t.Fatalf("读取第 %d 个响应失败: %v", i+1, readErr)
+					t.Fatalf("read response %d: %v", i+1, readErr)
 				}
 				if resp.StatusCode != wantStatus {
-					t.Errorf("第 %d 个响应状态 = %d, want %d", i+1, resp.StatusCode, wantStatus)
+					t.Errorf("response %d status = %d, want %d", i+1, resp.StatusCode, wantStatus)
 				}
 				assertFixtureBody(t, body, tc.name, fixtureNames[i])
 				if wantStatus == http.StatusTooManyRequests {
@@ -174,19 +174,19 @@ func TestServerStreamsGoldenSSEAndFlushesEveryEvent(t *testing.T) {
 
 			resp, err := server.Client().Post(server.URL+tc.streamPath, "application/json", strings.NewReader(`{}`))
 			if err != nil {
-				t.Fatalf("流式请求失败: %v", err)
+				t.Fatalf("streaming request failed: %v", err)
 			}
 			body, readErr := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if readErr != nil {
-				t.Fatalf("读取流式响应失败: %v", readErr)
+				t.Fatalf("read streaming response: %v", readErr)
 			}
 			if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/event-stream") {
 				t.Errorf("Content-Type = %q, want text/event-stream", got)
 			}
 			assertFixtureBody(t, body, tc.name, "stream.sse")
 			if !bytes.Contains(body, []byte(tc.streamUsageMarker)) {
-				t.Errorf("流式 fixture 缺少 usage 事件标记 %s", tc.streamUsageMarker)
+				t.Errorf("streaming fixture lacks usage event marker %s", tc.streamUsageMarker)
 			}
 
 			flushServer := New(step)
@@ -198,7 +198,7 @@ func TestServerStreamsGoldenSSEAndFlushesEveryEvent(t *testing.T) {
 			golden := readFixture(t, tc.name, "stream.sse")
 			wantFlushes := countSSEEvents(golden)
 			if recorder.flushes != wantFlushes {
-				t.Errorf("Flush 次数 = %d, want %d（每个 SSE 事件一次）", recorder.flushes, wantFlushes)
+				t.Errorf("Flush count = %d, want %d (one per SSE event)", recorder.flushes, wantFlushes)
 			}
 		})
 	}
@@ -232,13 +232,13 @@ func TestServerSupportsDelay(t *testing.T) {
 	startedAt := time.Now()
 	resp, err := server.Client().Post(server.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{}`))
 	if err != nil {
-		t.Fatalf("慢响应请求失败: %v", err)
+		t.Fatalf("slow-response request failed: %v", err)
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 	elapsed := time.Since(startedAt)
 	if elapsed < delay {
-		t.Errorf("响应耗时 = %s, want >= %s", elapsed, delay)
+		t.Errorf("response duration = %s, want >= %s", elapsed, delay)
 	}
 }
 
@@ -252,10 +252,10 @@ func TestServerSupportsConnectionDrop(t *testing.T) {
 		resp.Body.Close()
 	}
 	if err == nil {
-		t.Fatal("断连脚本未让客户端收到错误")
+		t.Fatal("disconnect script did not return an error to the client")
 	}
 	if len(server.Requests()) != 1 {
-		t.Fatalf("断连请求也应被记录，got %d 条", len(server.Requests()))
+		t.Fatalf("disconnect request should also be recorded; got %d", len(server.Requests()))
 	}
 }
 
@@ -265,32 +265,32 @@ func TestServerRejectsUnsupportedMethodAndPathWithoutConsumingScript(t *testing.
 
 	resp, err := server.Client().Get(server.URL + "/v1/chat/completions")
 	if err != nil {
-		t.Fatalf("GET 请求失败: %v", err)
+		t.Fatalf("GET request failed: %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("GET 状态 = %d, want 405", resp.StatusCode)
+		t.Errorf("GET status = %d, want 405", resp.StatusCode)
 	}
 
 	resp, err = server.Client().Post(server.URL+"/unknown", "application/json", strings.NewReader(`{}`))
 	if err != nil {
-		t.Fatalf("未知路径请求失败: %v", err)
+		t.Fatalf("unknown-path request failed: %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("未知路径状态 = %d, want 404", resp.StatusCode)
+		t.Errorf("unknown-path status = %d, want 404", resp.StatusCode)
 	}
 
 	resp, err = server.Client().Post(server.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{}`))
 	if err != nil {
-		t.Fatalf("有效请求失败: %v", err)
+		t.Fatalf("valid request failed: %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("无效请求不应消耗脚本，有效请求状态 = %d, want 200", resp.StatusCode)
+		t.Errorf("an invalid request must not consume a script; valid-request status = %d, want 200", resp.StatusCode)
 	}
 	if len(server.Requests()) != 3 {
-		t.Errorf("所有收到的请求都应记录，got %d 条", len(server.Requests()))
+		t.Errorf("all received requests should be recorded; got %d", len(server.Requests()))
 	}
 }
 
@@ -303,32 +303,32 @@ func TestServerServesOpenAIModelListFixture(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/v1/models", nil)
 	if err != nil {
-		t.Fatalf("创建模型列表请求失败: %v", err)
+		t.Fatalf("create model-list request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer sk-models")
 
 	resp, err := server.Client().Do(req)
 	if err != nil {
-		t.Fatalf("请求模型列表失败: %v", err)
+		t.Fatalf("request model list: %v", err)
 	}
 	body, readErr := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if readErr != nil {
-		t.Fatalf("读取模型列表响应失败: %v", readErr)
+		t.Fatalf("read model-list response: %v", readErr)
 	}
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("模型列表状态 = %d, want %d", resp.StatusCode, http.StatusOK)
+		t.Fatalf("model-list status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
 	assertFixtureBody(t, body, "openai", "models.json")
 
 	requests := server.Requests()
 	if len(requests) != 1 {
-		t.Fatalf("模型列表请求记录数 = %d, want 1", len(requests))
+		t.Fatalf("model-list recorded request count = %d, want 1", len(requests))
 	}
 	if requests[0].Method != http.MethodGet ||
 		requests[0].Path != "/v1/models" ||
 		requests[0].Headers.Get("Authorization") != "Bearer sk-models" {
-		t.Fatalf("模型列表请求记录不正确: %#v", requests[0])
+		t.Fatalf("model-list recorded request is incorrect: %#v", requests[0])
 	}
 }
 
@@ -506,16 +506,16 @@ func TestServerKeepsConcurrentRequestRecordsAlignedWithScriptSteps(t *testing.T)
 
 	requests := server.Requests()
 	if len(requests) != requestCount {
-		t.Fatalf("记录请求数 = %d, want %d", len(requests), requestCount)
+		t.Fatalf("recorded request count = %d, want %d", len(requests), requestCount)
 	}
 	for stepIndex, request := range requests {
 		requestID, err := strconv.Atoi(request.Headers.Get("X-Request-ID"))
 		if err != nil {
-			t.Fatalf("第 %d 条记录的 X-Request-ID 无效: %v", stepIndex, err)
+			t.Fatalf("record %d has invalid X-Request-ID: %v", stepIndex, err)
 		}
 		if got, want := responses[requestID], strconv.Itoa(stepIndex); got != want {
 			t.Fatalf(
-				"请求记录与脚本错配: records[%d] 的 request=%d 收到 step=%q, want %q",
+				"record does not match script: records[%d]'s request=%d received step=%q, want %q",
 				stepIndex,
 				requestID,
 				got,
@@ -540,10 +540,10 @@ func TestReadEmbeddedFixtureNormalizesPortablePrefixes(t *testing.T) {
 		t.Run(fixtureName, func(t *testing.T) {
 			got, err := readEmbeddedFixture("openai", fixtureName)
 			if err != nil {
-				t.Fatalf("读取 fixture %q 失败: %v", fixtureName, err)
+				t.Fatalf("read fixture %q: %v", fixtureName, err)
 			}
 			if !bytes.Equal(got, want) {
-				t.Errorf("fixture %q 内容与 golden 不一致", fixtureName)
+				t.Errorf("fixture %q differs from golden content", fixtureName)
 			}
 		})
 	}
@@ -563,7 +563,7 @@ func assertFixtureBody(t *testing.T, got []byte, dialect, name string) {
 	t.Helper()
 	want := readFixture(t, dialect, name)
 	if !bytes.Equal(got, want) {
-		t.Errorf("响应体与 golden fixture 不一致\ngot:  %s\nwant: %s", got, want)
+		t.Errorf("response body differs from golden fixture\ngot:  %s\nwant: %s", got, want)
 	}
 }
 
@@ -571,7 +571,7 @@ func readFixture(t *testing.T, dialect, name string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", dialect, name))
 	if err != nil {
-		t.Fatalf("读取 fixture 失败: %v", err)
+		t.Fatalf("read fixture: %v", err)
 	}
 	return data
 }

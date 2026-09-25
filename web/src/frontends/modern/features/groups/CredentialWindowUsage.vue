@@ -45,7 +45,7 @@ function estimate(window: CredentialQuota): { text: string; hint: string } {
         cost: formatNanoUSD(minimumCostNanoUSD.toString(), locale.value, 'narrowSymbol', 2),
       }),
     }
-  // 以万分之一的比例精度外推，金额保留纳美元整数，避免转换原始金额时丢失精度。
+
   const usedBasisPoints = BigInt(Math.round(used * 100))
   const fullCost = (cost * 10_000n + usedBasisPoints / 2n) / usedBasisPoints
   const amount = formatNanoUSD(fullCost.toString(), locale.value, 'narrowSymbol', 2)

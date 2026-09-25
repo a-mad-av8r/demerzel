@@ -41,7 +41,7 @@ func TestModelCooldownFiltersSelectionInspectionAndRefreshReplay(t *testing.T) {
 	if inspection.Groups[0].Credentials[0].Available {
 		t.Fatal("inspection ignored model cooldown")
 	}
-	// 别名请求使用各分组实际发送的模型名；共享客户端别名不共享冷却键。
+	// Alias requests use the model names each Group actually sends; shared client aliases do not share cooldown keys.
 	secondRef, _ := r.CredentialRef(2)
 	r.SetModelCooldown(secondRef, "gpt-4o", now.Add(2*time.Hour), now)
 	if selection, err := New(snapshot, r, query).Next(); err != nil || selection.CredentialID != 2 {
@@ -51,7 +51,7 @@ func TestModelCooldownFiltersSelectionInspectionAndRefreshReplay(t *testing.T) {
 	if until, limited := New(snapshot, r, query).CooldownUntil(); !limited || !until.Equal(now.Add(time.Hour)) {
 		t.Fatalf("earliest applicable recovery = %v, %t", until, limited)
 	}
-	// 计数请求不读取推理冷却，但仍通过原有的路由与凭据资格检查。
+	// Counting requests do not read reasoning cooldown, but still pass existing routing and credential-eligibility checks.
 	countQuery := query
 	countQuery.ClientProtocol = protocol.OpenAIResponses
 	countQuery.Operation = execution.OperationResponsesInputTokens

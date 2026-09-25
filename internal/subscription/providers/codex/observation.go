@@ -112,11 +112,11 @@ const passiveQuotaMaxResetAtSeconds = math.MaxInt64 / 1000
 // ever appears on the response as a whole, which parses as the empty namespace.
 var passiveQuotaNamespaceFields = []string{"limit-reached", "limit-name", "allowed", "active-limit"}
 
-// codexAccountQuotaSourceID 是普通账号额度的来源标识，与主动查询里没有
-// metered_feature 的 rate_limit 对应。
+// codexAccountQuotaSourceID is the source identifier for ordinary account quota, corresponding to a rate_limit
+// without metered_feature in active queries.
 const codexAccountQuotaSourceID = "codex"
 
-// codexAccountActiveLimit 是 X-Codex-Active-Limit 指向普通账号额度时的取值。
+// codexAccountActiveLimit is the X-Codex-Active-Limit value indicating ordinary account quota.
 const codexAccountActiveLimit = "premium"
 
 // passiveQuotaNamespace holds one Codex limit namespace parsed out of the
@@ -127,10 +127,10 @@ type passiveQuotaNamespace struct {
 	windows   map[string]map[string]string
 }
 
-// NormalizePassiveQuotaWindows 提取响应头中的来源、周期和额度数据。
-// 来源按上游 limit_id 规则与主动查询的 metered_feature 对齐，不依赖 Limit-Name；
-// 没有命名空间的一组由 Active-Limit 决定归属，见 passiveQuotaGenericSourceID。
-// 展示元数据仍由主动观测负责；缺少周期的样本由合并层拒绝，不能退回槽位匹配。
+// NormalizePassiveQuotaWindows extracts source, period, and quota data from response headers.
+// Sources align with active-query metered_feature according to upstream limit_id rules, without relying on Limit-Name;
+// an unnamespaced group is assigned by Active-Limit (see passiveQuotaGenericSourceID).
+// Active observation remains responsible for display metadata; the merge layer rejects samples with no period instead of falling back to slot matching.
 func NormalizePassiveQuotaWindows(signals map[string]string, observedAt time.Time) []quotaWindow {
 	if len(signals) == 0 {
 		return nil
@@ -175,9 +175,9 @@ func NormalizePassiveQuotaWindows(signals map[string]string, observedAt time.Tim
 	return result
 }
 
-// passiveQuotaNamespaceSourceID 把响应头命名空间映射成额度来源标识。上游用短名
-// 给专属额度分段（x-codex-bengalfox-*），主动查询用 metered_feature 报告同一个
-// 来源（codex_bengalfox），两者相差一个 codex 前缀。
+// passiveQuotaNamespaceSourceID maps a response-header namespace to a quota source identifier. The upstream uses short names
+// for dedicated quota segments (x-codex-bengalfox-*), while active queries report the same
+// source (codex_bengalfox) as metered_feature, differing only by a codex prefix.
 func passiveQuotaNamespaceSourceID(key string) string {
 	if key == "" {
 		return codexAccountQuotaSourceID
@@ -185,10 +185,10 @@ func passiveQuotaNamespaceSourceID(key string) string {
 	return normalizeQuotaSourceID(codexAccountQuotaSourceID + "-" + key)
 }
 
-// passiveQuotaGenericSourceID 判定没有命名空间的 X-Codex-Primary/Secondary-* 组
-// 归属哪个来源。这一组报告的是本次请求实际计费到的额度，而不是固定的普通账号
-// 额度：请求 Spark 等专属额度时，上游把该额度原样放进这一组，按普通额度收下就
-// 会用专属额度覆盖同周期的普通窗口。返回空串表示无法安全归属，整组丢弃。
+// passiveQuotaGenericSourceID determines the source for an unnamespaced X-Codex-Primary/Secondary-* group.
+// It reports the quota actually billed for this request rather than fixed ordinary account quota:
+// a Spark request places its dedicated quota here, and treating it as ordinary would overwrite that period's ordinary window.
+// Return an empty string when safe attribution is impossible, dropping the entire group.
 func passiveQuotaGenericSourceID(namespaces map[string]*passiveQuotaNamespace) string {
 	generic, ok := namespaces[""]
 	if !ok {
@@ -198,20 +198,20 @@ func passiveQuotaGenericSourceID(namespaces map[string]*passiveQuotaNamespace) s
 	case codexAccountQuotaSourceID, codexAccountActiveLimit:
 		return codexAccountQuotaSourceID
 	case "":
-		// 没有 Active-Limit 就无法直接区分普通额度和专属额度的副本。同一响应里
-		// 已经独立报告了别的来源时按副本处理，只有单独报告这一组才沿用普通额度。
+		// Without Active-Limit, a generic copy cannot directly distinguish ordinary and dedicated quota. If the response
+		// separately reports another source, treat it as a copy; inherit ordinary quota only when this is the sole reported group.
 		if passiveQuotaHasNamespacedWindows(namespaces) {
 			return ""
 		}
 		return codexAccountQuotaSourceID
 	default:
-		// 专属额度的副本直接刷新该来源。与独立命名空间真正重复的窗口另行去重，
-		// 这里不能因为该来源另有一个周期的窗口就丢掉整组。
+		// A dedicated-quota copy refreshes that source directly. Deduplicate separately against a truly repeated independent namespace;
+		// do not discard the whole group because the source has another period window.
 		return active
 	}
 }
 
-// passiveQuotaHasNamespacedWindows 报告除通用组外是否还有带窗口数据的来源。
+// passiveQuotaHasNamespacedWindows reports whether any source with window data exists besides the generic group.
 func passiveQuotaHasNamespacedWindows(namespaces map[string]*passiveQuotaNamespace) bool {
 	for key, namespace := range namespaces {
 		if key != "" && len(namespace.windows) > 0 {
@@ -221,10 +221,10 @@ func passiveQuotaHasNamespacedWindows(namespaces map[string]*passiveQuotaNamespa
 	return false
 }
 
-// passiveQuotaDropDuplicateCopies 丢弃与独立命名空间重复的通用窗口。只有来源和
-// 周期都相同才是同一份额度的两次报告：这时两个补丁会指向同一个窗口，合并层判定
-// 歧义后会把两者一起丢弃，因此只保留命名空间单独报告的那份。周期不同的窗口对应
-// 不同额度，必须各自保留。generic 是通用组产出的窗口下标。
+// passiveQuotaDropDuplicateCopies drops generic windows duplicated by an independent namespace. Only the same source and
+// period represent two reports of one quota: both patches would target one window, and the merge layer would find
+// ambiguity and drop both, so retain only the independently namespaced report. Windows with different periods represent
+// distinct quota and must both remain. generic contains indices for windows produced by the generic group.
 func passiveQuotaDropDuplicateCopies(windows []quotaWindow, generic []int) []quotaWindow {
 	isGeneric := make(map[int]bool, len(generic))
 	for _, index := range generic {
@@ -233,7 +233,7 @@ func passiveQuotaDropDuplicateCopies(windows []quotaWindow, generic []int) []quo
 	duplicated := make(map[int]bool, len(generic))
 	for _, index := range generic {
 		for other := range windows {
-			// 只与独立命名空间比较：通用组内部的两个槽位是两份数据，不是副本。
+			// Compare only with independent namespaces: the generic group's two slots are distinct data, not copies.
 			if isGeneric[other] || windows[other].SourceID != windows[index].SourceID {
 				continue
 			}
@@ -261,8 +261,8 @@ func samePassiveQuotaPeriod(left, right quotaWindow) bool {
 		*left.WindowSeconds == *right.WindowSeconds
 }
 
-// parsePassiveQuotaNamespaces 从已知字段后缀定位槽位，避免将来源名称中的
-// primary/secondary 误认成窗口，或把 over-secondary-limit-percent 当成额度值。
+// parsePassiveQuotaNamespaces identifies slots from known field suffixes, avoiding misreading
+// primary/secondary in source names as windows or over-secondary-limit-percent as a quota value.
 func parsePassiveQuotaNamespaces(signals map[string]string) map[string]*passiveQuotaNamespace {
 	namespaces := make(map[string]*passiveQuotaNamespace)
 	ensure := func(key string) *passiveQuotaNamespace {
@@ -425,7 +425,7 @@ func passiveQuotaBool(value string) (bool, bool) {
 	return parsed, true
 }
 
-// 与 Codex 的 normalize_limit_id 一致；名称仅用于显示，不能作为来源标识。
+// Consistent with Codex normalize_limit_id: names are for display only and cannot be source identifiers.
 func normalizeQuotaSourceID(value string) string {
 	return strings.ReplaceAll(strings.ToLower(strings.TrimSpace(value)), "-", "_")
 }

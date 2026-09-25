@@ -10,7 +10,7 @@ import (
 
 const maxRateLimitResetDelay = time.Hour
 
-// ParseExplicitRetryAfter 支持本次拒绝明确返回的长恢复时间，不扩大其他 reset 头的语义。
+// ParseExplicitRetryAfter supports a long recovery time explicitly returned by this rejection without expanding the meaning of other reset headers.
 func ParseExplicitRetryAfter(header http.Header, now time.Time) (time.Time, bool) {
 	var latest time.Time
 	for _, value := range matchingHeaderValues(header, func(name string) bool { return name == "retry-after" }) {

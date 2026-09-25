@@ -785,7 +785,7 @@ func TestConvertedOpenAIChatStreamWaitsForFirstClientFrame(t *testing.T) {
 		[]byte(`{"model":"client-model","stream":true,"messages":[{"role":"user","content":"hello"}]}`),
 	)
 	spec.Timeouts.FirstByte = 250 * time.Millisecond
-	// 总请求超时晚于测试保护时间，避免首事件超时失效后仍由其他超时通过。
+	// The overall request timeout is later than the test guard so another timeout cannot pass after first-event timeout fails.
 	spec.Timeouts.Request = 30 * time.Second
 	spec.Timeouts.StreamIdle = 30 * time.Second
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)

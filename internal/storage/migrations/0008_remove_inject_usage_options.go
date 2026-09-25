@@ -62,8 +62,8 @@ func stripGroupInjectUsageOptions0008(db *gorm.DB) error {
 		if !changed {
 			continue
 		}
-		// json 列必须收到文本；写 []byte 时 PostgreSQL 驱动会当成 bytea 而报
-		// invalid input syntax for type json。
+		// json columns must receive text; the PostgreSQL driver treats []byte as bytea and reports
+		// invalid input syntax for type json.
 		if err := db.Model(&group0008{}).
 			Where("id = ?", group.ID).
 			Update("overrides", string(stripped)).Error; err != nil {

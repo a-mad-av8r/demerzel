@@ -132,7 +132,6 @@ export function clientModel(model: GroupModelUpdateDto): string {
   return normalized === undefined ? '' : normalized.alias_enabled ? normalized.alias : normalized.id
 }
 
-/** 同一上游模型与对外名称的重复映射不增加轮询份额。 */
 export function findModelNameConflicts(
   models: readonly GroupModelUpdateDto[],
 ): ModelNameConflict[] {

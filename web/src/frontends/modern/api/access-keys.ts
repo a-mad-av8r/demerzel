@@ -201,7 +201,6 @@ export async function getAccessKey(
   signal: AbortSignal,
   hint?: AccessFilters,
 ): Promise<AccessKeyRow | null> {
-  // 没有单项 GET 接口；先查当前页，直接链接不在当前页时复用集合分页定位。
   if (hint) {
     const page = await getAccessKeys(client, hint, signal)
     const item = page.items.find((row) => row.id === id)

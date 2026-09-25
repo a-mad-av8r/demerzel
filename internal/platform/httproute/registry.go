@@ -49,7 +49,7 @@ type Fallback struct {
 	Handler gin.HandlerFunc
 }
 
-// Module groups routes that share ownership, authentication, and fallback behavior.
+// Module groups routes that share ownership, authentication, and fallback behaviour.
 type Module struct {
 	Name              string
 	Owner             Owner

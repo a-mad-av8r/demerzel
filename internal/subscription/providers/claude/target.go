@@ -6,7 +6,7 @@ import (
 	cpaembedded "github.com/router-for-me/CLIProxyAPI/v7/gptload-embedded/embedded"
 )
 
-// claudeAPIOptions 只为凭据准备完成后的业务调用设置代理目标。
+// claudeAPIOptions sets a proxy target only for business calls after credential preparation completes.
 func claudeAPIOptions(ctx context.Context, apiRoot string) (cpaembedded.ClaudeOptions, error) {
 	options, err := claudeOptions(ctx)
 	if err != nil {

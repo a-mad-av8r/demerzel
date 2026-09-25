@@ -260,7 +260,7 @@ function invalidateDiscovery(): void {
   discoveryError.value = ''
 }
 watch([channelID, params, credentials, proxyMode, proxyURL], invalidateDiscovery, { deep: true })
-// 只跟踪实际用于发现模型的账号，其他账号就绪不打断当前模型选择。
+
 watch(() => currentReadyIDs()[0], invalidateDiscovery)
 function toggleSecret(key: string): void {
   if (secretsVisible.value.has(key)) secretsVisible.value.delete(key)
@@ -386,9 +386,7 @@ async function execute(): Promise<void> {
           errorBox.value?.focus()
           return
         }
-      } catch {
-        /* 无效冲突响应不展示未经验证的分组操作。 */
-      }
+      } catch {}
     }
     operation.reset()
     errorText.value = result.error.message || t('groupCreate.failed')

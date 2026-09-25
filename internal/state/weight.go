@@ -22,7 +22,7 @@ func validateManualWeight(subject string, weight *int) error {
 	return nil
 }
 
-// ConfiguredWeight 保留显式值（包括历史 0），未配置时使用默认权重。
+// ConfiguredWeight retains explicit values (including historical 0), using the default weight when unconfigured.
 func ConfiguredWeight(weight *int) int {
 	if weight == nil {
 		return DefaultWeight

@@ -111,7 +111,7 @@ func (s *Server) authenticate() gin.HandlerFunc {
 			!adminMatches &&
 			!accessKeyMatch.PolicyAllowed
 		if principal.Type == controlPrincipalAccessKey || policyRejectedAccessKey {
-			// AccessKey 成功只授权本次请求，不清除同一来源的管理密钥失败记录。
+			// AccessKey success authorises only this request; it does not clear management-key failures from the same source.
 			decision = authDecision{authorized: principal.Type == controlPrincipalAccessKey}
 		} else {
 			decision = s.authFailures.evaluate(peer, credentialValid)

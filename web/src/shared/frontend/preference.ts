@@ -1,6 +1,5 @@
 export type FrontendID = 'classic' | 'modern'
 
-// v2 起仅接受管理员在设置页主动写入的偏好；旧版缓存不再参与启动判断。
 const frontendStorageKey = 'gpt-load.frontend.v2'
 const legacyFrontendStorageKey = 'gpt-load.frontend'
 const authStorageKey = 'gpt-load.auth-key'
@@ -43,9 +42,7 @@ function readAuthKey(): string {
 function removePreference(key: string): void {
   try {
     getStorage('localStorage')?.removeItem(key)
-  } catch {
-    // 存储不可用时，默认新版入口仍然生效。
-  }
+  } catch {}
 }
 
 export function clearFrontendPreference(): void {
@@ -54,7 +51,6 @@ export function clearFrontendPreference(): void {
 }
 
 export async function getPreferredFrontend(): Promise<FrontendID> {
-  // 旧版的全局缓存没有认证上下文，必须直接失效，避免访问密钥进入经典版。
   removePreference(legacyFrontendStorageKey)
   if (readStorageKey('localStorage', frontendStorageKey) !== 'classic') return 'modern'
 
@@ -70,7 +66,7 @@ export async function getPreferredFrontend(): Promise<FrontendID> {
         controller.abort()
       }, frontendAuthTimeoutMS)
     })
-    // 截止时间覆盖响应正文读取；迟到结果只返回身份，不再修改浏览器偏好。
+
     const principal = await Promise.race([
       window
         .fetch('/api/auth/session', {
@@ -90,7 +86,6 @@ export async function getPreferredFrontend(): Promise<FrontendID> {
       clearFrontendPreference()
     }
   } catch {
-    // 临时网络、存储或响应异常保留管理员选择，由新版认证页提供恢复入口。
   } finally {
     if (timeoutID !== undefined) window.clearTimeout(timeoutID)
   }

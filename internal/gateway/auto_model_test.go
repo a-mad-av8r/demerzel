@@ -483,7 +483,7 @@ func TestAutoModelDecisionDoesNotCapGroupRequestTimeout(t *testing.T) {
 	forwarder := &scriptedForwarder{results: []UpstreamResult{{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: []byte(`{"model":"gpt-4o","choices":[{"message":{"content":"ok"}}]}`)}}}
 	handler, manager, _ := newHandlerForTest(t, forwarder, "key-a", "key-b")
 	configureAutoModelTest(t, handler, manager, state.FilterSet{})
-	// 模拟比目标 Group 更短的全局默认值；Group 已编译的执行超时保持不变。
+	// Simulate a global default shorter than the target Group's; the Group's compiled execution timeout remains unchanged.
 	handler.manager.Current().Settings.RequestTimeout = time.Nanosecond
 	handler.decisionClient = autoDecisionClient(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"answers":{"preset":{"choice":"balanced","confidence":0.9}},"usage":{"input_tokens":1,"output_tokens":0}}`))}, nil
@@ -704,7 +704,7 @@ func TestAutoModelContinuationDecisionExcludesOtherGroups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 普通模型的响应也可以续接到自动入口，绑定仅限制凭据。
+	// An ordinary-model response can also continue through the automatic entry point; binding constrains only the credential.
 	if !handler.responseBindings.Record(1, "resp-before", state.CredentialRef{ID: 1, GroupID: 1, IdentityGeneration: 1}) {
 		t.Fatal("cannot store ordinary response binding")
 	}

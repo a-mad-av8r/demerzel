@@ -16,7 +16,7 @@ import (
 	"gpt-load/internal/state"
 )
 
-// 在真正取得凭据锁之前完成一次配置变更，验证目标校验位于锁内。
+// Make one configuration change before acquiring the real credential lock to verify target validation occurs inside that lock.
 type targetHealthMutationCoordinator struct {
 	delegate credentialMutationCoordinator
 	before   func()

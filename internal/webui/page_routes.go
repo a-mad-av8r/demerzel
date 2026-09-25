@@ -42,7 +42,7 @@ func loadPageRoutes() ([]pageRoute, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 新版地址只在服务端合并，旧版继续读取原有页面清单。
+	// Modern routes are combined only on the server; classic routes continue reading the original page list.
 	return validatePageRoutes(append(routes, modernRoutes...))
 }
 

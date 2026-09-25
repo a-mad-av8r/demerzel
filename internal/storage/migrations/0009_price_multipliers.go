@@ -15,7 +15,7 @@ var priceMultiplierTables0009 = []struct{ table, constraint string }{
 	{"access_keys", "chk_access_key_price_multiplier"},
 }
 
-// Up0009 用独立且原子的列 DDL 保持 MySQL 中断后的安全恢复。
+// Up0009 uses independent atomic column DDL to retain safe recovery after a MySQL interruption.
 func Up0009(db *gorm.DB) error {
 	if err := ValidateRecoverable0009(db); err != nil {
 		return err
@@ -77,7 +77,7 @@ func validatePriceMultiplierColumn0009(db *gorm.DB, table, constraint string) er
 		}
 		defaultValue, known := column.DefaultValue()
 		if strings.EqualFold(db.Dialector.Name(), "sqlite") {
-			// SQLite 驱动解析列尾约束时可能把 CHECK 也并入默认值，读取数据库元数据。
+			// When the SQLite driver parses a trailing column constraint, it may include CHECK in the default value; read database metadata.
 			if err := db.Raw("SELECT dflt_value FROM pragma_table_info(?) WHERE name = ?", table, "price_multiplier_micros").Scan(&defaultValue).Error; err != nil {
 				return fmt.Errorf("inspect %s price multiplier default: %w", table, err)
 			}

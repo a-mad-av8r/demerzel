@@ -92,7 +92,7 @@ func TestParseModelPriceListQueryRejectsAmbiguousOrUnsafeInput(t *testing.T) {
 		{name: "unsafe page", rawQuery: "page=9007199254740992"},
 		{name: "empty page size", rawQuery: "page_size="},
 		{name: "oversized page size", rawQuery: "page_size=101"},
-		{name: "search too long", rawQuery: "search=" + strings.Repeat("界", 201)},
+		{name: "search too long", rawQuery: "search=" + strings.Repeat("☃", 201)},
 	}
 
 	for _, test := range tests {

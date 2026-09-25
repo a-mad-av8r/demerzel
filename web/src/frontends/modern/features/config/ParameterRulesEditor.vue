@@ -146,9 +146,7 @@ const summaries = computed(
             let value = action.text
             try {
               value = JSON.stringify(parameterValue(action)) ?? ''
-            } catch {
-              /* 无效输入也保留摘要。 */
-            }
+            } catch {}
             entries.push(`${action.path || '…'} = ${value}`)
           }
         }
@@ -226,7 +224,7 @@ function setType(action: ParameterActionDraft, value: string): void {
 }
 function finishValue(action: ParameterActionDraft): void {
   if (props.disabled || action.typePinned) return
-  // 结束输入后再识别类型，避免输入中途替换控件、打断焦点。
+
   action.type = inferParameterType(action.text)
   if (action.type === 'boolean') action.text = action.text.trim()
 }

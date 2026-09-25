@@ -121,7 +121,7 @@ func TestWebsocketQuotaReusedSessionRefreshesAccountPercentageWithoutHeaders(t *
 	inner := &quotaEventSession{}
 	session := &observedWebsocketSession{WebsocketSession: inner, adapter: adapter, spec: validSpec(t, credential, crypt)}
 	for _, used := range []int{94, 95} {
-		// 沿用实测事件结构，仅改变用量，模拟同一连接连续收到的新额度。
+		// Follow the observed event structure, changing only usage to simulate new quota received consecutively on one connection.
 		inner.event = bytes.Replace(payload, []byte(`"used_percent": 6`), fmt.Appendf(nil, `"used_percent": %d`, used), 1)
 		result := session.ExecuteTurn(t.Context(), session.spec.Body, func(_ context.Context, forwarded []byte) error {
 			if !bytes.Equal(forwarded, inner.event) {
@@ -154,7 +154,7 @@ func TestWebsocketQuotaReusedSessionRefreshesAccountPercentageWithoutHeaders(t *
 		if result.Error != nil {
 			t.Fatalf("turn failed: %+v", result.Error)
 		}
-		// 生产观测按毫秒排序，下一轮须具有更晚的信号时间。
+		// Production observations are sorted to milliseconds; the next turn needs a later signal time.
 		for time.Now().UnixMilli() <= storedAt {
 			time.Sleep(time.Millisecond)
 		}
@@ -187,7 +187,7 @@ func TestWebsocketQuotaKeepsHandshakeWhenEventOnlyUpdatesSpark(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// 条件复现：实测握手未带额度，此处显式提供受支持的 HTTP 额度字段。
+			// Conditional reproduction: the observed handshake had no quota, so provide supported HTTP quota headers explicitly.
 			provider := &quotaTestWebsocketProvider{
 				codexProviderBridge: adapter.providers[channel.ProviderCodex].(*codexProviderBridge), event: event,
 				headerAt: time.Now().Add(-time.Second),

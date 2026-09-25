@@ -1,5 +1,5 @@
 // Package providers assembles the subscription provider implementations used
-// by the application composition root. Provider-specific behavior stays in the
+// by the application composition root. Provider-specific behaviour stays in the
 // corresponding child package; the generic runtime remains independent.
 package providers
 

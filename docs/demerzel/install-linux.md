@@ -1,57 +1,38 @@
 # Linux installation
 
-**Status: not published.** Linux amd64 and arm64 binaries, the installer, signed
-manifest, Sigstore bundle, and `SHA256SUMS` are release assets only after an
-approved private GitHub Release. The installer accepts generated artifact
-folders, so install, upgrade, rollback, and uninstall do not require a Git
-checkout.
+Demerzel's source repository is public. **There is not yet a signed GitHub release**, so the pre-built download below is unavailable today. Build the public source revision until an authorised release is published.
 
-## Prerequisites
+## Install from a signed release with curl
 
-- Linux amd64 or arm64; native installer support is macOS/Linux only.
-- Read access to private `a-mad-av8r/demerzel` through GitHub CLI (`gh`).
-- `cosign`, `jq`, and `age-keygen` available locally.
-- An owner-only, separately backed-up age identity. Do not place it in the data
-  directory.
+This path downloads the public release assets, verifies the Sigstore identity and installer hashes, then runs the already-verified native installer. It does not use `gh`, a GitHub token or `curl | sh`.
 
-Authenticate explicitly before downloading; GitHub CLI keeps credentials in
-its credential store. Do not enable shell tracing or print the token:
+Requirements: Linux amd64 or arm64, `curl`, `jq`, `cosign` and `age-keygen`. Keep the age identity owner-only and outside the data directory; back it up separately.
 
-```sh
-gh auth login --hostname github.com --scopes repo
-```
+After the first approved public release, download and verify it as follows:
 
-## Install from signed release artifacts
+```bash
+set -euo pipefail
+umask 077
 
-Choose an approved version tag and download the release files into a private
-staging directory:
-
-```sh
 release_dir="$(mktemp -d)"
 chmod 700 "$release_dir"
-tag=v2.0.0
-GH_TOKEN="$(gh auth token)" gh release download "$tag" \
-  --repo a-mad-av8r/demerzel \
-  --pattern 'demerzel-linux-amd64' \
-  --pattern 'demerzel-linux-arm64' \
-  --pattern 'manifest.json' \
-  --pattern 'manifest.sigstore.json' \
-  --pattern 'SHA256SUMS' \
-  --pattern 'install.sh' \
-  --pattern 'verify-release.sh' \
-  --pattern 'local-smoke.sh' \
-  --dir "$release_dir"
-```
+tag="$(curl --fail --location --silent --show-error \
+  https://api.github.com/repos/a-mad-av8r/demerzel/releases/latest | jq -er '.tag_name')"
+if [[ ! "$tag" =~ ^v2\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+  printf 'Unexpected Demerzel release tag: %s\n' "$tag" >&2
+  exit 1
+fi
+case "$(uname -m)" in
+  x86_64) asset=demerzel-linux-amd64 ;;
+  aarch64|arm64) asset=demerzel-linux-arm64 ;;
+  *) printf 'Unsupported Linux architecture: %s\n' "$(uname -m)" >&2; exit 1 ;;
+esac
+release_base="https://github.com/a-mad-av8r/demerzel/releases/download/${tag}"
+for name in "$asset" manifest.json manifest.sigstore.json install.sh verify-release.sh; do
+  curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 \
+    "$release_base/$name" --output "$release_dir/$name"
+done
 
-The token is an environment value to `gh`; it is not printed or embedded in an
-asset. The installer verifies the signature with Cosign against the expected
-Demerzel GitHub Actions release-workflow identity and validates the selected
-binary digest from the signed manifest before installing:
-
-Verify the signed manifest and the hashes of the executable installer tools
-before running either downloaded script:
-
-```sh
 escaped_tag="${tag//./\\.}"
 identity="^https://github\\.com/a-mad-av8r/demerzel/\\.github/workflows/release\\.yml@refs/tags/${escaped_tag}$"
 cosign verify-blob \
@@ -60,50 +41,36 @@ cosign verify-blob \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   "$release_dir/manifest.json"
 test "$(jq -er '.tag' "$release_dir/manifest.json")" = "$tag"
-for tool in install.sh verify-release.sh local-smoke.sh; do
+for tool in "$asset" install.sh verify-release.sh; do
   expected="$(jq -er --arg name "$tool" '.assets[] | select(.name == $name) | .sha256' "$release_dir/manifest.json")"
   actual="$(sha256sum "$release_dir/$tool" | cut -d ' ' -f 1)"
   test "$actual" = "$expected"
 done
-(cd "$release_dir" && sha256sum --check --ignore-missing SHA256SUMS)
-```
 
-
-```sh
 bash "$release_dir/install.sh" install --artifacts "$release_dir"
-"$HOME/.local/opt/demerzel/bin/demerzel" help
+"$HOME/.local/opt/demerzel/bin/demerzel"
 ```
 
-The native installer maps Linux data to
-`${XDG_DATA_HOME:-$HOME/.local/share}/demerzel` and stores the external age
-identity at `$HOME/.config/demerzel/identity.txt`. It generates an age identity
-only for an empty data directory. If existing data has lost its identity, the
-installer fails closed; restore the original identity instead of creating a
-replacement. The generated launcher uses the same absolute `DATA_DIR` on every
-run.
+This starts the gateway in the foreground. Leave it running and use another
+terminal for account commands, or configure the optional systemd user service.
 
-Previous development installations may have used `./data`; the installer
-does not move those files to the XDG default. Keep `DATA_DIR` at the old
-canonical absolute location with the original key, or perform a supervised
-database-plus-key restore into the new location using the
-[key-custody runbook](key-custody.md). Do not start a fresh key against old
-ciphertext or assume an empty XDG root contains your accounts.
+The signed manifest is the source of truth for the downloaded binary and both executable installer tools. Verify it before running either script. The installer checks the binary again, installs under `~/.local/opt/demerzel`, creates an external age identity only for an empty data directory and fails closed if existing data has lost its identity.
 
-The gateway creates the owner-only account-control socket at
-`$DATA_DIR/control.sock`. Run secret-bearing account CLI commands as the same
-Unix user with the same absolute `DATA_DIR`; the CLI uses this socket only and
-does not accept a plain HTTP control URL. The browser/data-plane HTTP listener
-remains on loopback port 3001.
+## Persistent data and account operations
 
-```sh
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/demerzel" \
-  "$HOME/.local/opt/demerzel/bin/demerzel" accounts list
-```
+On Linux, the standalone installer uses:
+
+- `${XDG_DATA_HOME:-$HOME/.local/share}/demerzel` for persistent data;
+- `$HOME/.config/demerzel/identity.txt` (mode `0600`) for the external age identity;
+- an owner-only `DATA_DIR/control.sock` for secret-bearing account commands.
+
+The generated launcher uses the same absolute `DATA_DIR` and age identity on every run. Run account commands as the same Unix user and with the same data directory as the gateway; the account CLI does not accept a plain HTTP control URL. The browser and data-plane listener remains on loopback port 3001.
+
+Previous development installations may use `./data`; the installer does not move them to the XDG default. Keep the old canonical absolute path with the original custody identity, or follow the supervised database-plus-key restore procedure in the [key-custody runbook](key-custody.md). Do not start a new key against old ciphertext or assume an empty XDG directory contains the old accounts.
 
 ### Optional systemd user service
 
-The installed launcher supplies the same age identity and recipient on every
-start. A user service can use the stable XDG data root:
+The following unit uses the installer's default XDG data path. If `XDG_DATA_HOME` is customised, set `DATA_DIR` to that same absolute path for both the service and account CLI.
 
 ```sh
 mkdir -p "$HOME/.config/systemd/user"
@@ -128,19 +95,16 @@ systemctl --user daemon-reload
 systemctl --user enable --now demerzel.service
 ```
 
-If `XDG_DATA_HOME` is customized, set `Environment=DATA_DIR=...` to that exact
-absolute path and use the same path for CLI commands, backups, upgrades, and
-rollbacks. Do not relocate a populated data root.
+Use the account CLI through the owner-only socket:
 
-Account CLI usage is documented in [accounts](accounts.md); the
-[key-custody runbook](key-custody.md) defines the full recovery procedure.
+```sh
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/demerzel" \
+  "$HOME/.local/opt/demerzel/bin/demerzel" accounts list
+```
 
-## Upgrade and rollback from artifacts
+## Upgrade and rollback
 
-Download each approved signed artifact set into a separate private directory.
-Do not execute a script from a newly downloaded directory to verify itself.
-The first verified installation keeps `install.sh` and `verify-release.sh` in
-`$HOME/.local/opt/demerzel`; use those trusted local copies for an upgrade:
+Download each approved signed artifact set to a separate mode-`0700` directory. Do not execute a script from a new directory to verify itself. The first verified install keeps `install.sh` and `verify-release.sh` under `$HOME/.local/opt/demerzel`; use those trusted copies for upgrades:
 
 ```sh
 trusted="$HOME/.local/opt/demerzel"
@@ -148,79 +112,33 @@ bash "$trusted/install.sh" install --artifacts "$new_dir"
 bash "$trusted/install.sh" rollback
 ```
 
-The installer uses its adjacent trusted verifier to authenticate the new binary
-**and** both new installer tools against the signed manifest before copying or
-executing them. The canonical `DATA_DIR` pin under
-`$HOME/.config/demerzel/data-dir` survives upgrade and uninstall; a requested
-different root fails closed. A custom age-identity directory must be passed
-again with `--config-dir` on upgrade so the installed custody pin can be found.
+The installer uses its adjacent trusted verifier to authenticate the new binary and both installer tools before copying or executing them. The canonical `DATA_DIR` pin under `$HOME/.config/demerzel/data-dir` survives upgrades and uninstalls; requesting a different root fails closed. If the age identity directory was customised, pass the same `--config-dir` on upgrade.
 
-For an artifact-only install/upgrade/rollback smoke, first authenticate the
-smoke tool and installer scripts in **both** signed directories with an already
-trusted verifier. Never start with an unverified `$new_dir/local-smoke.sh`:
-
-```sh
-for dir in "$old_dir" "$new_dir"; do
-  for tool in install.sh verify-release.sh local-smoke.sh; do
-    bash "$trusted/verify-release.sh" "$dir" "$tool"
-  done
-done
-bash "$new_dir/local-smoke.sh" "$old_dir" "$new_dir"
-```
-
-On a fresh host without an installed verifier, repeat the signed-manifest and
-tool-hash preflight above separately for both directories before this smoke.
-It needs `cosign`, `jq`, and `age-keygen` but no source checkout or live service.
-Two distinct signed releases are required; none have been published by this work.
-
-A rollback switches binaries only; it does not reverse database changes. Back
-up and restore the database, `auth.key`, age identity plus `encryption.key.age`,
-`runtime-state.checkpoint.json`, and operator configuration together. Preserve
-the same absolute data path throughout; the canonical path is part of custody
-and installation identity.
+Rollback changes binaries only; it does not reverse database migrations. Keep the database, `auth.key`, external age identity and `encryption.key.age`, `runtime-state.checkpoint.json`, and operator configuration as one restore-proven set. Preserve the same absolute data path throughout.
 
 ## Uninstall and purge
 
-If you installed the sample systemd user service, stop it and remove only its
-unit file before deleting binaries:
+If the optional systemd user service is installed, stop it and remove only its unit file:
 
 ```sh
 systemctl --user disable --now demerzel.service
 rm -f "$HOME/.config/systemd/user/demerzel.service"
 ```
 
-The systemd unit is separate from the installer. Default uninstall uses the
-already verified installed script, removes only the binary prefix and preserves
-runtime data, the owner-only path pin and the external age identity:
+Default uninstall removes the binary prefix and preserves runtime data, the data-root pin and the external age identity:
 
 ```sh
 bash "$HOME/.local/opt/demerzel/install.sh" uninstall
 ```
 
-Uninstall refuses a prefix without its Demerzel version pointer, installer,
-launcher and versioned binary; it does not recursively remove an arbitrary
-`--prefix` directory.
-Install likewise refuses a non-empty prefix without those installation files;
-it does not overwrite unrelated software or change its directory permissions.
-
-Alternatively, while the trusted binary prefix still exists, explicit data
-removal is a separate gated operation:
+Explicit data removal is a separate gated operation:
 
 ```sh
 bash "$HOME/.local/opt/demerzel/install.sh" uninstall --purge
 ```
 
-The script accepts only a data directory named `.demerzel` or `demerzel`, then
-requires typing `PURGE` followed by the exact absolute path. It removes only
-that data directory; `$HOME/.config/demerzel/data-dir` and the external age
-identity remain outside the binary prefix. Restore or retire the pin only
-through a supervised custody procedure. Never use purge to replace a backup
-or erase state whose recovery has not been verified.
+Purge accepts only an app-owned `.demerzel` or `demerzel` directory and requires typing `PURGE` followed by the exact absolute path. It does not remove the external identity or data-root pin. Do not use purge as a substitute for a verified backup.
 
-## Platform boundary
+## Platform and publication status
 
-macOS and Linux are the supported native installer targets. Windows does not
-support native vault or age custody in this work; Windows operators must supply
-`ENCRYPTION_KEY` explicitly in a controlled environment. The Windows setup
-installer is a pre-existing path and is not being productized here. No
-in-application updater or donor release checker is included.
+The standalone native installer supports Linux amd64 and arm64. Windows custody and setup are separate from this guide. The release workflow currently accepts strict `v2.x.y` tags only; each tag must point to a commit on `main` and pass the protected release approval. No signed public release is available yet.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 
@@ -7,20 +7,10 @@ import { homeLocation } from '@/app/route-locations'
 import BrandMark from '@/components/brand/BrandMark.vue'
 import PreferencesControl from '@/features/preferences/PreferencesControl.vue'
 import { useTheme } from '@/features/preferences/theme'
-import { supportedLocales, type AppLocale } from '@/i18n'
-import { useAppI18n } from '@/i18n/context'
 
-const appI18n = useAppI18n()
 const theme = useTheme()
 const route = useRoute()
 const { locale, t } = useI18n()
-const currentLocale = computed(() => locale.value as AppLocale)
-
-function setLocale(value: string): void {
-  if (supportedLocales.includes(value as AppLocale)) {
-    void appI18n.setLocale(value as AppLocale)
-  }
-}
 
 watch(
   [() => route.meta.titleKey, locale],
@@ -41,17 +31,11 @@ watch(
         :to="homeLocation()"
         :aria-label="`${t('common.appName')} · ${t('shell.home')}`"
       >
-        <BrandMark :size="24" />
+        <BrandMark :size="40" />
         <span>{{ t('common.appName') }}</span>
       </RouterLink>
 
-      <PreferencesControl
-        compact
-        :locale="currentLocale"
-        :theme="theme.theme.value"
-        @update:locale="setLocale"
-        @update:theme="theme.setTheme"
-      />
+      <PreferencesControl compact :theme="theme.theme.value" @update:theme="theme.setTheme" />
     </header>
     <div id="main-content" class="public-content" tabindex="-1">
       <slot />

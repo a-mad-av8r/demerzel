@@ -36,7 +36,7 @@ func TestQueryAccessKeyCollectionRecordsSummarizesBeforeFiltering(t *testing.T) 
 func TestQueryAccessKeyCollectionRecordsFiltersCaseFoldedNameAndMaskedSuffix(t *testing.T) {
 	t.Parallel()
 	records := []accessKeyCollectionRecord{
-		accessKeyCollectionQueryRecord(1, "München", "cafe", state.AccessKeyStatusActive, 100),
+		accessKeyCollectionQueryRecord(1, "Á", "cafe", state.AccessKeyStatusActive, 100),
 		accessKeyCollectionQueryRecord(2, "Other", "beef", state.AccessKeyStatusActive, 200),
 	}
 
@@ -45,7 +45,7 @@ func TestQueryAccessKeyCollectionRecordsFiltersCaseFoldedNameAndMaskedSuffix(t *
 		query string
 		want  []uint
 	}{
-		{name: "case-folded name", query: "MÜN", want: []uint{1}},
+		{name: "case-folded name", query: "á", want: []uint{1}},
 		{name: "masked suffix", query: "****BEEF", want: []uint{2}},
 	}
 	for _, test := range tests {

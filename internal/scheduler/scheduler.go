@@ -31,7 +31,7 @@ type Query struct {
 	PreferredCredentialID    uint
 	AllowedCredentialRefs    map[uint]state.CredentialRef
 
-	// ResponsesWebsocket 非 nil 时按原生 WS 合同准入，不要求 HTTP 资源接口。
+	// When ResponsesWebsocket is non-nil, admit by the native WS contract without requiring an HTTP resource endpoint.
 	ResponsesWebsocket *execution.WebsocketCapabilities
 }
 
@@ -348,7 +348,7 @@ func (iterator *Iterator) targetAvailable(target candidateTarget, credential sta
 		!modelCooldownUntil(credential.ModelCooldowns, target.target.UpstreamModelID, iterator.operation, now).After(now)
 }
 
-// 只为已选凭据收集模型，避免每个凭据都复制完整候选列表。
+// Collect models only for the selected credential to avoid copying the complete candidate list for every credential.
 func (iterator *Iterator) selectTarget(pool *candidatePool, modes []channel.RouteMode, credential state.CredentialMeta, now time.Time) candidateTarget {
 	targets := pool.targetsByGroup[credential.GroupID]
 	models := make([]string, 0, len(targets))

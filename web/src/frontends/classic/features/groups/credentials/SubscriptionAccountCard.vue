@@ -85,7 +85,6 @@ const labelDraft = ref(props.item.label)
 const labelInputId = computed(() => `subscription-account-label-${props.item.credential_id}`)
 const weightInputId = computed(() => `subscription-account-weight-${props.item.credential_id}`)
 
-// 默认权重保持简洁，非默认值显示快捷编辑入口。
 const showWeightChip = computed(() => props.item.weight !== 50)
 const weightChipTooltip = computed(() =>
   t('group.credentials.weightChipTooltip', { weight: n(props.item.weight) }),
@@ -99,7 +98,6 @@ function resetWeightDraft(): void {
   draftWeight.value = String(props.item.weight)
 }
 
-// 一次完成“展开 + 进入编辑”，与密钥列表点权重值一致。
 function editWeight(): void {
   if (props.busy) return
   resetWeightDraft()
@@ -126,7 +124,6 @@ function saveLabel(): void {
   emit('label', { item: props.item, value: labelDraft.value })
 }
 
-// 收起卡片时退出编辑，避免下次展开停在旧草稿。
 watch(
   () => props.item.weight,
   () => {
@@ -222,7 +219,6 @@ function quotaWindowGroupKey(window: CredentialQuotaWindowDto): string {
   return `scope:${normalizedQuotaLabelPart(window.scope) || window.id}`
 }
 
-// 呈现层统一排序：账号全局窗口优先；其余按同一模型/专属窗口成组，组内按时长升序。
 const quotaWindows = computed(() => {
   const windows = snapshot.value?.quota_windows ?? []
   const groupOrder = new Map<string, number>()
@@ -489,7 +485,7 @@ const authIssue = computed(() => {
   const key = props.item.auth_error_code ? authErrorKeys[props.item.auth_error_code] : undefined
   return key ? t(key) : t(`group.credentials.subscription.auth.${props.item.auth_state}`)
 })
-// 额度同步需要可用的 access token；凭据刷新本身是异常账号的恢复入口，不受此限制。
+
 const observationRefreshBlocked = computed(() => props.item.auth_state !== 'ready')
 const dailyUsage = computed(() => props.item.daily_usage)
 const dailyIncompleteHint = computed(() =>
@@ -1675,7 +1671,6 @@ function runMenuAction(
   gap: var(--space-2);
 }
 .subscription-account__quota {
-  /* 强调色用于左竖条与行底进度线，单值同时适配明暗；淡底只做状态提示 */
   --quota-accent: var(--color-border-control);
   --quota-tint: var(--color-surface-sunken);
   position: relative;
@@ -1687,8 +1682,7 @@ function runMenuAction(
   overflow: hidden;
   border-radius: 6px;
   background: var(--quota-tint);
-  /* 左竖条用 inset 阴影而非 border：border 会把 inset:0 的进度线整体右推 3px，
-     导致左下圆角处出现断口。阴影不占盒模型，细线可贯通到最左侧与竖条重叠。 */
+
   box-shadow: inset 3px 0 0 var(--quota-accent);
   padding: 7px 10px 7px 13px;
 }
@@ -2178,7 +2172,7 @@ function runMenuAction(
   color: var(--color-danger);
   font-size: var(--text-sm);
 }
-/* 双列列表接近最小卡片宽度时，操作不能被右侧裁切；同步时间与操作组整体换行。 */
+
 @container (max-width: 480px) {
   .subscription-account__top > .subscription-account__top-row:first-child {
     flex-wrap: wrap;

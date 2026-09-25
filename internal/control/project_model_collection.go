@@ -306,10 +306,10 @@ func (s *Service) ListProjectModels(ctx context.Context, query ProjectModelListQ
 				continue
 			}
 			sortProjectModelGroups(upstream.routeGroups)
-			// 分组信息只对管理员可见；访问密钥范围整条不发，而不是发一条
-			// 身份被抹空的占位记录——id=0/channel_id="" 这类占位值会违反
-			// 前端 projectSafeInteger/projectChannelID 的强校验，把整个
-			// 模型页判定为无效响应，比不发这条数据本身还糟。
+			// Group information is visible only to administrators. Do not emit an identity-scrubbed placeholder
+			// such as id=0/channel_id="": it violates the frontend's strict
+			// projectSafeInteger/projectChannelID validation and makes the whole
+			// model page an invalid response, which is worse than omitting this data.
 			routeGroups := []ProjectModelGroupDTO{}
 			affectedGroups := []ProjectModelGroupDTO{}
 			if query.AccessKeyID == nil {
@@ -553,7 +553,7 @@ func projectModelGroups(
 		if err := decodeGroupDiscoveryJSON(group.Models, &groupModels); err != nil {
 			return nil, nil, fmt.Errorf("decode group %d models: %w", group.ID, app_errors.ErrInternalServer)
 		}
-		// AccessKey 模型页只需要可见关系；保留 params 对象形状，但不投影运营侧连接信息。
+		// The AccessKey model page needs only visible relationships; retain the params object shape without projecting operational connection details.
 		projectedParams := json.RawMessage(`{}`)
 		if includeParams {
 			projectedParams = params.CanonicalJSON()

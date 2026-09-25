@@ -123,7 +123,6 @@ function saveLabel(): void {
   emit('label', { item: props.item, value: labelDraft.value })
 }
 
-// 权重列的值可点：展开该行并直接进入权重编辑，作为折叠区设置的发现入口。
 function openWeightFromColumn(): void {
   if (props.busy || props.item.configured_status === 'disabled') return
   emit('open-weight', props.item)
@@ -502,11 +501,6 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
   transform: rotate(180deg);
 }
 
-/*
- * 背景沿用账号卡片展开区（subscription-account__detail）的取值。取消上边框后
- * 只剩底色一条区分线索，因此左右内缩并加圆角，用“比列表窄一圈的嵌套块”表达
- * 层级归属；内缩必须配圆角，否则方角内缩看起来像渲染错位。
- */
 .group-credential-record__details {
   display: grid;
   gap: 13px;
@@ -533,7 +527,6 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
   overflow: hidden;
 }
 
-/* 白底面板复用 .setting-panel__body，只把弹性排布换成三列指标网格。 */
 .group-credential-record__runtime-details {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -565,11 +558,6 @@ function runMenuAction(action: 'test' | 'toggle' | 'restore' | 'remove'): void {
   font-weight: 560;
 }
 
-/*
- * 权重与出站代理并排成两列，诊断在下面占满整行。这里不设 max-width：
- * 否则设置行的右边缘会比下方诊断面板短一截，两行对不齐。
- * 面板外壳（标题 + 白底面板 + 标签 / 值 / 编辑图标 / 操作）由全局 .setting-panel 提供。
- */
 .group-credential-record__settings {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -45,10 +45,6 @@ const detailQuery = useQuery({
 const initialLoading = useStableLoading(() => props.open && detailQuery.isPending.value)
 const detail = computed(() => detailQuery.data.value)
 
-/**
- * 编辑器需要一个稳定的价格引用；详情未就绪时用占位行，
- * 待数据到达后 useModelPriceEditor 内部的 watch 会按 id 重建草稿。
- */
 const placeholderPrice: UpstreamModelDetailDto['price'] = {
   id: 0,
   channel_id: '',
@@ -374,7 +370,6 @@ defineExpose({ requestClose, confirmDiscardSwitch, discardChanges, hasUnsavedCha
   padding-block: var(--space-3-5);
 }
 
-/* 概要条只承载价格状态和时间；计价身份在下方独立展开，避免混淆渠道名与 ID。 */
 .upstream-drawer__meta {
   display: flex;
   align-items: center;

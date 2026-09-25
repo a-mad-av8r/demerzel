@@ -734,7 +734,7 @@ func TestCodexClientImageGenerationReachesSubscriptionExecutor(t *testing.T) {
 	request := httptest.NewRequest(
 		http.MethodPost,
 		"/v1/images/generations",
-		strings.NewReader(`{"model":"gpt-image-2","prompt":"生成一张 T 字母图片","background":"auto","quality":"auto","size":"auto"}`),
+		strings.NewReader(`{"model":"gpt-image-2","prompt":"Draw an image of the letter T","background":"auto","quality":"auto","size":"auto"}`),
 	)
 	request.Header.Set("Authorization", "Bearer gl-codex-client")
 	request.Header.Set("Content-Type", "application/json")

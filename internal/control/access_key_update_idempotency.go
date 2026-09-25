@@ -14,7 +14,7 @@ import (
 	stateloader "gpt-load/internal/state/loader"
 )
 
-// UpdateAccessKeyIdempotent 将密钥与配置更新作为一次操作，重试只恢复原操作。
+// UpdateAccessKeyIdempotent updates the key and configuration as one operation; retries recover only the original operation.
 func (s *Service) UpdateAccessKeyIdempotent(ctx context.Context, idempotencyKey string, id uint, request AccessKeyUpdateRequest) (AccessKeyMetadata, error) {
 	if request.Key == "" {
 		return AccessKeyMetadata{}, app_errors.ErrBadRequest
@@ -45,7 +45,7 @@ func (s *Service) UpdateAccessKeyIdempotent(ctx context.Context, idempotencyKey 
 			return AccessKeyMetadata{}, err
 		}
 		digestRequest.CostLimitRules.Values = costLimitRuleRequestsForDigest(rules)
-		// 编辑摘要必须保留规则 ID，区分保留既有规则与创建新规则。
+		// The edit digest must retain rule IDs to distinguish keeping an existing rule from creating one.
 		for index, rule := range rules {
 			digestRequest.CostLimitRules.Values[index].ID = rule.ID
 		}

@@ -40,7 +40,7 @@ export async function getGroupUsageTrend(
     previousEnd = end
   }
   const points: GroupUsageTrend['points'] = []
-  // 聚合接口只返回有记录的桶；时间轴中未返回的桶代表没有请求。
+
   for (let start = Math.floor(from / width) * width; start < to; start += width)
     points.push({
       from: Math.max(start, from),

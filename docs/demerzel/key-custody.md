@@ -56,7 +56,7 @@ the external database is empty, set
 unset it; subsequent restarts load the existing key. An existing managed
 `DATA_DIR/gpt-load.db` (or SQLite recovery sidecar) likewise blocks generation
 if the custody item is missing. `ENCRYPTION_KEY` and guarded legacy import are
-explicit recovery options, not automatic fallback behavior.
+explicit recovery options, not automatic fallback behaviour.
 
 At startup, Demerzel stores a non-secret, domain-separated key-identity HMAC in
 the database under `_internal.encryption.master_key_identity.v1`. Every later

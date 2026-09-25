@@ -2,7 +2,7 @@ package embedded
 
 import antigravityauth "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/antigravity"
 
-// AntigravityAPIEndpoints 集中声明凭据准备完成后的业务端点，不包含 OAuth 与身份核验。
+// AntigravityAPIEndpoints declares the service endpoints used after credentials are prepared, excluding OAuth and identity verification.
 type AntigravityAPIEndpoints struct {
 	ExecutionBase        string
 	FetchModelsURL       string
@@ -10,7 +10,7 @@ type AntigravityAPIEndpoints struct {
 	RetrieveUserQuotaURL string
 }
 
-// ResolveAntigravityAPIEndpoints 保留完整官方目标集合，或将原生路径映射到代理根地址。
+// ResolveAntigravityAPIEndpoints retains the complete official target set or maps native paths to the proxy root URL.
 func ResolveAntigravityAPIEndpoints(apiRoot string) (AntigravityAPIEndpoints, error) {
 	endpoints := AntigravityAPIEndpoints{
 		ExecutionBase:        antigravityExecutionBase,

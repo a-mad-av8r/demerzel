@@ -138,7 +138,7 @@ func TestCustomAccessKeyRejectsUnusableValues(t *testing.T) {
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	engine := newAccessKeyLifecycleEngine(t, fixture)
-	for index, key := range []string{" ", "leading ", "two words", "line\nbreak", "tab\tkey", "nul\x00key", "中文", strings.Repeat("x", 257), authTestKey} {
+	for index, key := range []string{" ", "leading ", "two words", "line\nbreak", "tab\tkey", "nul\x00key", "☃", strings.Repeat("x", 257), authTestKey} {
 		body, err := json.Marshal(map[string]string{"name": "invalid", "key": key})
 		if err != nil {
 			t.Fatal(err)

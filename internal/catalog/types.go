@@ -39,7 +39,7 @@ type ModelLimits struct {
 }
 
 // ModelMetadata is the display-only catalog metadata retained for one model.
-// It never changes routing, protocol support, or pricing behavior.
+// It never changes routing, protocol support, or pricing behaviour.
 type ModelMetadata struct {
 	Description  string
 	Family       string

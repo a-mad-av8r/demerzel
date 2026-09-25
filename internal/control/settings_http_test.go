@@ -3,7 +3,6 @@ package control
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,7 +22,7 @@ func TestSettingsHTTPRouteStrategyRejectsInvalidValuesWithoutMutation(t *testing
 	engine := gin.New()
 	NewServer(&config.Config{AuthKey: "test-auth-key"}, fixture.service).RegisterRoutes(engine)
 
-	updated := serveLocalizedSettingsRequest(t, engine, http.MethodPut, "test-auth-key", "en-US",
+	updated := serveLocalisedSettingsRequest(t, engine, http.MethodPut, "test-auth-key", "en-GB",
 		`{"settings":{"route_strategy":"weighted_mix"}}`)
 	if updated.Code != http.StatusOK {
 		t.Fatalf("PUT weighted_mix = %d %s", updated.Code, updated.Body.String())
@@ -39,7 +38,7 @@ func TestSettingsHTTPRouteStrategyRejectsInvalidValuesWithoutMutation(t *testing
 	}
 	before := fixture.manager.Current()
 	for _, raw := range []string{`""`, `"unknown"`, `"Native_First"`, `" weighted_mix "`, "true", "1", "[]", "{}"} {
-		rejected := serveLocalizedSettingsRequest(t, engine, http.MethodPut, "test-auth-key", "en-US",
+		rejected := serveLocalisedSettingsRequest(t, engine, http.MethodPut, "test-auth-key", "en-GB",
 			`{"settings":{"route_strategy":`+raw+`,"retry_count":9}}`)
 		if rejected.Code != http.StatusBadRequest || !strings.Contains(rejected.Body.String(), `"code":"VALIDATION_FAILED"`) {
 			t.Fatalf("PUT route_strategy=%s = %d %s", raw, rejected.Code, rejected.Body.String())
@@ -69,22 +68,22 @@ func TestSettingsHTTPLastWriteWinsWithoutPrecondition(t *testing.T) {
 		`{"settings":{"retry_count":4}}`,
 		`{"settings":{"request_timeout":800}}`,
 	} {
-		updated := serveLocalizedSettingsRequest(
-			t, engine, http.MethodPut, "test-auth-key", "en-US", body,
+		updated := serveLocalisedSettingsRequest(
+			t, engine, http.MethodPut, "test-auth-key", "en-GB", body,
 		)
 		if updated.Code != http.StatusOK {
 			t.Fatalf("PUT %s = %d %s", body, updated.Code, updated.Body.String())
 		}
-		assertSettingsResponseHeaders(t, updated, "en-US")
+		assertSettingsResponseHeaders(t, updated, "en-GB")
 	}
 
-	current := serveLocalizedSettingsRequest(
-		t, engine, http.MethodGet, "test-auth-key", "en-US", "",
+	current := serveLocalisedSettingsRequest(
+		t, engine, http.MethodGet, "test-auth-key", "en-GB", "",
 	)
 	if current.Code != http.StatusOK {
 		t.Fatalf("GET settings = %d %s", current.Code, current.Body.String())
 	}
-	assertSettingsResponseHeaders(t, current, "en-US")
+	assertSettingsResponseHeaders(t, current, "en-GB")
 	var envelope struct {
 		Data SettingsResponse `json:"data"`
 	}
@@ -100,33 +99,25 @@ func TestSettingsHTTPLastWriteWinsWithoutPrecondition(t *testing.T) {
 	}
 }
 
-func TestSettingsHTTPUsesLocalizedNoStoreResponse(t *testing.T) {
+func TestSettingsHTTPUsesBritishEnglishNoStoreResponse(t *testing.T) {
 	t.Parallel()
 	initControlI18n(t)
 	fixture := newServiceFixture(t)
 	engine := gin.New()
 	NewServer(&config.Config{AuthKey: "test-auth-key"}, fixture.service).RegisterRoutes(engine)
 
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "en-US", message: "Success"},
-		{language: "zh-CN", message: "操作成功"},
-	} {
-		response := serveLocalizedSettingsRequest(
-			t, engine, http.MethodGet, "test-auth-key", test.language, "",
-		)
-		if response.Code != http.StatusOK {
-			t.Fatalf("GET %s = %d %s", test.language, response.Code, response.Body.String())
-		}
-		assertSettingsResponseHeaders(t, response, test.language)
-		if !strings.Contains(response.Body.String(), fmt.Sprintf(`"message":%q`, test.message)) {
-			t.Fatalf("GET %s body = %s", test.language, response.Body.String())
-		}
-		if strings.Contains(response.Body.String(), `"revision"`) {
-			t.Fatalf("GET %s exposes process revision: %s", test.language, response.Body.String())
-		}
+	response := serveLocalisedSettingsRequest(
+		t, engine, http.MethodGet, "test-auth-key", "*", "",
+	)
+	if response.Code != http.StatusOK {
+		t.Fatalf("GET settings = %d %s", response.Code, response.Body.String())
+	}
+	assertSettingsResponseHeaders(t, response, "en-GB")
+	if !strings.Contains(response.Body.String(), `"message":"Success"`) {
+		t.Fatalf("GET settings body = %s, want British English message", response.Body.String())
+	}
+	if strings.Contains(response.Body.String(), `"revision"`) {
+		t.Fatalf("GET settings exposes process revision: %s", response.Body.String())
 	}
 }
 
@@ -142,12 +133,12 @@ func TestSettingsHTTPPublicationFailureReloadsCommittedDatabaseTruth(t *testing.
 		return nil, errors.New("forced settings snapshot publication failure")
 	}
 
-	failed := serveLocalizedSettingsRequest(
+	failed := serveLocalisedSettingsRequest(
 		t,
 		engine,
 		http.MethodPut,
 		"test-auth-key",
-		"en-US",
+		"en-GB",
 		`{"settings":{"retry_count":4}}`,
 	)
 	if failed.Code != http.StatusInternalServerError ||
@@ -187,7 +178,7 @@ func assertSettingsResponseHeaders(
 	}
 }
 
-func serveLocalizedSettingsRequest(
+func serveLocalisedSettingsRequest(
 	t *testing.T,
 	engine *gin.Engine,
 	method string,

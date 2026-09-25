@@ -68,16 +68,16 @@ export interface ProxyDraftState {
 }
 
 /**
- * 已存自定义地址的 placeholder；没有可展示的地址时返回 undefined，由调用方回退到通用提示。
- * 输入框不做回填：后端 Display() 会把密码脱敏成 ******，回填等于把掩码当真密码存回去。
+ * Placeholder for a saved custom address. Return undefined when no address can be shown so callers use the general hint.
+ * Do not prefill the field: backend Display() masks passwords as ******, and prefilling would save the mask as a password.
  */
 export function proxyPlaceholderURL(view: ProxyViewDto): string | undefined {
   return view.configured_mode === 'custom' ? view.display_url : undefined
 }
 
 /**
- * 覆盖开关要切到的模式。重新开启覆盖时回到基线已存的覆盖模式，让「恢复默认 / 继承」
- * 可以原路撤销而不丢掉原本配置；基线本就未覆盖时落到 direct——一个立即完整有效的状态。
+ * Mode selected by the override toggle. Re-enabling an override restores the baseline's saved override mode so
+ * “Restore defaults / inherit” can reverse it without losing configuration; an unoverridden baseline uses direct.
  */
 export function proxyOverrideToggleMode(
   base: ProxyViewDto,
@@ -88,8 +88,8 @@ export function proxyOverrideToggleMode(
 }
 
 /**
- * 同模式下有两种“未改动”：输入留空表示保持原地址；输入与已存地址逐字相同同样不是改动
- * ——后者顺带挡住了照着 placeholder 手敲掩码提交的情况。
+ * There are two unchanged states for the same mode: an empty input retains the saved address, while an exact saved
+ * address is also unchanged. The latter prevents submitting a manually typed placeholder mask as a password.
  */
 export function proxyDraftState(
   base: ProxyViewDto,

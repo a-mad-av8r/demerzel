@@ -10,7 +10,7 @@ const props = defineProps<{ price: ModelPrice }>()
 const { t, locale } = useI18n()
 const modeLabel = (mode: string) =>
   ['standard', 'fast', 'ultrafast'].includes(mode) ? t('modelManager.' + mode) : mode
-// 摊平成表格行：四个价格的表头只写一次，标准档与各阶梯档上下对齐可比。
+
 const rows = computed(() => {
   const schedules = [
     { mode: 'standard', prices: props.price.prices, context_tiers: props.price.context_tiers },
@@ -63,8 +63,6 @@ const value = (prices: PriceSlots, field: (typeof priceFields)[number]) =>
 </template>
 
 <style scoped>
-/* 单位说明占住表头首列，否则标签列会空出近一半宽度。
-   不加外框与底色：540px 侧栏里那会显得过重。 */
 .modern-model-price-table {
   display: grid;
   font-variant-numeric: tabular-nums;
@@ -97,8 +95,7 @@ const value = (prices: PriceSlots, field: (typeof priceFields)[number]) =>
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 前一项必须也是数据行：否则紧跟表头的第一行会画出上边框，
-   与表头自己的下边框叠在同一像素上，那条线就显得格外粗。 */
+
 .modern-model-price-row:not(.modern-model-price-row--head) + .modern-model-price-row {
   border-top: var(--modern-line-width) solid
     color-mix(in srgb, var(--modern-border) 45%, transparent);

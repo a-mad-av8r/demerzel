@@ -49,7 +49,7 @@ func testCustomAccessKeyMigration(t *testing.T, open func(*testing.T) *gorm.DB) 
 				if err := db.Create(&state).Error; err != nil {
 					t.Fatal(err)
 				}
-				// 删除过的较大 ID 也不能因重建表而被再次分配。
+				// A larger deleted ID must not be allocated again because the table was rebuilt.
 				deleted := models.AccessKey{Name: "deleted", KeyValue: "cipher", KeyHash: "deleted-hash", KeySuffix: "dead", Status: "active", Filters: models.JSON(`{}`)}
 				if err := db.Omit("KeyPrefix").Create(&deleted).Error; err != nil {
 					t.Fatal(err)

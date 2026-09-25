@@ -302,12 +302,12 @@ export interface CredentialItemDto {
   proxy: ProxyViewDto
 }
 
-/** 固定 24 小时窗口的上游尝试结果分布，来源是小时聚合而非 health 的 5 分钟内存窗口。 */
+/** Upstream attempt results for a fixed 24-hour window, sourced from hourly aggregates rather than health's five-minute in-memory window. */
 export interface CredentialDailyUsageDto {
   window_seconds: number
   success_count: number
   failure_count: number
-  /** false 表示统计数据未覆盖完整窗口，计数可能偏低。 */
+  /** false means the statistics do not cover the full window, so counts may be low. */
   data_complete: boolean
 }
 
@@ -440,7 +440,7 @@ export interface HealthProblemCredentialDto {
   consecutive_problem_count: number
   weight: number
   recovery: HealthRecoveryDto
-  /** API 密钥仍是掩码，订阅账号给完整邮箱，与凭据卡片、日志的展示约定一致。 */
+  /** API keys remain masked; subscription accounts expose their full email, consistent with credential cards and logs. */
   identity: string
   last_failure_category: Exclude<FailureCategory, 'ok'>
   last_status_code: number | null
@@ -494,7 +494,7 @@ export interface HealthQuotaCredentialDto {
   credential_id: number
   group_id: number
   group_name: string
-  /** 剩余额度比例，0..1 */
+  /** Remaining quota ratio, 0..1. */
   remaining: number
   reset_at_ms: number
 }

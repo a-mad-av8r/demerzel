@@ -151,7 +151,7 @@ type ExecuteRequest struct {
 	ConfiguredHeaders []string
 	OriginalRequest   []byte
 	ContinuityKey     string
-	// BaseURL 是可选的订阅 API 代理根地址，原生路径由渠道解析。
+	// BaseURL is an optional subscription API proxy root URL; native paths are resolved by channel.
 	BaseURL              string
 	ProxyURL             string
 	ProxyFromEnvironment bool
@@ -532,14 +532,14 @@ func (e *CodexHTTPExecutor) ExecuteStreamCanonical(ctx context.Context, credenti
 	}, nil
 }
 
-// 给 Codex 提供稳定缓存分组兜底；CPA 优先使用客户端缓存键或 Claude Code 身份。
+// Provide a stable cache-grouping fallback for Codex; CPA prioritises the client cache key or Claude Code identity.
 func codexSessionMetadata(request ExecuteRequest, format sdktranslator.Format) map[string]any {
 	switch format {
 	case sdktranslator.FormatOpenAI, sdktranslator.FormatOpenAIResponse, sdktranslator.FormatClaude, sdktranslator.FormatGemini:
 	default:
 		return nil
 	}
-	// 保留客户端已有会话头，避免兜底缓存键覆盖其上游会话。
+	// Retain the client's existing session header so the fallback cache key cannot overwrite its upstream session.
 	if strings.TrimSpace(request.Headers.Get("Session-Id")) != "" {
 		return nil
 	}
@@ -547,7 +547,7 @@ func codexSessionMetadata(request ExecuteRequest, format sdktranslator.Format) m
 	if scope == "" {
 		return nil
 	}
-	// 这是提示词派生的缓存分组，不是严格执行会话；避免启用额外的 reasoning replay。
+	// This is prompt-derived cache grouping, not a strict execution session; avoid enabling additional reasoning replay.
 	return map[string]any{cliproxyexecutor.DerivedSessionIDMetadataKey: scope}
 }
 
@@ -920,7 +920,7 @@ func (o *executionObservation) observeQuotaSignals(header http.Header, observedA
 		return
 	}
 	o.mu.Lock()
-	// 恢复证据始终属于当前 HTTP 响应，缺失时不能沿用上一次请求的值。
+	// Recovery evidence always belongs to the current HTTP response; never reuse the prior request's value when it is absent.
 	o.retryAfter = ""
 	if value := header.Get("Retry-After"); len(value) <= 128 && !strings.ContainsAny(value, "\r\n") {
 		o.retryAfter = value

@@ -358,7 +358,7 @@ func normalizeGroupSettings(settings config.Settings) (config.Settings, models.J
 	}
 	for key, value := range normalized {
 		if key == state.SettingParameterOverrides {
-			// 参数覆盖校验依赖原始 JSON 数字字面量。
+			// Parameter-override validation depends on the original JSON number literals.
 			continue
 		}
 		normalized[key] = canonicalizeGroupSettingNumbers(value)

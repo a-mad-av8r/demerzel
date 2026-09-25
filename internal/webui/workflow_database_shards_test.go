@@ -51,7 +51,7 @@ func TestDatabaseShardsCoverEveryExternalTestExactlyOnce(t *testing.T) {
 		}
 		filters[shard] = selection{regexp.MustCompile(run), regexp.MustCompile(skip)}
 	}
-	// 从源码发现测试，新增外部数据库测试也必须被分组覆盖。
+	// Discover tests from source so newly added external-database tests are also covered by groups.
 	names := []string{"TestExternalFutureContract"}
 	for _, pkg := range []string{"storage", "control", "requestlog"} {
 		files, err := filepath.Glob(filepath.Join("..", pkg, "*_test.go"))

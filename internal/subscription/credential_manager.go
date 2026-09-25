@@ -172,8 +172,8 @@ func (manager *CredentialManager) refreshCredentialLocked(
 		group.ChannelID != string(channelID) || group.ConnectionType != models.ConnectionTypeSubscription {
 		return subscriptionruntime.Credential{}, localEvidence("credential_target_mismatch", "subscription credential target does not match")
 	}
-	// URL 变更与凭据刷新共用 mutation 锁；此处读取持久身份，既阻止旧目标刷新，
-	// 也允许同一目标的人工恢复修复尚未同步的 registry。
+	// URL changes and credential refresh share a mutation lock. Read persisted identity here to block old-target refreshes
+	// while allowing manual recovery on the same target to repair a registry that has not yet synchronised.
 	currentIdentityGeneration := stateloader.CredentialIdentityGeneration(
 		row.IdentityFingerprint, group.ChannelID, string(group.ConnectionType), json.RawMessage(group.Params))
 	if currentIdentityGeneration != expectedIdentityGeneration {

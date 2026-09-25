@@ -11,7 +11,7 @@ let unobserve: (() => void) | undefined
 function measure(): void {
   overflow.value = Boolean(element.value && element.value.scrollWidth > element.value.clientWidth)
 }
-// 默认只在截断时提示；显式 hint 用于补充角色等未在正文显示的信息。
+
 const tooltip = computed(() => (overflow.value ? (props.fullText ?? props.text) : props.hint))
 watch(
   element,

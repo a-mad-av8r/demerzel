@@ -62,7 +62,7 @@ func NormalizeHTTPSBaseURL(value string) (string, error) {
 	return normalized, nil
 }
 
-// NormalizeOptionalHTTPSBaseURL 允许清空可选的订阅代理地址。
+// NormalizeOptionalHTTPSBaseURL permits clearing an optional subscription proxy address.
 func NormalizeOptionalHTTPSBaseURL(value string) (string, error) {
 	if strings.TrimSpace(value) == "" {
 		return "", nil

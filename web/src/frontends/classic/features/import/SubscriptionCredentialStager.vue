@@ -90,10 +90,7 @@ const props = withDefaults(
     compact?: boolean
     hideHeader?: boolean
     step?: number
-    /**
-     * create：账号在创建分组时写入；connect：账号确认后加入已有分组。
-     * 只影响面向用户的措辞，不改变暂存行为。
-     */
+
     context?: 'create' | 'connect'
   }>(),
   {
@@ -120,7 +117,7 @@ const feedbackKey = ref('')
 const oauthJSON = ref('')
 const callbackURLs = ref<Record<string, string>>({})
 const callbackErrorKeys = ref<Record<string, string>>({})
-// 弹窗被拦截时授权已经开始，唯一出路是手动打开链接，这里额外提示一句。
+
 const popupBlockedStages = ref<Record<string, boolean>>({})
 const jsonImportOpen = ref(false)
 const importReports = ref<ImportReport[]>([])
@@ -285,8 +282,6 @@ function scheduleExpiry(stage: CredentialStage): void {
   )
 }
 
-// 连续失败到这个次数就停止轮询：暂存已经被删除或服务端持续不可用时，
-// 无限重试只会一直刷错误，用户反而看不出该重新授权。
 const POLL_FAILURE_LIMIT = 5
 
 function schedulePoll(stage: CredentialStage): void {
@@ -361,7 +356,6 @@ watch(
   { deep: true, immediate: true },
 )
 
-// 弹窗必须在用户手势所在的那一个任务里打开，任何 await 之后再开都会被拦截。
 function openAuthorizationPopup(): Window | null {
   return window.open(
     'about:blank',
@@ -519,8 +513,6 @@ async function handleCallbackPaste(stage: CredentialStage): Promise<void> {
   if (callbackURLs.value[stage.stage_id]?.trim()) await submitCallback(stage)
 }
 
-// 授权会话的剩余时间用 m:ss 倒计时，而不是「10 分钟后」这类相对措辞——
-// 用户在这一步是在等一个明确的截止点，秒级读数才有参考价值。
 function remainingCountdown(stage: CredentialStage): string {
   const remainingSeconds = Math.max(0, Math.floor((stage.expires_at_ms - nowMS.value) / 1_000))
   const minutes = Math.floor(remainingSeconds / 60)
@@ -554,8 +546,6 @@ async function removeStage(stage: CredentialStage): Promise<void> {
     try {
       await cancelCredentialStage(client, stage.stage_id)
     } catch (cause) {
-      // 取消失败也要把卡片摘掉：暂存自己会到期，留一张点不动的卡片只会把
-      // 用户困在这一步。这里只作为提示，不阻断移除。
       feedbackKey.value = presentSubscriptionErrorKey(cause, 'import.subscription.cancelFailed')
     }
   }
@@ -582,8 +572,6 @@ function isAwaiting(stage: CredentialStage): boolean {
   return stage.status === 'pending_authorization' || stage.status === 'exchanging'
 }
 
-// 这些状态下暂存已经没救了，卡片必须自带「重新授权」出口，
-// 否则用户只剩「移除」一个动作，得自己想到再点一次登录。
 function isRecoverable(stage: CredentialStage): boolean {
   return (
     stage.status === 'failed' ||
@@ -719,7 +707,6 @@ onBeforeUnmount(() => {
         class="subscription-stager__account"
         :class="`subscription-stager__account--${statusTone(stage)}`"
       >
-        <!-- 等待授权时主行就是等待态本身；再叠一行「等待账号信息」只是重复。 -->
         <div
           v-if="isAwaiting(stage)"
           class="subscription-stager__summary subscription-stager__summary--awaiting"
@@ -813,8 +800,6 @@ onBeforeUnmount(() => {
           </AppButton>
         </div>
 
-        <!-- 远程部署时浏览器可能无法访问服务端声明的 loopback callback；手动授权是
-             常规路径而不是异常兜底，因此授权链接与回调输入始终展开。 -->
         <div
           v-if="stage.status === 'pending_authorization' && stage.authorization_url"
           class="subscription-stager__authorization"
@@ -1045,7 +1030,7 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--color-border-subtle);
   padding: 22px 0 var(--space-6);
 }
-/* compact 用于抽屉内部：外层容器已提供内边距与边界，这里不再叠加 */
+
 .subscription-stager--compact {
   border-bottom: 0;
   padding: 0;
@@ -1168,7 +1153,7 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 等待态的主行是一句话而不是账号地址，用正文字体读起来更自然 */
+
 .subscription-stager__summary--awaiting .subscription-stager__identity strong {
   font-family: inherit;
   font-size: var(--text-body);
@@ -1305,7 +1290,7 @@ onBeforeUnmount(() => {
 .subscription-stager__callback :deep(input) {
   font-family: var(--font-mono);
 }
-/* 提交按钮与输入框顶端对齐：label 占一行，按钮下移同样的高度 */
+
 .subscription-stager__callback :deep(.app-button) {
   margin-top: 22px;
 }

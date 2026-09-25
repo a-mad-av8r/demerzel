@@ -12,7 +12,7 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-// 原始绝对时间与同一事件中的倒计时分别比较，不能混入本地接收时间。
+// Compare original absolute time and the countdown from the same event separately; do not mix in local receipt time.
 type websocketQuotaWindowAnchor struct {
 	windowSeconds     int64
 	resetAtSeconds    int64
@@ -25,8 +25,8 @@ type websocketQuotaRateObservation struct {
 	comparisonIncomplete bool
 }
 
-// NormalizeWebsocketQuotaWindows 读取 Codex 原生额度事件，不改动发给客户端的消息。
-// WS 的具名附加额度由已有快照解析来源，不能按 HTTP 响应头命名空间推导 SourceID。
+// NormalizeWebsocketQuotaWindows reads native Codex quota events without changing messages sent to clients.
+// Named additional WS quota sources are resolved from existing snapshots and cannot derive SourceID from HTTP response-header namespaces.
 func NormalizeWebsocketQuotaWindows(payload []byte, observedAt time.Time) []quotaWindow {
 	kind, err := jsonparser.GetString(payload, "type")
 	if err != nil || kind != "codex.rate_limits" {
@@ -90,7 +90,7 @@ func NormalizeWebsocketQuotaWindows(payload []byte, observedAt time.Time) []quot
 		}
 		result = append(result, window)
 	}
-	// 具名来源仍由已有快照解析 SourceID；顶层副本已在本事件内完成去重。
+	// Named sources still resolve SourceID from existing snapshots; top-level copies were deduplicated within this event.
 	return append(result, additional...)
 }
 
@@ -108,10 +108,10 @@ func decodeWebsocketQuotaEvent(payload []byte) (map[string]any, bool) {
 	return event, true
 }
 
-// websocketQuotaTopLevelIsAccount 用同一事件内的附加窗口排除顶层副本。
-// 槽位和用量不代表身份；同周期窗口需要在共同时间基准下排除副本。
+// websocketQuotaTopLevelIsAccount excludes top-level copies using additional windows from the same event.
+// Slots and usage do not establish identity; same-period windows must exclude copies against a shared time basis.
 func websocketQuotaTopLevelIsAccount(window websocketQuotaWindowAnchor, additional []websocketQuotaWindowAnchor, comparisonIncomplete bool) bool {
-	// 存在无法读取周期的附加窗口时，不能证明顶层窗口不属于该来源。
+	// If an additional window has an unreadable period, the top-level window cannot be proven to belong to this source.
 	if comparisonIncomplete {
 		return false
 	}
@@ -129,7 +129,7 @@ func websocketQuotaTopLevelIsAccount(window websocketQuotaWindowAnchor, addition
 			}
 			compared = true
 			delta := pair[0] - pair[1]
-			// 任一共同基准指向副本就跳过；两种基准的判断冲突也不会写入账号。
+			// Skip if either shared basis identifies a copy; contradictory decisions from the two bases cannot write to the account either.
 			if delta >= -1 && delta <= 1 {
 				return false
 			}
@@ -141,8 +141,8 @@ func websocketQuotaTopLevelIsAccount(window websocketQuotaWindowAnchor, addition
 	return true
 }
 
-// normalizeWebsocketQuotaRate 分开保留来源比较所需的窗口锚点和可写入的额度值。
-// 单个窗口的用量损坏不会抹掉其周期身份，也不会阻断同一事件里的其他有效窗口。
+// normalizeWebsocketQuotaRate separately retains window anchors needed for source comparison and quota values that can be written.
+// Corrupt usage for one window neither erases its period identity nor blocks other valid windows from the same event.
 func normalizeWebsocketQuotaRate(raw any, observedAt time.Time) websocketQuotaRateObservation {
 	var result websocketQuotaRateObservation
 	if raw == nil {

@@ -4,7 +4,6 @@ export function isValidCustomAccessKey(value: string): boolean {
   return value === '' || /^[\x21-\x7e]{1,256}$/.test(value)
 }
 
-// 仅用于前端提示，不作为允许创建密钥的强度门槛。
 export function estimateAccessKeyStrength(value: string): AccessKeyStrength | null {
   if (value === '') return null
   const content = value.startsWith('sk-gl-') ? value.slice(6) : value

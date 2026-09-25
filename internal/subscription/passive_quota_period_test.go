@@ -134,7 +134,7 @@ func TestFlushPassiveQuotaObservationsDiscardsConflictingPeriodWithoutAdvancingF
 	if !ok {
 		t.Fatal("credential ref is unavailable")
 	}
-	// 普通 7d 与 Spark 5h 都可能占用 primary；冲突样本不能刷新任何账号级状态。
+	// Ordinary 7d and Spark 5h can both occupy primary; a conflicting sample must not refresh any account-level state.
 	observedAt := time.UnixMilli(2000)
 	windows := codex.NormalizePassiveQuotaWindows(map[string]string{
 		"X-Codex-Primary-Used-Percent":   "10",

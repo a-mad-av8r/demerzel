@@ -302,9 +302,9 @@ func mergeAnthropicCumulativeField(
 	if nextPresent&field == 0 {
 		return
 	}
-	// 输入与缓存是可修正的用量快照：兼容上游可能先估算全部输入，
-	// 再补报较小的未缓存输入。缺失字段保留，明确的零和下降值覆盖。
-	// 输出仍是生成过程的累计计数，保留原有的倒退检查。
+	// Input and cache usage are correctable snapshots: the upstream may first estimate all input,
+	// then report a smaller uncached input. Preserve missing fields, while explicit zeroes and decreases override.
+	// Output remains a cumulative generation count and retains its existing regression check.
 	if field == anthropicUsageOutput && *trustedPresent&field != 0 && nextValue < *trustedValue {
 		diagnostics.Add(usage.DiagnosticInvalidEventSequence)
 		return

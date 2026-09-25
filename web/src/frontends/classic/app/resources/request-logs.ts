@@ -134,9 +134,9 @@ export interface RequestLogAttemptDto {
   group_name: string
   channel_id: string | null
   credential_id: number | null
-  /** 凭据的可读标识（掩码）；无法取得标识不代表删除。 */
+  /** Readable credential identifier (masked); an unavailable identifier does not mean deletion. */
   credential_name: string
-  /** 仅供前端展示，由既有名称字段推导，不属于响应字段。 */
+  /** Derived from existing name fields for frontend display only; not a response field. */
   credential_deleted: boolean
   operation: RequestLogOperation | null
   route_mode: RequestLogRouteMode | null
@@ -195,9 +195,9 @@ export interface RequestLogItemDto {
   group_id: number | null
   channel_id: string | null
   credential_id: number | null
-  /** 凭据的可读标识（掩码）；无法取得标识不代表删除。 */
+  /** Readable credential identifier (masked); an unavailable identifier does not mean deletion. */
   credential_name: string
-  /** 仅供前端展示，由既有名称字段推导，不属于响应字段。 */
+  /** Derived from existing name fields for frontend display only; not a response field. */
   credential_deleted: boolean
   route_mode: RequestLogRouteMode | null
   usage_state: RequestLogUsageState

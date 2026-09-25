@@ -216,8 +216,8 @@ func TestComposeHostBindingsInheritHostAndAllowIndependentOverrides(t *testing.T
 
 func TestDockerfileFinalStageDeclaresNonRootPersistentRuntime(t *testing.T) {
 	content := readRepositoryFile(t, "Dockerfile")
-	// runtime 是唯一的 runtime 定义，源码自包含构建与发布用的 prebuilt 都继承它。
-	// 每个可发布 stage 必须以它为基，否则某条打包路径会绕开下面全部 runtime 断言。
+	// runtime is the only runtime definition; both source-contained builds and release prebuilds inherit it.
+	// Every publishable stage must be based on it, or a packaging path would bypass all runtime assertions below.
 	runtimeIndex := strings.Index(content, "\nFROM alpine:")
 	if runtimeIndex < 0 {
 		t.Fatal("Dockerfile does not contain the shared runtime stage")
@@ -235,7 +235,7 @@ func TestDockerfileFinalStageDeclaresNonRootPersistentRuntime(t *testing.T) {
 			t.Fatalf("Dockerfile does not derive a publishable stage via %q", derived)
 		}
 	}
-	// 除 runtime 自身外，不允许出现直接以 alpine 为基的可发布 stage。
+	// Apart from runtime itself, no publishable stage may be based directly on alpine.
 	if strings.Count(content, "\nFROM alpine:") != 1 {
 		t.Fatal("Dockerfile declares a publishable stage that bypasses the shared runtime stage")
 	}

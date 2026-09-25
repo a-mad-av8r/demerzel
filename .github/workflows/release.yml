@@ -8,11 +8,8 @@ on:
 permissions:
   contents: read
 
-# 竖线分隔在任何错误（含网络错误）时回退到下一个源；默认的逗号只在
-# 404/410 时回退，proxy.golang.org 瞬时故障会直接让整个 job 失败。
-# CI 与 Release 的确定性验证保留自托管 Runner 的本机 Go 缓存；Release 的制品、
-# 发布和外部服务节点使用 GitHub 托管的临时 Runner。两条流程都不下载/上传
-# setup-go 缓存，也无需 main push 预热。
+# The pipe separator falls back to the next source on any error, including a network error. The default comma separator falls back only on 404/410, so a transient proxy.golang.org failure would fail the entire job.
+# Deterministic CI and release verification retain the local Go cache on the self-hosted runner. Release artefacts, publication, and external-service jobs use ephemeral GitHub-hosted runners. Neither workflow downloads or uploads setup-go caches, and no push to main is needed to warm them.
 env:
   GOPROXY: https://proxy.golang.org|direct
 
@@ -26,7 +23,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      # 读取同一 commit 上的 CI 结论需要 actions:read。
+      # actions: read is required to read the CI conclusion for the same commit.
       actions: read
     outputs:
       version: ${{ steps.tag.outputs.version }}
@@ -121,9 +118,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # race 测试、CPA 桥接测试与数据库合同都是同一 commit 上的确定性验证，
-          # ci.yml 已经整体成功过时重跑不会得出不同结论，只会让关键路径多等约 8 分钟。
-          # 查不到成功记录、查询失败或结论不是 success 时一律回落为全量重跑。
+          # Race tests, CPA bridge tests, and database contracts are deterministic verification for the same commit. Re-running after ci.yml has already succeeded cannot produce a different conclusion; it only adds about eight minutes to the critical path.
+          # A missing successful run, a failed query, or any conclusion other than success always falls back to a full rerun.
           # release-ci-verdict-reuse:start
           runs=query-failed
           ci_verified=false
@@ -161,7 +157,7 @@ jobs:
           name: verified-web-dist
           path: internal/webui/dist
           if-no-files-found: error
-          # 仅在本次 run 内传递给 build-binaries，不作为发布产物保留。
+          # Passed to build-binaries only for this run; it is not retained as a release artefact.
           retention-days: 1
 
   static-checks:
@@ -207,7 +203,7 @@ jobs:
 
   race-tests:
     needs: validate-tag
-    # 同一 commit 的 CI 已全绿时跳过；publication-preflight 接受 skipped 结果。
+    # Skip when CI for the same commit is fully green; publication-preflight accepts a skipped result.
     if: ${{ needs.validate-tag.outputs.ci_verified != 'true' }}
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 20
@@ -270,7 +266,7 @@ jobs:
             port: "5432"
             health: pg_isready -U postgres -d gpt_load
             dsn: postgres://postgres:postgres@127.0.0.1:{0}/gpt_load?sslmode=disable
-    # 仅临时合同测试数据库使用内存盘；每个实例按实际使用量占用，最多 2 GiB。
+    # Only the temporary contract-test database uses tmpfs; each instance consumes what it needs, up to 2 GiB.
     services:
       database:
         image: ${{ matrix.image }}
@@ -287,7 +283,7 @@ jobs:
           --health-interval=5s
           --health-timeout=10s
           --health-retries=20
-      # MySQL 两组使用独立实例，避免不同测试数据库争用同名 GET_LOCK。
+      # The two MySQL shards use separate instances so their test databases do not contend for a same-named GET_LOCK.
       secondary-mysql:
         image: ${{ matrix.driver == 'mysql' && 'mysql:8.4' || '' }}
         env:
@@ -384,8 +380,7 @@ jobs:
           name: binary-${{ matrix.filename }}
           path: release/${{ matrix.filename }}
           if-no-files-found: error
-          # native-artifact-smoke 按需下载此产物；保留期需与 release-assets
-          # 一致，否则失败的 run 在超过较短保留期后重试会因产物过期而无法下载。
+          # native-artifact-smoke downloads this artefact on demand. Its retention period must match release-assets, otherwise a retry of a failed run after the shorter retention period cannot download the expired artefact.
           retention-days: 14
 
   build-windows-setup:
@@ -485,7 +480,7 @@ jobs:
           name: release-metadata
           path: release
           if-no-files-found: error
-          # 仅在本次 run 内汇总进 release-assets，不单独保留。
+          # Aggregated into release-assets only for this run; it is not retained separately.
           retention-days: 1
 
   package-checksums:
@@ -559,7 +554,7 @@ jobs:
 
 
   native-artifact-smoke:
-    # package-checksums 已经依赖 build-binaries，无需重复声明。
+    # package-checksums already depends on build-binaries, so no duplicate declaration is needed.
     needs: package-checksums
     timeout-minutes: 10
     strategy:
@@ -663,7 +658,7 @@ jobs:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
+          # Use a temporary Docker login configuration to avoid overwriting the host's Docker credentials.
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
           echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
 
@@ -682,17 +677,13 @@ jobs:
 
   prebuilt-image-smoke:
     name: Prebuilt image smoke (${{ matrix.arch }})
-    # publish-images 实际推送的是 prebuilt target，必须在发布前用完全相同的打包
-    # 路径做 smoke 与漏洞扫描；docker-smoke 覆盖的源码自包含构建是另一条路径，
-    # 两者互相不能替代，删除任一个都会让一条发布路径失去发布前验证。
+    # publish-images pushes the prebuilt target, so this exact packaging path must be smoke-tested and vulnerability-scanned before publication. docker-smoke covers a separate self-contained source build; neither substitutes for the other, and removing either leaves a release path without pre-publication verification.
     needs: build-binaries
     strategy:
       fail-fast: false
       matrix:
         include:
-          # publish-images 推送 linux/amd64 与 linux/arm64 两个平台，两条 prebuilt
-          # 路径 COPY 的是不同的二进制，必须各自验证。使用原生 arm64 runner 而非
-          # QEMU：QEMU 模拟下的启动行为不能代表真实 arm64 运行时。
+          # publish-images pushes both linux/amd64 and linux/arm64. Their prebuilt paths COPY different binaries, so each must be verified. Use a native arm64 runner rather than QEMU, whose emulated startup cannot represent a real arm64 runtime.
           - arch: amd64
             runner: ubuntu-24.04
           - arch: arm64
@@ -703,7 +694,7 @@ jobs:
       - name: Isolate Docker credentials
         shell: bash
         run: |
-          # 使用临时登录配置，避免覆盖宿主机 Docker 凭据。
+          # Use a temporary Docker login configuration to avoid overwriting the host's Docker credentials.
           docker_config="$(mktemp -d "${RUNNER_TEMP}/docker-config.XXXXXX")"
           echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
 
@@ -785,7 +776,7 @@ jobs:
           git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
           .github/scripts/release-verify-assets.sh release
 
-      - name: Require private GitHub read access
+      - name: Verify GitHub repository access
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1049,7 +1040,6 @@ jobs:
           body: |
             2.x is a rewrite and is not compatible with 1.x data. Start with an empty database and a newly provisioned master key in native vault custody or explicit age custody.
 
-            2.x 与 1.x 数据不兼容；请使用全新数据库，并使用原生密钥库或显式 age 身份文件保护全新主密钥。
 
   post-publish-image-smoke:
     needs:

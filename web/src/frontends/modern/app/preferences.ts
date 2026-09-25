@@ -1,7 +1,5 @@
 import { computed, inject, readonly, ref, type InjectionKey } from 'vue'
 
-import type { AppLocale } from '@shared/preferences/locale'
-
 export const themes = ['system', 'light', 'dark'] as const
 export type Theme = (typeof themes)[number]
 
@@ -13,10 +11,7 @@ function readPreference(key: string): string | null {
   }
 }
 
-export function createPreferences(
-  initialLocale: AppLocale,
-  applyLocale: (locale: AppLocale) => void,
-) {
+export function createPreferences() {
   const storedTheme = readPreference('gpt-load.theme')
   const theme = ref<Theme>(
     themes.includes(storedTheme as Theme) ? (storedTheme as Theme) : 'system',
@@ -30,7 +25,6 @@ export function createPreferences(
     systemDark.value = event.matches
   }
   systemScheme.addEventListener('change', updateSystemTheme)
-  const locale = ref(initialLocale)
   const sidebarCollapsed = ref(readPreference('gpt-load.modern.sidebar-collapsed') === 'true')
   const persistenceFailed = ref(false)
 
@@ -39,7 +33,7 @@ export function createPreferences(
       window.localStorage.setItem(key, value)
       if (window.localStorage.getItem(key) !== value) persistenceFailed.value = true
     } catch {
-      // 存储被禁用时，本次访问仍可使用所选界面偏好。
+      // The selected interface preference remains available for this visit when storage is disabled.
       persistenceFailed.value = true
     }
   }
@@ -54,7 +48,6 @@ export function createPreferences(
   return {
     theme: readonly(theme),
     resolvedTheme,
-    locale: readonly(locale),
     sidebarCollapsed: readonly(sidebarCollapsed),
     persistenceFailed: readonly(persistenceFailed),
     dispose() {
@@ -64,12 +57,6 @@ export function createPreferences(
       theme.value = value
       applyTheme(value)
       persist('gpt-load.theme', value)
-    },
-    setLocale(value: AppLocale) {
-      locale.value = value
-      applyLocale(value)
-      document.documentElement.lang = value
-      persist('gpt-load.locale', value)
     },
     toggleSidebar() {
       sidebarCollapsed.value = !sidebarCollapsed.value

@@ -151,7 +151,7 @@ func TestSubscriptionRefreshIdentityAllowsEnrichmentWithoutDowngrade(t *testing.
 								}
 								_, err = f.service.prepareReadySubscriptionStageCredential(t.Context(), row, driver, current, true)
 								if test.allowed && err == nil {
-									// 正常刷新后的短期暂存必须仍可消费，不能留下过期的身份指纹。
+									// A short-lived stage after a normal refresh must remain consumable and cannot retain a stale identity fingerprint.
 									_, err = f.service.CreateGroup(t.Context(), GroupCreateRequest{Name: stringPointer("refreshed identity"), ChannelID: channelID, ConnectionType: models.ConnectionTypeSubscription, Models: optionalGroupModels{Set: true, Values: []GroupModel{}}, StagedCredentialIDs: []string{stage.StageID}})
 								}
 							}

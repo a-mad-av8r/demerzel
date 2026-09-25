@@ -9,7 +9,7 @@ import (
 
 const ID0014 = "0014_affinity_kind"
 
-// Up0014 原子增加命中来源，旧日志保留空值，避免推测历史亲和类型。
+// Up0014 atomically adds the affinity-hit source; old logs retain empty values to avoid inferring historical affinity types.
 func Up0014(db *gorm.DB) error {
 	if err := ValidateRecoverable0014(db); err != nil {
 		return err

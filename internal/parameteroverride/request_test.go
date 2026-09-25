@@ -211,7 +211,7 @@ func BenchmarkApplyDenseRequest(b *testing.B) {
 	}
 }
 
-// 保留原整树算法作为小数据的独立语义参照，不再用于数据面请求。
+// Retain the original whole-tree algorithm as an independent semantic reference for small data; do not use it for data-plane requests.
 func mergeObject(target, source map[string]any) {
 	for key, value := range source {
 		sourceObject, sourceIsObject := value.(map[string]any)

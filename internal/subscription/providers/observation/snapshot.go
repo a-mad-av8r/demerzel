@@ -41,9 +41,9 @@ type AccountSummary struct {
 }
 
 type QuotaWindow struct {
-	// SourceID 是提供方的额度来源标识，不是展示名称或请求模型。
+	// SourceID is the provider's quota-source identifier, not a display name or requested model.
 	SourceID string `json:"source_id,omitempty"`
-	// SourceName 仅用于 Codex WS 观测中尚未解析的上游额度名称，不持久化或对外返回。
+	// SourceName is only an unresolved upstream quota name from Codex WS observation; it is neither persisted nor returned externally.
 	SourceName    string   `json:"-"`
 	ID            string   `json:"id"`
 	Label         string   `json:"label"`

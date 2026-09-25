@@ -12,7 +12,6 @@ import {
 } from 'vue'
 import { useLoadingFeedback } from '../components/ui/loading'
 
-// 顶栏的刷新入口是公共结构，页面只登记自己的刷新动作与数据时间。
 export interface PageRefreshSource {
   refresh: () => unknown
   pending?: MaybeRefOrGetter<boolean>
@@ -26,7 +25,7 @@ export function providePageRefresh() {
   const source = shallowRef<PageRefreshSource | undefined>()
   const running = ref(false)
   const busy = computed(() => running.value || (toValue(source.value?.pending) ?? false))
-  // 刷新按钮只为手动整页刷新转动，局部请求仅用于防止重复刷新。
+
   const pending = useLoadingFeedback(running)
   provide(pageRefreshKey, source)
   return {

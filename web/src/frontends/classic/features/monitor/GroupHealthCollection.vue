@@ -41,7 +41,7 @@ function status(group: HealthGroupDto) {
       tone: 'danger' as const,
     }
   }
-  // 模型冷却独立展示，不改变凭据整体健康状态。
+
   if (group.counts.cooldown > 0 || group.counts.blacklisted > 0) {
     return {
       key: 'limited',

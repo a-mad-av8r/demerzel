@@ -1,5 +1,3 @@
-/* 可点击的分组标签：模型卡的来源行与详情面板的关联分组共用同一套外观。
-   高度用变量控制，密集表格行里收窄、独立段落里放大。 */
 .modern-model-group-chip {
   --modern-model-chip-height: var(--modern-badge-xs);
   display: inline-flex;

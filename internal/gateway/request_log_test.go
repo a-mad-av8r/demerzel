@@ -1995,9 +1995,9 @@ func TestHandlerPanicFallbackEmitsFailClosedRequestLogBeforeAndAfterHeaders(t *t
 
 func TestRequestRecorderBoundsModelsAtUTF8Boundary(t *testing.T) {
 	const requestID = "00000000-0000-4000-8000-000000000206"
-	clientModel := strings.Repeat("界", 85)
+	clientModel := strings.Repeat("☃", 85)
 	upstreamModel := strings.Repeat("upstream-", 32)
-	attemptModel := strings.Repeat("模", 86)
+	attemptModel := strings.Repeat("☃", 86)
 	sink := &recordingRequestLogSink{}
 	startedAt := time.Date(2026, time.July, 27, 10, 0, 0, 0, time.UTC)
 	recorder := newRequestRecorder(
@@ -3751,7 +3751,7 @@ func TestRequestLogSummaryRetainsSafeErrorMessagesAndUTF8Limit(t *testing.T) {
 		})
 	}
 
-	long := strings.Repeat("界", 2_000)
+	long := strings.Repeat("☃", 2_000)
 	summary := summarizeErrorBody(
 		redactor,
 		[]byte(`{"message":"`+long+`"}`),

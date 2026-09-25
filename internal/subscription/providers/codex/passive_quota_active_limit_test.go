@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// 上游只在通用 X-Codex-Primary/Secondary-* 组里报告本次请求计费到的那份额度。
-// 请求 Spark 时这一组装的是 Spark 的窗口，按普通账号额度收下会覆盖普通 7d。
+// The upstream reports only quota billed to this request in the generic X-Codex-Primary/Secondary-* group.
+// For Spark requests, the group contains Spark's window; treating it as ordinary account quota would overwrite ordinary 7d.
 func TestPassiveQuotaGenericWindowsFollowActiveLimit(t *testing.T) {
 	weekly := map[string]string{
 		"X-Codex-Secondary-Used-Percent":   "0",
@@ -31,7 +31,7 @@ func TestPassiveQuotaGenericWindowsFollowActiveLimit(t *testing.T) {
 			[]string{"codex"}, []int64{604800}},
 		{"account alias keeps the account source", "codex", false,
 			[]string{"codex"}, []int64{604800}},
-		// 同来源但不同周期，两个窗口各自对应一份额度，都要刷新。
+		// Same source but different periods: each window represents distinct quota and both must refresh.
 		{"metered copy covers another period", "codex_bengalfox", true,
 			[]string{"codex_bengalfox", "codex_bengalfox"}, []int64{604800, 18000}},
 		{"legacy response without an active limit", "", false,
@@ -71,8 +71,8 @@ func TestPassiveQuotaGenericWindowsFollowActiveLimit(t *testing.T) {
 	}
 }
 
-// 同来源同周期才是真正的重复：这时通用副本必须让位，否则两份数据指向同一个
-// 窗口，合并层会判定为歧义而把两者一起丢弃。
+// Only the same source and period is a real duplicate: then the generic copy must yield, otherwise two data points target one
+// window and the merge layer finds ambiguity, dropping both.
 func TestPassiveQuotaMeteredCopyDoesNotCompeteWithItsNamespace(t *testing.T) {
 	windows := NormalizePassiveQuotaWindows(map[string]string{
 		"X-Codex-Active-Limit":                       "codex_bengalfox",
@@ -96,8 +96,8 @@ func TestPassiveQuotaMeteredCopyDoesNotCompeteWithItsNamespace(t *testing.T) {
 	}
 }
 
-// Active-Limit 的取值与主动查询的 metered_feature 是同一个来源标识，
-// 改绑通用组时不再经过响应头命名空间的前缀推导。
+// Active-Limit's value is the same source identifier as active-query metered_feature,
+// so rebinding the generic group does not derive a response-header namespace prefix.
 func TestPassiveQuotaActiveLimitMatchesActiveMeteredFeature(t *testing.T) {
 	raw, err := NormalizeQuota([]byte(`{
 		"rate_limit":{"primary_window":{"used_percent":100,"limit_window_seconds":604800,"reset_at":1788700000}},
@@ -130,9 +130,8 @@ func TestPassiveQuotaActiveLimitMatchesActiveMeteredFeature(t *testing.T) {
 	}
 }
 
-// 去重只针对通用组与独立命名空间之间的重复报告。通用组内部的两个槽位始终是
-// 两份不同的数据，即使周期相同也不能互相判定为副本而双双消失，是否可用交给
-// 合并层判定。
+// Deduplicate only repeated reports between generic and independent namespaces. The generic group's two slots remain
+// distinct data even for the same period; neither may cause the other to disappear as a copy. The merge layer decides usability.
 func TestPassiveQuotaDeduplicationIgnoresSiblingGenericWindows(t *testing.T) {
 	windows := NormalizePassiveQuotaWindows(map[string]string{
 		"X-Codex-Active-Limit":             "premium",

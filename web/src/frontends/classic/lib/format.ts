@@ -97,7 +97,7 @@ export function formatRelativeInstant(
   timeZone = currentTimeZone(),
 ): string {
   if (!Number.isSafeInteger(ms) || !Number.isSafeInteger(nowMs)) return '—'
-  // 负值表示过去，正值表示未来；短时长优先显示小时/分钟，避免跨午夜就跳成「昨天」或「明天」。
+
   const deltaSeconds = Math.floor((ms - nowMs) / 1_000)
   const absSeconds = Math.abs(deltaSeconds)
   let value: number
@@ -180,7 +180,6 @@ function calendarDayIndex(ms: number, timeZone: string): number | undefined {
     calendarDate.setUTCHours(0, 0, 0, 0)
     return calendarDate.getTime() / 86_400_000
   } catch {
-    // 无效时区时回退到与绝对时间格式化相同的 UTC 基准。
     return Math.floor(ms / 86_400_000)
   }
 }
@@ -215,7 +214,7 @@ export function formatTokens(value: number, locale: string): string {
     { threshold: 1_000, suffix: 'K' },
   ] as const
   const unit = units.find((candidate) => value >= candidate.threshold) ?? units[units.length - 1]
-  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(
+  return `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(
     value / unit.threshold,
   )}${unit.suffix}`
 }

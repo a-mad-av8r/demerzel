@@ -248,7 +248,7 @@ func TestMapEventRejectsPreEpochCompletion(t *testing.T) {
 
 func TestMapEventDefensivelyRedactsAndBoundsSummaries(t *testing.T) {
 	const secret = "sk-this-is-a-secret-value"
-	unsafeSummary := string([]byte{0xff}) + "\r\n\t " + secret + "   " + strings.Repeat("界", 2_000)
+	unsafeSummary := string([]byte{0xff}) + "\r\n\t " + secret + "   " + strings.Repeat("☃", 2_000)
 	event := testEvent("redact")
 	event.ErrorSummary = unsafeSummary
 	event.Attempts[0].ErrorSummary = unsafeSummary
@@ -266,7 +266,7 @@ func TestMapEventDefensivelyRedactsAndBoundsSummaries(t *testing.T) {
 
 func TestMapEventBoundsUnattributedAttemptModelsButRejectsOversizedBoundModel(t *testing.T) {
 	event := testEvent("model-bounds")
-	event.Attempts = append(event.Attempts, telemetry.Attempt{Sequence: 2, UpstreamModel: strings.Repeat("界", 100)})
+	event.Attempts = append(event.Attempts, telemetry.Attempt{Sequence: 2, UpstreamModel: strings.Repeat("☃", 100)})
 	row := mustMapEvent(t, redact.New(), event)
 	if len(row.AttemptRows[1].UpstreamModel) > maxModelBytes ||
 		!utf8.ValidString(row.AttemptRows[1].UpstreamModel) ||
@@ -285,7 +285,7 @@ func TestMapEventBoundsUnattributedAttemptModelsButRejectsOversizedBoundModel(t 
 
 func TestMapEventRedactsAndBoundsUpstreamReportedModelAfterFrozenComparison(t *testing.T) {
 	event := testEvent("response-model-projection")
-	event.UpstreamReportedModel = "sk-obviously-secret-" + strings.Repeat("界", 100)
+	event.UpstreamReportedModel = "sk-obviously-secret-" + strings.Repeat("☃", 100)
 	event.ModelConsistency = telemetry.ModelConsistencyMismatch
 
 	row := mustMapEvent(t, redact.New(), event)

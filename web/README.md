@@ -1,55 +1,55 @@
-# Web 工程开发说明
+# Web Frontend Development Guide
 
-`index.html` 和 `src/main.ts` 是唯一构建入口。`pnpm run build` 一次构建两套前端，产物仍写入 `internal/webui/dist`，随 Go 二进制交付。
+`index.html` and `src/main.ts` are the only build entry points. `pnpm run build` builds both frontends in one pass; output remains in `internal/webui/dist` and is delivered with the Go binary.
 
-## 代码边界
+## Code boundaries
 
-- `src/frontends/classic/`：完整保留原前端，原 `@/` 别名指向此目录，避免无关路径改写。除界面切换设置外，不调整原有页面、交互或功能实现。
-- `src/frontends/modern/`：新版独立的启动、路由、布局、组件、业务功能、接口类型、样式和文案。`@modern/` 指向此目录。
-- `src/shared/`：HTTP 客户端、基础协议、语言标识和浏览器界面偏好。`@shared/` 指向此目录。页面响应 DTO、业务查询编排和组件不放在这里。
+- `src/frontends/classic/`: retains the original frontend in full. The existing `@/` alias points here to avoid unrelated path rewrites. Do not change original pages, interactions, or functionality other than interface switching settings.
+- `src/frontends/modern/`: an independent modern frontend with its own bootstrap, routing, layouts, components, business features, API types, styles, and copy. `@modern/` points here.
+- `src/shared/`: HTTP client, base protocols, the British English locale, and browser interface preferences. `@shared/` points here. Page response DTOs, business query orchestration, and components do not belong here.
 
-两套前端都可依赖 shared，但不能互相引用；shared 不能反向引用前端或启动入口。现有 ESLint 命令检查静态导入、导出、动态导入和资源 glob 的路径边界。
+Both frontends may depend on shared, but must not depend on each other; shared must not depend on a frontend or bootstrap entry point. The existing ESLint command checks path boundaries for static imports, exports, dynamic imports, and resource globs.
 
-两套前端分别拥有样式入口，只启动所选界面。旧版 Tailwind 的源码扫描限制在 classic 内；入口和 shared 不导入任何一套界面的样式。
+The two frontends have separate style entry points and only the chosen interface starts. Classic Tailwind source scanning is limited to classic; the entry point and shared do not import either frontend's styles.
 
-## 界面切换
+## Interface switching
 
-浏览器界面偏好使用 `gpt-load.frontend.v2`：选择经典版时保存 `classic`，选择新版时清除该值，默认 `modern`。旧键 `gpt-load.frontend` 在启动时清理，不再参与界面选择。登录页和访问密钥会话始终使用新版；只有管理员可以在设置页选择自己的界面。选择保存后重新加载 `/settings`，每次只创建一个应用和路由实例。
+The browser interface preference uses `gpt-load.frontend.v2`: choosing classic stores `classic`; choosing modern clears the value; modern is the default. The old `gpt-load.frontend` key is cleared at startup and no longer participates in interface selection. The sign-in page and access-key sessions always use modern; only administrators can choose their interface on the settings page. Saving the choice reloads `/settings`; each load creates only one application and router instance.
 
-只有保存了经典版偏好且存在登录凭据时，启动选择器才查询 `/api/auth/session`，等待最多 5 秒，包含响应正文读取。确认管理员身份后加载经典版；确认访问密钥身份或收到 401 时清理界面偏好。存储读取、网络、超时、临时 HTTP 错误或响应格式异常时回到新版，并保留原选择，由新版认证界面提供恢复入口。语言和明暗模式保留既有浏览器存储约定。
+Only when a classic preference and sign-in credential both exist does the bootstrap selector request `/api/auth/session`, waiting at most five seconds including response-body reading. Confirmed administrators load classic; confirmed access-key identities or a 401 clear the interface preference. Storage, network, timeout, temporary HTTP, or response-format failures return to modern and retain the original choice, where the modern authentication page provides recovery. The theme retains its established browser storage convention.
 
-旧版全局设置增加界面选择和示意缩略图。存在未保存修改或设置操作尚未结束时，需先完成原有保存/放弃流程。偏好无法保存时显示错误并保留当前界面。
+Classic global settings include interface selection and preview thumbnails. Unsaved changes or active settings operations must first complete their established save-or-discard flow. If the preference cannot be saved, an error remains visible and the current interface is retained.
 
-## 当前实现范围
+## Current scope
 
-新版目前提供 Coral Anchor 品牌框架：位于分隔线中部的侧栏折叠控件、移动端导航抽屉、宽工作区。顶栏是各页共用的固定结构，左侧为当前页标题，随后是数据更新时间与刷新，竖线之后依次是导入密钥入口、明暗模式、语言和退出；全局设置保留界面切换。页面导航按“工作区”“运行观测”和“系统”直接展示，不通过二级 Tab 进入观测页面。
+Modern provides the Coral Anchor brand frame: a sidebar collapse control centred in the separator, a mobile navigation drawer, and a broad workspace. The top bar is shared across pages: current page title on the left, then data update time and refresh, followed by an import-key entry point, theme, and sign out. Global settings retain interface switching. Navigation displays Workspace, Observability, and System directly instead of using secondary tabs for observability pages.
 
-`app/navigation.ts` 统一描述导航入口。`internal/webui/page_routes.json` 保留旧版原有的 9 个页面地址；新版独有的 `/monitor/usage`、`/monitor/logs`、`/monitor/health`、`/monitor/inspector` 放在 `internal/webui/modern_page_routes.json`。服务端与新版合并读取两份清单，旧版只读取原清单，避免新增页面触发旧版的路由完整性检查。所有页面仍返回同一个 HTML 入口；`/monitor` 在新版跳转到用量页面，旧版保持原行为。
+`app/navigation.ts` describes navigation entries centrally. `internal/webui/page_routes.json` retains classic's original nine page addresses; modern-only `/monitor/usage`, `/monitor/logs`, `/monitor/health`, and `/monitor/inspector` live in `internal/webui/modern_page_routes.json`. The server and modern frontend read both manifests together; classic reads only the original manifest, preventing added pages from triggering its route-completeness check. Every page still serves the same HTML entry point; `/monitor` redirects to usage in modern while preserving classic behaviour.
 
-新版已提供总览、分组列表与详情、访问密钥、模型管理、请求日志、用量统计、运行健康和全局设置。总览围绕客户端接入配置、请求趋势、订阅账号额度和健康待办组织内容；客户端选择与路由检查独立。`/monitor/inspector` 重定向到首页的路由检查区，保留检查参数；`/import` 重定向到分组页的导入入口，选择新建分组或为已有分组添加凭据。路由加载失败时提供刷新重试。
+Modern provides an overview, group lists and details, access keys, model management, request logs, usage statistics, runtime health, and global settings. The overview organises client connection configuration, request trends, subscription-account quota, and health tasks; client selection and route inspection are independent. `/monitor/inspector` redirects to the home route-inspection area while retaining parameters; `/import` redirects to the group import entry point, where the user creates a group or adds credentials to an existing one. Failed route loading offers refresh and retry.
 
-分组工作区采用双行列表：分组与渠道、凭据总数及状态进度条、模型数量及计价倍率、近 24 小时请求与用量、启停与行内权重。支持本地搜索、渠道与运行视图筛选、排序、复制地址和就地展开完整模型。完整轻量快照一次读取，默认每页 20 条，可选 50 / 100；表头与底部分页固定，仅内容区滚动。基础编辑在分组详情中完成，模型和高级配置使用独立侧栏。API 密钥与订阅账号分别提供卡片、筛选、分页、详情及批量操作；订阅账号同步状态相互独立。
+The group workspace uses a two-line list: group and channel, credential total and status progress, model count and pricing multiplier, 24-hour requests and usage, enablement, and inline weighting. It supports local search, channel and runtime-view filters, sorting, copying addresses, and expanding the full model list in place. A complete light snapshot is fetched once; the default page size is 20 with 50 and 100 available. The header and bottom pagination remain fixed while only the content scrolls. Basic editing happens in group details; models and advanced configuration use independent side panels. API keys and subscription accounts each provide cards, filtering, pagination, details, and batch operations; subscription-account synchronisation states remain independent.
 
-模型页以请求模型卡片展示上游来源、关联分组及计价规则。日志页支持游标分页、详情和字段快捷筛选；用量页提供请求成功/失败、输入/输出 Token、缓存与费用趋势及来源排行。健康页和首页待办共用 `/api/health`，报告返回完整异常明细，筛选与分页在浏览器中完成，不限制后端报告数量。业务数据继续由后端 principal 权限合同约束。
+Model cards show upstream sources, linked groups, and pricing rules. Logs support cursor pagination, details, and quick field filters; usage shows request success and failure, input and output tokens, cache and cost trends, and source rankings. The health page and home tasks share `/api/health`, which returns complete exception details; the browser handles filtering and pagination without limiting backend report counts. The backend principal-permission contract continues to constrain business data.
 
-明暗模式和语言是本地浏览器偏好，登录页也可调整；全局设置页沿用管理员访问限制。侧栏收起状态使用 `gpt-load.modern.sidebar-collapsed`，所有界面偏好不读写服务端配置。两套设置页使用共享界面目录中的示意缩略图。新版品牌组件根据实际明暗状态变化触发动画，也处理侧栏折叠和展开；遵守减少动效偏好。
+Theme is a local browser preference and can be adjusted on the sign-in page; global settings retain administrator-only access. Sidebar collapse uses `gpt-load.modern.sidebar-collapsed`; interface preferences do not read or write server configuration. Both settings pages use preview thumbnails from the shared interface directory. The modern brand component reacts to the actual theme, sidebar collapse, and expansion, and observes reduced-motion preferences.
 
-侧栏底部只链接 Demerzel 的使用文档和 GitHub 仓库，不再把上游赞助或社群当作本项目的入口。GitHub 使用官方 Octicons 标识。分隔线下只显示现有 `/health` 返回的运行版本；应用不调用旧版管理员更新检查接口，也不自动访问发行源。下载与升级由受控安装流程完成。
+The sidebar footer links only to Demerzel documentation and the GitHub repository; upstream sponsorship and community links are not project entry points. GitHub uses the official Octicons mark. The separator shows only the running version returned by `/health`; the application does not call the old classic administrator update-check endpoint or access release sources automatically. Downloading and upgrades use controlled installation procedures.
 
-新版页面可以独立设计展示 DTO、聚合查询及管理接口。`modern/api/` 为其独立接口代码目录。分组展示使用 `/api/modern/groups`，当前页用量通过 `/api/modern/groups/usage` 批量读取，每次最多 100 个分组，复用后端精确时间窗口及最终请求归属。边界明细查询使用分组与完成时间联合索引，避免逐组扫描或计算完整排行榜。凭据展示使用 `/api/modern/groups/:group_id/credentials` 和其详情接口，按当前页补充活动数据。启停与编辑继续调用既有管理接口，旧接口合同及核心流程、数据面行为保持稳定。
+Modern pages may independently design display DTOs, aggregate queries, and management interfaces. `modern/api/` is their separate API directory. Group display uses `/api/modern/groups`; current-page usage is read in batches through `/api/modern/groups/usage`, with at most 100 groups per request, reusing the backend's precise time window and final request attribution. Boundary-detail queries use a combined group and completion-time index, avoiding per-group scans or full ranking calculation. Credential display uses `/api/modern/groups/:group_id/credentials` and its detail endpoint to enrich activity data for the current page. Enablement, disablement, and editing continue to use existing management interfaces, preserving old interface contracts, core flows, and data-plane behaviour.
 
-## 登录与权限
+## Sign-in and permissions
 
-新版登录独立实现于 `modern/features/auth/`，调用既有 `GET /api/auth/session`，沿用 `gpt-load.auth-key` 存储键。“记住登录”默认不勾选，使用 sessionStorage 保持当前标签页会话（刷新仍有效）；勾选后使用 localStorage。只在认证成功且响应身份为 `admin` 或 `access_key` 后写入所选存储，并清除另一种存储中的旧凭据。恢复时优先读取当前标签页的 sessionStorage，再读取 localStorage；退出或认证失效清理两种存储。
+Modern sign-in is independently implemented in `modern/features/auth/`. It calls the existing `GET /api/auth/session` and retains the `gpt-load.auth-key` storage key. Remember sign-in is unchecked by default and uses sessionStorage for the current browser-tab session, including after refresh; when selected, it uses localStorage. The selected store is written only after successful authentication with an `admin` or `access_key` identity, and old credentials are cleared from the other store. Restoration reads the current tab's sessionStorage first and then localStorage; sign-out or authentication failure clears both stores.
 
-空值、空白字符、错误密钥、锁定、网络错误和无效响应保留各自反馈，登录失败不修改已有凭据。锁定倒计时到期后允许手动重试，`/login?help=auth` 可直接打开密钥来源帮助。
+Empty values, whitespace, invalid keys, lockout, network errors, and invalid responses retain their distinct feedback; failed sign-in does not alter an existing credential. Manual retry becomes available when the lockout countdown finishes, and `/login?help=auth` opens key-source help directly.
 
-刷新后的密钥先重新验证，再挂载工作区和业务组件；并发恢复只发出一次验证。网络与响应异常保留密钥并显示重试入口。认证失效时清空会话、取消并清除新版查询缓存，返回登录页；权限拒绝的 403 不误登出。登录成功后只返回站内已知受保护路径，保留查询和 hash；管理员专属路径对访问密钥用户回退到总览。
+A refreshed key is revalidated before mounting the workspace and business components; concurrent restoration sends one validation request. Network and response failures retain the key and show a retry entry point. Authentication failure clears the session, cancels and clears the modern query cache, and returns to sign-in; a 403 permission denial does not sign out by mistake. Successful sign-in returns only to known protected in-site paths while retaining query and hash; administrator-only paths return access-key users to the overview.
 
-`app/navigation.ts` 的 `adminOnly` 同时约束路由、侧栏和快捷导航。管理员可进入全部入口；访问密钥仅可进入总览、模型、用量和日志，身份范围仍由后端校验。右上角退出操作保留导航失败或离开受阻时的会话，成功离开后清理认证与缓存。
+`app/navigation.ts` uses `adminOnly` to constrain routes, the sidebar, and quick navigation. Administrators can access every entry point; access keys can access only overview, models, usage, and logs, while the backend still validates identity scope. The top-right sign-out action retains the session if navigation fails or is blocked; after successful exit it clears authentication and cache.
 
-HTTP 客户端按请求捕获会话版本；身份已切换或请求已取消时，迟到的 401 不清除新会话。会话恢复及登录响应也检查版本和取消状态，防止退出后被旧响应重新登录。所选存储不可用时仍使用内存会话，不记住时不会回退到 localStorage；业务代码和版本检查从会话客户端取凭据，不直接读取浏览器存储。认证逻辑和组件不依赖 classic，共享 HTTP 层提供基础请求合同；服务端继续负责身份认证与接口权限。
+The HTTP client captures the session revision per request; a late 401 cannot clear a new session after identity changes or request cancellation. Session restoration and sign-in responses also check revision and cancellation state, preventing an old response from signing in again after sign-out. When the selected store is unavailable, an in-memory session remains; an unremembered sign-in does not fall back to localStorage. Business code and revision checks obtain credentials from the session client rather than reading browser storage directly. Authentication logic and components do not depend on classic; the shared HTTP layer provides the base request contract while the server remains responsible for authentication and interface permissions.
 
-## 验证
+## Validation
 
-前端使用现有 lint、format、type-check 和 build；最终运行仓库 `make check`。不增加前端测试、浏览器验收或本地 race。
+The frontend uses the existing lint, format, type-check, and build commands; run repository `make check` at the final integration stage. Do not add frontend tests, browser acceptance, or local race checks.

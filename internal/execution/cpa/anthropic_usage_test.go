@@ -93,7 +93,7 @@ func TestCPAAnthropicStreamUsageBoundaries(t *testing.T) {
 	}
 }
 
-// 经过真实 CPA 转换和网关统计，防止只修正客户端展示或只修正日志。
+// Exercise real CPA conversion and gateway accounting to prevent correcting only the client display or logs.
 func TestCPAConvertedAnthropicStreamUsesFinalUsage(t *testing.T) {
 	for _, provider := range []string{"codex", "grok", "antigravity"} {
 		for _, thinking := range []bool{false, true} {

@@ -171,7 +171,7 @@ func TestBuildContainerExposesUnifiedRouteCatalog(t *testing.T) {
 			Owner:      httproute.OwnerWeb,
 			Auth:       httproute.AuthNone,
 			Methods:    []string{http.MethodGet},
-			Path:       "/favicon.svg",
+			Path:       "/favicon.png",
 		},
 	} {
 		assertRouteInfo(t, routes, expected)
@@ -183,7 +183,7 @@ func TestHTTPRouteGroupOptionsOwnsStaticPathBeforeGroupID(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/groups/options", nil)
 	request.Header.Set("Authorization", "Bearer test-auth-key")
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 
 	engine.ServeHTTP(recorder, request)
 
@@ -403,7 +403,7 @@ func TestHTTPRoutesPreserveResponsesAuthenticationBeforeLocalRejection(t *testin
 	}
 }
 
-func TestHTTPControlFallbacksUseRequestLanguage(t *testing.T) {
+func TestHTTPControlFallbacksUseBritishEnglish(t *testing.T) {
 	engine := newRouteContractEngine(t)
 
 	for _, test := range []struct {
@@ -415,18 +415,13 @@ func TestHTTPControlFallbacksUseRequestLanguage(t *testing.T) {
 		wantMessage string
 	}{
 		{
-			name: "Chinese not found", method: http.MethodGet,
-			target: "/api/unknown", language: "zh-CN",
-			wantCode: "ROUTE_NOT_FOUND", wantMessage: "路由不存在",
+			name: "wildcard route not found", method: http.MethodGet,
+			target: "/api/unknown", language: "*",
+			wantCode: "ROUTE_NOT_FOUND", wantMessage: "Route not found",
 		},
 		{
-			name: "Japanese method not allowed", method: http.MethodPost,
-			target: "/api/auth/session", language: "ja-JP",
-			wantCode: "METHOD_NOT_ALLOWED", wantMessage: "許可されていないHTTPメソッドです",
-		},
-		{
-			name: "English method not allowed", method: http.MethodPost,
-			target: "/api/auth/session", language: "en-US",
+			name: "British English method not allowed", method: http.MethodPost,
+			target: "/api/auth/session", language: "en-GB",
 			wantCode: "METHOD_NOT_ALLOWED", wantMessage: "Method not allowed",
 		},
 	} {
@@ -478,7 +473,7 @@ func TestHTTPNamespacesDoNotFallThroughToSPA(t *testing.T) {
 		},
 		{name: "system", target: "/health/unknown"},
 		{name: "assets", target: "/assets/missing.js"},
-		{name: "favicon", target: "/favicon.svg/unknown"},
+		{name: "favicon", target: "/favicon.png/unknown"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()

@@ -9,18 +9,18 @@ import (
 	"strings"
 )
 
-// PriceMultiplier 以百万分之一为单位保存价格倍率，零值表示零倍。
+// PriceMultiplier stores a price multiplier in millionths; the zero value means no multiplier.
 type PriceMultiplier int64
 
 const DefaultPriceMultiplier PriceMultiplier = 1_000_000
 
-// PriceMultipliers 是本次请求冻结的分组和访问密钥价格倍率。
+// PriceMultipliers are the Group and AccessKey price multipliers frozen for this request.
 type PriceMultipliers struct {
 	Group     PriceMultiplier `json:"group"`
 	AccessKey PriceMultiplier `json:"access_key"`
 }
 
-// ParsePriceMultiplier 解析最多六位小数、范围为 0 到 1000 的十进制倍率。
+// ParsePriceMultiplier parses a decimal multiplier with at most six fractional digits in the range 0 to 1000.
 func ParsePriceMultiplier(value string) (PriceMultiplier, error) {
 	integer, fraction, hasFraction := strings.Cut(value, ".")
 	if integer == "" || !decimalDigits(integer) || len(fraction) > 6 ||
@@ -46,7 +46,7 @@ func ParsePriceMultiplier(value string) (PriceMultiplier, error) {
 	return parsed, nil
 }
 
-// FormatPriceMultiplier 返回倍率的规范十进制表示。
+// FormatPriceMultiplier returns the multiplier's canonical decimal representation.
 func FormatPriceMultiplier(value PriceMultiplier) string {
 	whole := strconv.FormatInt(int64(value/DefaultPriceMultiplier), 10)
 	fraction := int64(value % DefaultPriceMultiplier)
@@ -63,10 +63,10 @@ func FormatPriceMultiplier(value PriceMultiplier) string {
 	return whole + "." + strings.TrimRight(strings.Repeat("0", 6-len(fractionText))+fractionText, "0")
 }
 
-// Valid 判断倍率是否在允许范围内。
+// Valid reports whether a multiplier is within the permitted range.
 func (value PriceMultiplier) Valid() bool { return value >= 0 && value <= 1_000_000_000 }
 
-// MarshalJSON 将精确倍率输出为字符串，避免客户端浮点转换。
+// MarshalJSON emits the exact multiplier as a string to avoid client float conversion.
 func (value PriceMultiplier) MarshalJSON() ([]byte, error) {
 	if !value.Valid() {
 		return nil, errors.New("invalid price multiplier")
@@ -74,7 +74,7 @@ func (value PriceMultiplier) MarshalJSON() ([]byte, error) {
 	return json.Marshal(FormatPriceMultiplier(value))
 }
 
-// UnmarshalJSON 仅接受明确的十进制字符串，null 不表示默认值。
+// UnmarshalJSON accepts only an explicit decimal string; null does not mean the default value.
 func (value *PriceMultiplier) UnmarshalJSON(data []byte) error {
 	var text *string
 	if err := json.Unmarshal(data, &text); err != nil {
@@ -91,7 +91,7 @@ func (value *PriceMultiplier) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// UnmarshalJSON 要求两层倍率均显式存在，不能把遗漏字段解释为零倍。
+// UnmarshalJSON requires both multiplier layers to be explicitly present; omitted fields cannot be interpreted as no multiplier.
 func (multipliers *PriceMultipliers) UnmarshalJSON(data []byte) error {
 	var fields struct {
 		Group     *PriceMultiplier `json:"group"`
@@ -109,7 +109,7 @@ func (multipliers *PriceMultipliers) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// applyPriceMultipliers 对原有纳美元总额一次应用全部倍率，倍率之间不舍入。
+// applyPriceMultipliers applies all multipliers once to the original nano-USD total without rounding between multipliers.
 func applyPriceMultipliers(amount NanoUSD, multipliers PriceMultipliers) (NanoUSD, bool) {
 	if amount < 0 || !multipliers.Group.Valid() || !multipliers.AccessKey.Valid() {
 		return 0, false

@@ -106,7 +106,7 @@ const usageQuery = useQuery({
   enabled: computed(() => !filterCommitPending.value),
 })
 const report = computed(() => usageQuery.data.value)
-// 切换筛选时的占位报告只用于过渡展示，不能作为跨页导航的时间依据。
+
 const navigationReport = computed(() =>
   usageQuery.isPlaceholderData.value ? undefined : report.value,
 )
@@ -240,7 +240,7 @@ const trendBuckets = computed<UsageReportDto['series']>(() => {
   const byStart = new Map(current.series.map((bucket) => [bucket.bucket_start_ms, bucket]))
   const buckets: UsageReportDto['series'] = []
   const width = current.bucket_width_ms
-  // 使用后端返回的粒度补零，首尾裁切到查询范围，不推断残缺桶的宽度。
+
   for (
     let alignedStart = Math.floor(current.from_ms / width) * width;
     alignedStart < current.to_ms;
@@ -388,7 +388,6 @@ async function commitRefreshedFilters(filters: AppliedUsageFilters): Promise<voi
   if (filterCommitPending.value) return
   filterCommitPending.value = true
   try {
-    // 时间和筛选分步更新期间不查询，避免请求中间状态。
     await nextTick()
     const preset = filters.preset
     if (preset) {
@@ -405,7 +404,7 @@ async function commitRefreshedFilters(filters: AppliedUsageFilters): Promise<voi
     filterCommitPending.value = false
   }
   await nextTick()
-  // 查询条件未变化时也刷新；已自动发出的请求直接复用。
+
   await usageQuery.refetch({ cancelRefetch: false })
 }
 

@@ -55,7 +55,7 @@ func (b *websocketBudget) connection(key uint, limits websocketLimits, delta int
 	return true
 }
 
-// reserveInput 计入完整消息及参数覆盖后的增长量，不重复计算同一逻辑请求的副本。
+// reserveInput accounts for growth from complete messages and parameter overrides without recalculating a copy of the same logical request.
 func (s *websocketConnection) reserveInput(delta int) bool {
 	b := &s.handler.websocketBudget
 	limits := s.handler.websocketLimits
@@ -113,7 +113,7 @@ func (s *websocketConnection) watchBinding(binding *websocketBinding) {
 }
 
 type websocketConnection struct {
-	inputBytes  int // 受 handler.websocketBudget.mu 保护。
+	inputBytes  int // Protected by handler.websocketBudget.mu.
 	handler     *Handler
 	conn        *websocket.Conn
 	request     *http.Request
@@ -127,7 +127,7 @@ type websocketConnection struct {
 	binding     *websocketBinding
 	parents     map[string]websocketParent
 	parentOrder []string
-	// accepting 和 registered 由 mu 保护，覆盖读取、排队及执行中的请求。
+	// accepting and registered are protected by mu across reads, queueing, and executing requests.
 	accepting      bool
 	registered     int
 	closeOnce      sync.Once
@@ -305,7 +305,7 @@ func (s *websocketConnection) authorized(snapshot *state.ConfigSnapshot) (state.
 	return key, true
 }
 
-// 单个读协程只持有一条受预算约束的消息；队列与同流调度均由 run 持有。
+// A single read goroutine holds only one budgeted message; run owns the queue and same-stream scheduling.
 func (s *websocketConnection) readMessages(out chan<- websocketTurn) {
 	defer s.workers.Done()
 	cancelOnExit := true
@@ -322,11 +322,11 @@ func (s *websocketConnection) readMessages(out chan<- websocketTurn) {
 			return
 		}
 		if !s.registerTurn() {
-			// 服务端冻结后由当前请求完成收尾；真实读错误仍及时取消。
+			// After the server freezes, the current request completes cleanup; real read errors still cancel promptly.
 			cancelOnExit = false
 			return
 		}
-		// 已登记消息在错误退出时先关闭或取消，再注销，避免其他请求抢先通知重连。
+		// For a registered message exiting on error, close or cancel before deregistration so other requests cannot signal reconnection first.
 		if kind != websocket.TextMessage {
 			s.closeWith(websocket.CloseUnsupportedData, "Text JSON is required.")
 			s.finishTurn()
@@ -397,7 +397,7 @@ func validWebsocketLane(lane string) bool {
 }
 
 func (s *websocketConnection) dispatchTurn(turn websocketTurn, finished chan<- websocketFinished) bool {
-	// 派发与绑定失效共用锁，冻结后不再启动排队请求。
+	// Dispatch and binding invalidation share a lock; do not start queued requests after freezing.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.accepting || s.ctx.Err() != nil {
@@ -447,7 +447,7 @@ func (s *websocketConnection) run() {
 		s.mu.Unlock()
 		enabled := false
 		if binding != nil {
-			// 分组停用、删除或 WS 关闭时即时中止；其余路由条件在下一轮检查。
+			// Abort immediately when a group is disabled, deleted, or WS closes; other routing conditions are checked on the next turn.
 			group, exists := snapshot.Groups[binding.ref.GroupID]
 			enabled = exists && group.ResponsesWebsocketEnabled
 		} else {
@@ -511,7 +511,7 @@ func (s *websocketConnection) run() {
 				if turn.lane != "" && named >= limits.lanes {
 					s.reserveInput(-len(turn.body))
 					turn.body = nil
-					// 新流尚无活动轮，拒绝可直接归属，不占用新的历史流名。
+					// A new stream has no active turn, so direct rejection can be attributed without consuming a new historical stream name.
 					value := reason{400, "websocket_stream_limit_reached", "WebSocket stream limit reached. Reuse an existing stream_id or open a new connection."}
 					key, authorized := s.authorized(s.handler.manager.Current())
 					if !authorized {
@@ -523,7 +523,7 @@ func (s *websocketConnection) run() {
 					recorder.completeReason(value)
 					recorder.emit()
 					s.emitReason(turn.lane, value)
-					// 错误交付完成前仍属未完成请求，阻止其他轮次提前关闭连接。
+					// The request remains unfinished until error delivery completes, preventing another turn from closing the connection early.
 					s.finishTurn()
 					if !authorized {
 						s.cancel()

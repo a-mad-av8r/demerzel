@@ -52,7 +52,7 @@ func TestRequestLogReadsPreserveRequestCancellation(t *testing.T) {
 }
 
 func TestListRequestLogsSuppressesOnlyCanceledHTTPRequestErrors(t *testing.T) {
-	// 不标记 t.Parallel()：本测试劫持了全局 logrus 输出/格式，与其他并行测试同时运行会互相覆盖断言。
+	// Do not call t.Parallel(): this test intercepts global logrus output and formatting, which would interfere with assertions in concurrent tests.
 	initControlI18n(t)
 	tests := []struct {
 		name       string
@@ -1410,8 +1410,8 @@ func Example_requestLogOpaqueCursor() {
 	// Output: eyJ2IjoyLCJjb21wbGV0ZWRfYXRfbXMiOjE3ODQ4OTQ0MDAwMDAsInJlcXVlc3RfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ
 }
 
-// 日志里的凭据要显示成人话：密文常驻凭据注册表，按 ID 取出解密即可，
-// 不额外读库；注册表里没有的（已删除）留空，交由前端显示“已删除”。
+// Credentials in logs need human-readable labels: ciphertexts reside in the credential registry and are decrypted by ID,
+// without another database read; records absent from the registry (deleted) stay empty for the frontend to label “deleted”.
 func TestCredentialLabelsMasksFromRegistryWithoutDatabaseReads(t *testing.T) {
 	t.Parallel()
 	fixture := newServiceFixture(t)
@@ -1493,7 +1493,7 @@ func TestRequestLogResponsesCarryCredentialLabels(t *testing.T) {
 	if detail.Attempts[0].CredentialName != "m***t@example.com" {
 		t.Fatalf("attempt 1 credential_name = %q", detail.Attempts[0].CredentialName)
 	}
-	// 注册表里没有的凭据留空，前端据此显示“已删除”。
+	// Credentials absent from the registry stay empty, allowing the frontend to label them “deleted”.
 	if detail.Attempts[1].CredentialName != "" {
 		t.Fatalf("attempt 2 credential_name = %q, want empty", detail.Attempts[1].CredentialName)
 	}
@@ -1507,7 +1507,7 @@ func TestRequestLogResponsesCarryCredentialLabels(t *testing.T) {
 	}
 }
 
-// 同一个凭据在一页里反复出现，收集时按出现顺序全量给出，去重交给 CredentialLabels。
+// The same credential can occur repeatedly on one page; collect all occurrences in order and leave deduplication to CredentialLabels.
 func TestRequestLogCredentialIDsCollectsItemAndAttempts(t *testing.T) {
 	t.Parallel()
 	ids := requestLogCredentialIDs([]requestlog.Record{

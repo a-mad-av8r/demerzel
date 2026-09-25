@@ -774,7 +774,7 @@ export function groupOptionsQueryOptions(
     queryKey: controlQueryKeys.groups.options(),
     queryFn: ({ signal }) => listGroupOptions(client, signal),
     enabled: computed(() => toValue(enabled)),
-    // Group 选项目录可能由其他页面或标签页修改，进入消费者页面时必须重新校验。
+    // Other pages or tabs may change the group options catalogue; revalidate when a consumer page opens.
     refetchOnMount: 'always',
   })
 }
@@ -857,7 +857,7 @@ export async function updateGroupSettings(
   )
 }
 
-// 切换渠道只提交目标渠道；参数由后端按目标渠道字段重新推导。
+// Switching channels submits only the target channel; the backend derives parameters from its fields.
 export async function switchGroupChannel(
   client: ApiClient,
   groupID: number,

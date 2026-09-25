@@ -112,7 +112,7 @@ export function useGroupCreateOperation(client: ApiClient) {
         const delay = data?.retry_after_ms
         if (typeof delay === 'number' && Number.isSafeInteger(delay) && delay >= 0) {
           waiting.value = true
-          // 只到期开放手动重试，不发送自动请求。
+
           timer = setTimeout(() => {
             waiting.value = false
           }, delay)

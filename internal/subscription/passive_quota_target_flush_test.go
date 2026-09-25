@@ -28,7 +28,7 @@ func TestFlushPassiveQuotaObservationsDoesNotPublishOldTargetAfterURLChange(t *t
 	manager.RecordPassiveQuotaObservation(credential.ID, previousIdentity, 2000,
 		[]providerobservation.QuotaWindow{{ID: "primary", State: "exhausted"}})
 
-	// 数据库已落盘但额度尚未投影时暂停，复现旧目标结果迟到的窗口。
+	// Pause after the database persists but before quota projects, reproducing the window for a late old-target result.
 	persisted := make(chan struct{})
 	resume := make(chan struct{})
 	var releaseOnce sync.Once
@@ -65,7 +65,7 @@ func TestFlushPassiveQuotaObservationsDoesNotPublishOldTargetAfterURLChange(t *t
 		t.Fatal("passive quota persistence did not reach the projection barrier")
 	}
 
-	// 对齐分组 URL 更新的原子边界：清空观测、递增 CAS 版本，再发布新目标身份。
+	// Match the atomic boundary for Group URL updates: clear observations, increment the CAS version, then publish new target identity.
 	params := models.JSON(`{"base_url":"https://relay.example/team-a"}`)
 	entries[0].IdentityGeneration = stateloader.CredentialIdentityGeneration(
 		credential.IdentityFingerprint, "codex", string(models.ConnectionTypeSubscription), json.RawMessage(params))
@@ -99,7 +99,7 @@ func TestFlushPassiveQuotaObservationsDoesNotPublishOldTargetAfterURLChange(t *t
 			t.Fatal(changeErr)
 		}
 	case <-time.After(100 * time.Millisecond):
-		// 正确实现会把目标切换排在本次落盘及额度投影之后。
+		// A correct implementation queues target switching after this persistence and quota projection.
 		release()
 		select {
 		case changeErr := <-changed:

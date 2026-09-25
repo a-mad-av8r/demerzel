@@ -39,18 +39,18 @@ func TestCompilerRejectsUnreferencedChannelExtension(t *testing.T) {
 	}
 }
 
-func TestCompilerRejectsUnknownAuthorizationMethod(t *testing.T) {
+func TestCompilerRejectsUnknownAuthorisationMethod(t *testing.T) {
 	t.Parallel()
 
 	codex := findModule(t, builtInModules(), Codex)
 	codex.Definition.Connection.AuthorizationMethods = []spec.AuthorizationMethod{"unknown"}
 
 	if _, err := compileBuiltInModules([]spec.Module{codex}); err == nil {
-		t.Fatal("compileBuiltInModules() accepted an unknown authorization method")
+		t.Fatal("compileBuiltInModules() accepted an unknown authorisation method")
 	}
 }
 
-func TestCompilerAcceptsDeviceOAuthAuthorizationMethod(t *testing.T) {
+func TestCompilerAcceptsDeviceOAuthAuthorisationMethod(t *testing.T) {
 	t.Parallel()
 
 	codex := findModule(t, builtInModules(), Codex)

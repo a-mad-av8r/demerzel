@@ -24,12 +24,12 @@ func compiledDecisionFixture(t *testing.T) (*Compiled, CompiledEntry) {
 
 func TestBuildDecisionRequestPreservesTaskAndHidesTargetModels(t *testing.T) {
 	compiled, entry := compiledDecisionFixture(t)
-	payload, decision := BuildDecisionRequest(compiled, entry.Presets, TaskState{CurrentTask: "最新任务"})
+	payload, decision := BuildDecisionRequest(compiled, entry.Presets, TaskState{CurrentTask: "latest task"})
 	if len(payload) == 0 || decision.RequestedModel != "jev-router" {
 		t.Fatalf("payload=%s decision=%#v", payload, decision)
 	}
 	if strings.Contains(string(payload), "gpt-5.6") || strings.Contains(string(payload), `"uncertain"`) ||
-		!strings.Contains(string(payload), "最新任务") {
+		!strings.Contains(string(payload), "latest task") {
 		t.Fatalf("decision payload violates task/preset boundary: %s", payload)
 	}
 }

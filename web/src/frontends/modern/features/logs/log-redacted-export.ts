@@ -13,22 +13,17 @@ function redactionSalt(): string {
   try {
     const stored = globalThis.localStorage?.getItem(saltStorageKey)
     if (stored && /^[0-9a-f]{32}$/.test(stored)) return (memorySalt = stored)
-  } catch {
-    // 隐私模式或受限存储下，仍在当前页面会话内保持匿名标识稳定。
-  }
+  } catch {}
   const bytes = new Uint8Array(16)
   globalThis.crypto.getRandomValues(bytes)
   memorySalt = bytesToHex(bytes)
   try {
     globalThis.localStorage?.setItem(saltStorageKey, memorySalt)
-  } catch {
-    // 存储失败不会影响本次脱敏复制。
-  }
+  } catch {}
   return memorySalt
 }
 
 async function anonymousReference(kind: string, value: string | number): Promise<string> {
-  // 普通 HTTP 没有 SubtleCrypto；使用会话内随机映射，不能退化为可逆或弱散列。
   if (!globalThis.crypto.subtle) {
     const key = `${kind}\0${String(value)}`
     let reference = sessionReferences.get(key)
@@ -72,7 +67,7 @@ async function redactDiagnosticText(value: string): Promise<string> {
       return `${match[1]} ${await anonymousReference('secret', match[2])}`
     },
   )
-  // URL 先整体处理，避免其中的邮箱或 IP 替换后打断 URL，遗漏路径与查询参数。
+
   result = await replaceAsync(result, /https?:\/\/[^\s"'<>]+/giu, async (match) => {
     return `<${await anonymousReference('url', match[0])}>`
   })

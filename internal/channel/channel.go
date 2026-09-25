@@ -89,7 +89,7 @@ type CredentialAction string
 
 const CredentialActionResetCredit CredentialAction = "reset_credit"
 
-// CapabilityDescriptor is the safe public projection of optional channel behavior.
+// CapabilityDescriptor is the safe public projection of optional channel behaviour.
 type CapabilityDescriptor struct {
 	ModelDiscovery    bool               `json:"model_discovery"`
 	QuotaObservation  bool               `json:"quota_observation"`
@@ -97,7 +97,7 @@ type CapabilityDescriptor struct {
 	OutboundProxy     bool               `json:"outbound_proxy"`
 }
 
-// NoticeID identifies one frontend-localized channel notice.
+// NoticeID identifies one frontend-localised channel notice.
 type NoticeID = spec.NoticeID
 
 const (
@@ -262,7 +262,7 @@ func (t ResolvedTarget) ResponsesStoreHandling(
 	}]
 }
 
-// ModeForModel returns the route mode after applying model-specific channel behavior.
+// ModeForModel returns the route mode after applying model-specific channel behaviour.
 func (t ResolvedTarget) ModeForModel(
 	clientProtocol protocol.Protocol,
 	operation execution.Operation,

@@ -13,7 +13,7 @@ defineEmits<{ 'update:open': [boolean] }>()
 const { t } = useI18n()
 const route = useRoute()
 const panelId = useId()
-// 摘要读取路由检查保存的参数，与展开后的初始选项保持一致。
+
 const context = computed(() => {
   const query = route.query
   if (

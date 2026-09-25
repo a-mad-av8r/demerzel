@@ -22,7 +22,7 @@ func TestParseGroupCollectionQueryAcceptsStrictContract(t *testing.T) {
 	unavailable := GroupCollectionStatusUnavailable
 	disabled := GroupCollectionStatusDisabled
 	subscription := models.ConnectionTypeSubscription
-	q200 := strings.Repeat("猫", 200)
+	q200 := strings.Repeat("☃", 200)
 
 	tests := []struct {
 		name       string
@@ -190,7 +190,7 @@ func TestParseGroupCollectionQueryRejectsEveryInvalidForm(t *testing.T) {
 		{name: "sort repeated", rawQuery: "sort=name&sort=keys"},
 		{name: "page repeated", rawQuery: "page=1&page=2"},
 		{name: "page size repeated", rawQuery: "page_size=20&page_size=100"},
-		{name: "q exceeds 200 Unicode code points", rawQuery: "q=" + strings.Repeat("猫", 201)},
+		{name: "q exceeds 200 Unicode code points", rawQuery: "q=" + strings.Repeat("☃", 201)},
 		{name: "status empty", rawQuery: "status="},
 		{name: "status all", rawQuery: "status=all"},
 		{name: "status unknown", rawQuery: "status=healthy"},
@@ -499,7 +499,7 @@ func performGroupCollectionRequest(
 	authorization string,
 ) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodGet, target, nil)
-	request.Header.Set("Accept-Language", "en-US")
+	request.Header.Set("Accept-Language", "en-GB")
 	if authorization != "" {
 		request.Header.Set("Authorization", authorization)
 	}

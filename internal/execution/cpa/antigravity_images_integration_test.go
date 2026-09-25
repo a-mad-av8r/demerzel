@@ -132,7 +132,7 @@ func TestAntigravityImagesHTTPGenerationReachesGeminiAndUsesExistingPricing(t *t
 		}
 	}))
 	t.Cleanup(server.Close)
-	// CPA 会建立自己的隔离 transport；只允许该测试的本地 TLS 服务，禁止访问外部端点。
+	// CPA creates its own isolated transport; allow only this test's local TLS service and deny external endpoints.
 	transport := server.Client().Transport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {

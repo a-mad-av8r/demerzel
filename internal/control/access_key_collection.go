@@ -80,7 +80,7 @@ func (s *Service) ListAccessKeyCollection(
 	if err != nil {
 		return AccessKeyCollectionResponse{}, err
 	}
-	// 密钥列表保留固定七天口径，通过明确区间与用量页联动。
+	// The key list retains a fixed seven-day definition, linked to the usage page through an explicit interval.
 	fromMS, toMS, err := epochms.WindowEndingAt(observedAtMS, 6*epochms.MillisecondsPerHour, 28)
 	if err != nil {
 		return AccessKeyCollectionResponse{}, app_errors.ErrInternalServer

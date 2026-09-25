@@ -40,7 +40,7 @@ func (b *codexWSLogBuffer) String() string {
 }
 
 func TestCodexWSSessionRedactsCloseReason(t *testing.T) {
-	// 仅非并行测试捕获默认日志；生产封装不修改全局输出或日志级别。
+	// Only this non-parallel test captures the default log; the production wrapper does not alter global output or log level.
 	output := logrus.StandardLogger().Out
 	defer logrus.SetOutput(output)
 	for _, code := range []int{websocket.ClosePolicyViolation, 4001} {
@@ -74,8 +74,8 @@ func TestCodexWSSessionRedactsCloseReason(t *testing.T) {
 			session.options.ObserveHeaders = func(http.Header, time.Time) {
 				headersObserved = true
 				releaseClose()
-				// SDK 先交付错误再记录断连；若封装先清理连接，SDK 会跳过日志。
-				// 在握手交接处控制这个合法时序，确保本用例实际经过日志脱敏路径。
+				// The SDK delivers the error before logging the disconnect; if the wrapper cleans up first, the SDK skips the log.
+				// Control this valid ordering at the handshake hand-off so the test exercises the log-redaction path.
 				timeout := time.NewTimer(time.Second)
 				defer timeout.Stop()
 				for !strings.Contains(logs.String(), "upstream disconnected session="+session.id+" ") {

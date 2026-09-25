@@ -889,7 +889,7 @@ func (writer *boundedCredentialBuffer) Write(value []byte) (int, error) {
 	return writer.buffer.Write(value)
 }
 
-// Rerank 文档保持原文，只检查已知凭据；逐 token 检查也覆盖重复字段的值。
+// Rerank documents retain their original text; inspect only known credentials, with token-by-token checks covering duplicate-field values.
 func rerankCredentialLiteralsRemain(body []byte, secrets []string) bool {
 	trimmed := bytes.TrimSpace(body)
 	if len(trimmed) == 0 || trimmed[0] != '{' || !json.Valid(trimmed) {

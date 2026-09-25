@@ -27,7 +27,7 @@ type passthroughStreamSDKResult struct {
 	err    *schemas.BifrostError
 }
 
-// nativeMessageProvider 为缺少透传接口的渠道复用相同 wire 协议，保留原有渠道身份。
+// nativeMessageProvider reuses the same wire protocol for channels without a passthrough interface, retaining the original channel identity.
 func nativeMessageProvider(providerKind channel.ProviderKind, spec execution.AttemptSpec) (schemas.ModelProvider, bool) {
 	if spec.RouteMode != execution.RouteNative ||
 		(spec.Operation != execution.OperationChatCompletion && spec.Operation != execution.OperationResponsesCreate) {

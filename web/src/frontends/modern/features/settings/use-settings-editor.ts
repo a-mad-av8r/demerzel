@@ -127,7 +127,7 @@ export function useSettingsEditor() {
       await cache.cancelQueries({ queryKey: settingsKey })
       const data = await saveSettings(client, patch, controller.signal)
       if (controller.signal.aborted) return
-      // 保存期间可能发生页面可见性刷新；写入确认结果前先取消旧读取。
+
       await cache.cancelQueries({ queryKey: settingsKey })
       if (controller.signal.aborted) return
       cache.setQueryData(settingsKey, data)

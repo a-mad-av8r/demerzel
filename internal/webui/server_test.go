@@ -81,7 +81,7 @@ func TestServerCSPAllowsDropdownViewportStyles(t *testing.T) {
 			styleSources = directive
 		}
 	}
-	// Reka UI 2.10.4 实际注入的文本，首尾空格也参与 CSP 哈希计算。
+	// Text injected by Reka UI 2.10.4; leading and trailing whitespace also contributes to the CSP hash.
 	for _, component := range []string{"select", "combobox"} {
 		t.Run(component, func(t *testing.T) {
 			selector := "[data-reka-" + component + "-viewport]"
@@ -203,14 +203,12 @@ func TestServerFallbackReturnsNotFoundForUnknownRequests(t *testing.T) {
 }
 
 func TestServerUsesCompileFallbackWhenIndexIsMissing(t *testing.T) {
-	server := newServer(fstest.MapFS{
-		"dist/assets/embed-placeholder.txt": &fstest.MapFile{Data: []byte("marker")},
-	}, "dist")
+	server := newServer(fstest.MapFS{}, "dist")
 	recorder := httptest.NewRecorder()
 
 	testEngine(server).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
 
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "前端资源尚未构建") {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "Frontend assets have not been built") {
 		t.Fatalf("fallback response = %d %q", recorder.Code, recorder.Body.String())
 	}
 }
@@ -298,23 +296,23 @@ func TestServerServesThemeBootstrapAsExplicitRootAsset(t *testing.T) {
 }
 
 func TestServerServesFaviconAsExplicitRootAsset(t *testing.T) {
-	want := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>`)
+	want := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
 	server := newServer(fstest.MapFS{
 		"dist/index.html":  &fstest.MapFile{Data: []byte("<!doctype html>")},
-		"dist/favicon.svg": &fstest.MapFile{Data: want},
+		"dist/favicon.png": &fstest.MapFile{Data: want},
 	}, "dist")
 	recorder := httptest.NewRecorder()
 
 	testEngine(server).ServeHTTP(
 		recorder,
-		httptest.NewRequest(http.MethodGet, "/favicon.svg", nil),
+		httptest.NewRequest(http.MethodGet, "/favicon.png", nil),
 	)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("favicon status = %d, want 200", recorder.Code)
 	}
-	if got := recorder.Header().Get("Content-Type"); got != "image/svg+xml" {
-		t.Fatalf("favicon Content-Type = %q, want image/svg+xml", got)
+	if got := recorder.Header().Get("Content-Type"); got != "image/png" {
+		t.Fatalf("favicon Content-Type = %q, want image/png", got)
 	}
 	if got := recorder.Header().Get("Cache-Control"); got != "no-cache" {
 		t.Fatalf("favicon Cache-Control = %q, want no-cache", got)

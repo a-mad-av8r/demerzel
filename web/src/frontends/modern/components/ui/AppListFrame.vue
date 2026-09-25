@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 const { t } = useI18n()
 const scroller = ref<HTMLElement>()
-// 遮罩和可交互状态跟随真实任务；防闪烁的延时只用于非阻塞的视觉提示。
+
 let restoreTo = readListScroll(props.scrollKey)
 function restoreScroll(): void {
   if (restoreTo === undefined || props.loading || !scroller.value) return
@@ -71,8 +71,7 @@ defineExpose({
   flex-direction: column;
   text-align: left;
 }
-/* 表头与内容同属一个滚动容器：横向滚动天然同步，纵向滚动时吸顶。
-   宽度交给插槽内容自己决定，避免与数据行用不同算法而错位。 */
+
 .modern-list-header {
   position: sticky;
   z-index: var(--modern-layer-raised);

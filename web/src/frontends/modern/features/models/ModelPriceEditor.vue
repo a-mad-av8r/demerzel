@@ -50,7 +50,7 @@ const ownershipIntent = computed(
 const canSave = computed(() => dirty.value || ownershipIntent.value)
 const error = (key: string) =>
   submitted.value && errors.value[key] ? t('modelManager.' + errors.value[key]) : undefined
-// standard 固定存在；这两档后端一视同仁，前端也对称提供。
+
 const optionalModes = ['fast', 'ultrafast'] as const
 const modeLabel = (mode: string) =>
   ['standard', 'fast', 'ultrafast'].includes(mode) ? t('modelManager.' + mode) : mode
@@ -141,7 +141,6 @@ async function save(confirmed = false): Promise<void> {
         compact
       >
         <template #actions>
-          <!-- 阶梯价只在标准档提供：Fast 后端直接驳回，Ultrafast 统一不做。 -->
           <span v-if="schedule.mode !== 'standard'" class="modern-model-price-note">
             {{ t('modelManager.noTierMode') }}
           </span>

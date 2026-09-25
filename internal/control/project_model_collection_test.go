@@ -182,9 +182,9 @@ func TestProjectModelsHTTPScopesAccessKeyFiltersAndRelationships(t *testing.T) {
 		t.Fatalf("AccessKey shared model = %#v", shared)
 	}
 	for _, upstream := range shared.UpstreamModels {
-		// 分组信息只对管理员可见。占位对象（id=0/channel_id=""）会触发前端
-		// projectSafeInteger/projectChannelID 的强校验直接判无效响应，把整个
-		// 模型页读崩——必须整条不发，而不是发一条身份被抹空的记录。
+		// Group information is visible only to administrators. A placeholder object (id=0/channel_id="") makes the frontend's
+		// strict projectSafeInteger/projectChannelID validation reject the whole
+		// model-page response, so omit it entirely rather than emit an identity-scrubbed record.
 		if len(upstream.RouteGroups) != 0 || len(upstream.AffectedGroups) != 0 {
 			t.Fatalf("AccessKey upstream must omit group identity entirely = %#v", upstream)
 		}

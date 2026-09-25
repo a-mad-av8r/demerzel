@@ -2,183 +2,79 @@ package i18n
 
 import (
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
-func TestMiddlewareSelectsJapanese(t *testing.T) {
+func TestMiddlewareAlwaysUsesBritishEnglish(t *testing.T) {
+	if err := Init(); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		acceptLanguage string
+	}{
+		{name: "empty header"},
+		{name: "British English", acceptLanguage: "en-GB"},
+		{name: "wildcard", acceptLanguage: "*"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			context, _ := gin.CreateTestContext(nil)
+			context.Request = httptest.NewRequest("GET", "/", nil)
+			context.Request.Header.Set("Accept-Language", test.acceptLanguage)
+			Middleware()(context)
+
+			if got := GetLanguageFromContext(context); got != "en-GB" {
+				t.Fatalf("GetLanguageFromContext() = %q, want %q", got, "en-GB")
+			}
+			if got := Message(context, "bad_request"); got != "Bad request" {
+				t.Fatalf("Message() = %q, want %q", got, "Bad request")
+			}
+		})
+	}
+}
+
+func TestResolveLanguageAlwaysReturnsBritishEnglish(t *testing.T) {
+	for _, header := range []string{"", "*", "en-GB"} {
+		if got := ResolveLanguage(header); got != "en-GB" {
+			t.Errorf("ResolveLanguage(%q) = %q, want %q", header, got, "en-GB")
+		}
+	}
+}
+
+func TestBritishEnglishControlMessages(t *testing.T) {
+	if err := Init(); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	tests := []struct {
+		id      string
+		message string
+	}{
+		{id: "request_too_large", message: "Request body is too large"},
+		{id: "group.channel_target_conflict", message: "An existing group already uses this channel target"},
+		{id: "group.in_use", message: "The group is still referenced by access keys"},
+	}
+	for _, test := range tests {
+		if got := T(GetLocalizer(""), test.id); got != test.message {
+			t.Errorf("T(%q) = %q, want %q", test.id, got, test.message)
+		}
+	}
+}
+
+func TestMessageWithoutLocalizerUsesBritishEnglish(t *testing.T) {
 	if err := Init(); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
 
 	gin.SetMode(gin.TestMode)
 	context, _ := gin.CreateTestContext(nil)
-	context.Request = httptest.NewRequest("GET", "/", nil)
-	context.Request.Header.Set("Accept-Language", "ja-JP,ja;q=0.9")
-
-	Middleware()(context)
-
-	if got := Message(context, "bad_request"); got != "不正なリクエスト" {
-		t.Fatalf("Message() = %q, want %q", got, "不正なリクエスト")
-	}
-}
-
-func TestRequestTooLargeTranslations(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "请求体过大"},
-		{language: "en-US", message: "Request body is too large"},
-		{language: "ja-JP", message: "リクエストボディが大きすぎます"},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			gin.SetMode(gin.TestMode)
-			context, _ := gin.CreateTestContext(nil)
-			context.Request = httptest.NewRequest("GET", "/", nil)
-			context.Request.Header.Set("Accept-Language", test.language)
-			Middleware()(context)
-
-			if got := Message(context, "request_too_large"); got != test.message {
-				t.Fatalf("Message() = %q, want %q", got, test.message)
-			}
-		})
-	}
-}
-
-func TestChannelTargetConflictTranslations(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "已有分组使用相同渠道目标"},
-		{language: "en-US", message: "An existing group already uses this channel target"},
-		{language: "ja-JP", message: "同じチャネル接続先を使用するグループが既に存在します"},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			gin.SetMode(gin.TestMode)
-			context, _ := gin.CreateTestContext(nil)
-			context.Request = httptest.NewRequest("GET", "/", nil)
-			context.Request.Header.Set("Accept-Language", test.language)
-			Middleware()(context)
-
-			if got := Message(context, "group.channel_target_conflict"); got != test.message {
-				t.Fatalf("Message() = %q, want %q", got, test.message)
-			}
-		})
-	}
-}
-
-func TestGroupInUseTranslations(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "分组仍被访问密钥引用"},
-		{language: "en-US", message: "The group is still referenced by access keys"},
-		{language: "ja-JP", message: "グループはアクセスキーから参照されています"},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			gin.SetMode(gin.TestMode)
-			context, _ := gin.CreateTestContext(nil)
-			context.Request = httptest.NewRequest("GET", "/", nil)
-			context.Request.Header.Set("Accept-Language", test.language)
-			Middleware()(context)
-
-			if got := Message(context, "group.in_use"); got != test.message {
-				t.Fatalf("Message() = %q, want %q", got, test.message)
-			}
-		})
-	}
-}
-
-func TestUnsupportedLanguageFallsBackToChinese(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	gin.SetMode(gin.TestMode)
-	context, _ := gin.CreateTestContext(nil)
-	context.Request = httptest.NewRequest("GET", "/", nil)
-	context.Request.Header.Set("Accept-Language", "fr-FR")
-	Middleware()(context)
-
-	if got := Message(context, "bad_request"); got != "请求错误" {
-		t.Fatalf("Message() = %q, want %q", got, "请求错误")
-	}
-}
-
-func TestMiddlewareUsesSupportedAcceptLanguageFallback(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	gin.SetMode(gin.TestMode)
-	context, _ := gin.CreateTestContext(nil)
-	context.Request = httptest.NewRequest("GET", "/", nil)
-	context.Request.Header.Set("Accept-Language", "fr-FR, en-US;q=0.9")
-	Middleware()(context)
 
 	if got := Message(context, "bad_request"); got != "Bad request" {
 		t.Fatalf("Message() = %q, want %q", got, "Bad request")
-	}
-}
-
-func TestAcceptLanguageIgnoresUnrecognizedRanges(t *testing.T) {
-	if got := ResolveLanguage("en-US, ac;q=0.9"); got != "en-US" {
-		t.Fatalf("ResolveLanguage() = %q, want %q", got, "en-US")
-	}
-}
-
-func TestAcceptLanguageWildcardUsesServerDefault(t *testing.T) {
-	if got := ResolveLanguage("*;q=1, en-US;q=0.8"); got != "zh-CN" {
-		t.Fatalf("ResolveLanguage() = %q, want %q", got, "zh-CN")
-	}
-}
-
-func TestAcceptLanguagePreservesQualityOrder(t *testing.T) {
-	if got := ResolveLanguage("en-US;q=0.8, ja-JP;q=0.9"); got != "ja-JP" {
-		t.Fatalf("ResolveLanguage() = %q, want %q", got, "ja-JP")
-	}
-}
-
-func TestAcceptLanguageOversizedHeaderUsesServerDefault(t *testing.T) {
-	header := strings.Repeat("a", maxAcceptLanguageBytes+1) + ", en-US"
-	if got := ResolveLanguage(header); got != "zh-CN" {
-		t.Fatalf("ResolveLanguage() = %q, want %q", got, "zh-CN")
-	}
-}
-
-func TestAcceptLanguageWithTooManyEntriesUsesServerDefault(t *testing.T) {
-	header := strings.Repeat("fr-FR,", maxAcceptLanguageEntries) + "en-US"
-	if got := ResolveLanguage(header); got != "zh-CN" {
-		t.Fatalf("ResolveLanguage() = %q, want %q", got, "zh-CN")
-	}
-}
-
-func TestMessageWithoutLocalizerUsesChinese(t *testing.T) {
-	if err := Init(); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	gin.SetMode(gin.TestMode)
-	context, _ := gin.CreateTestContext(nil)
-
-	if got := Message(context, "bad_request"); got != "请求错误" {
-		t.Fatalf("Message() = %q, want %q", got, "请求错误")
 	}
 }

@@ -40,8 +40,8 @@ const props = withDefaults(
 
 const attrs = useAttrs()
 const instance = getCurrentInstance()
-// 动态根节点由本组件创建，Vue 无法沿无 DOM 的 Tooltip 组件链自动继承调用方的
-// scoped CSS 标记。显式转发这些标记，保证接入提示前后的原有样式选择器保持有效。
+// This component creates its dynamic root, so Vue cannot carry callers' scoped CSS markers across the
+// DOM-free Tooltip component chain. Forward them explicitly to preserve existing selectors around tooltips.
 const inheritedScopeAttrs = Object.fromEntries(
   [instance?.vnode.scopeId]
     .filter((scopeId): scopeId is string => Boolean(scopeId))

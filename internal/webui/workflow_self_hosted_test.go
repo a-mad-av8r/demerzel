@@ -49,7 +49,7 @@ func TestReleaseUsesSelfHostedValidationAndHostedPublicationRunners(t *testing.T
 			t.Errorf("%s is not assigned to %s", job, runner)
 		}
 	}
-	if count := strings.Count(content, "self-hosted"); count != 4 {
+	if count := strings.Count(content, "runs-on: [self-hosted"); count != 4 {
 		t.Fatalf("release workflow contains %d self-hosted runner assignments, want 4", count)
 	}
 	for _, job := range []string{

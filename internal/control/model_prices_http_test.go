@@ -509,36 +509,26 @@ func TestModelPriceHTTPRejectsLegacyAndAmbiguousContracts(t *testing.T) {
 	}
 }
 
-func TestModelPriceHTTPErrorsUseThreeLocaleMessageIDs(t *testing.T) {
+func TestModelPriceHTTPErrorsUseBritishEnglish(t *testing.T) {
 	t.Parallel()
-	for _, test := range []struct {
-		language string
-		message  string
-	}{
-		{language: "zh-CN", message: "将模型价格标记为未定价需要明确确认"},
-		{language: "en-US", message: "Marking a model price as unpriced requires explicit confirmation"},
-		{language: "ja-JP", message: "モデル価格を未設定としてマークするには明示的な確認が必要です"},
-	} {
-		t.Run(test.language, func(t *testing.T) {
-			_, engine, row := newModelPriceHTTPFixture(t, true)
-			response := serveModelPriceHTTPRequestWithLanguage(
-				engine,
-				http.MethodPut,
-				fmt.Sprintf("/api/model-prices/%d", row.ID),
-				modelPriceHTTPUpdateBody("null", "false"),
-				authTestKey,
-				test.language,
-			)
-			var envelope struct {
-				Message string `json:"message"`
-			}
-			if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
-				t.Fatal(err)
-			}
-			if response.Code != http.StatusConflict || envelope.Message != test.message {
-				t.Fatalf("localized response = %d %s, want %q", response.Code, response.Body.String(), test.message)
-			}
-		})
+	_, engine, row := newModelPriceHTTPFixture(t, true)
+	response := serveModelPriceHTTPRequestWithLanguage(
+		engine,
+		http.MethodPut,
+		fmt.Sprintf("/api/model-prices/%d", row.ID),
+		modelPriceHTTPUpdateBody("null", "false"),
+		authTestKey,
+		"*",
+	)
+	var envelope struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	want := "Marking a model price as unpriced requires explicit confirmation"
+	if response.Code != http.StatusConflict || envelope.Message != want {
+		t.Fatalf("response = %d %s, want message %q", response.Code, response.Body.String(), want)
 	}
 }
 

@@ -1087,16 +1087,16 @@ func stringPtr(value string) *string {
 func TestBuildCompileInputLoadsStrictClientModelOverrides(t *testing.T) {
 	db := openMigratedDatabase(t)
 	mustCreate(t, db, &models.ClientModelOverride{
-		ModelHash: models.ClientModelHash("模型🚀"), ClientModel: "模型🚀",
-		Overrides: models.JSON(`{"display_name":"显示名","input_modalities":["text","image"]}`),
+		ModelHash: models.ClientModelHash("☃☃🚀"), ClientModel: "☃☃🚀",
+		Overrides: models.JSON(`{"display_name":"Display name","input_modalities":["text","image"]}`),
 	})
 
 	input, err := loader.BuildCompileInput(context.Background(), db, channel.NewRegistry())
 	if err != nil {
 		t.Fatalf("BuildCompileInput() error = %v", err)
 	}
-	overrides := input.ClientModelOverrides["模型🚀"]
-	if overrides.DisplayName == nil || *overrides.DisplayName != "显示名" ||
+	overrides := input.ClientModelOverrides["☃☃🚀"]
+	if overrides.DisplayName == nil || *overrides.DisplayName != "Display name" ||
 		overrides.InputModalities == nil || !reflect.DeepEqual(*overrides.InputModalities, []string{"text", "image"}) {
 		t.Fatalf("ClientModelOverrides = %#v", input.ClientModelOverrides)
 	}
@@ -1107,8 +1107,8 @@ func TestBuildCompileInputLoadsStrictClientModelOverrides(t *testing.T) {
 	if err := loader.New(db, manager, state.NewCredentialRegistry(), channel.NewRegistry()).Load(context.Background()); err != nil {
 		t.Fatalf("Loader.Load() error = %v", err)
 	}
-	loaded := manager.Current().ClientModelOverrides["模型🚀"]
-	if loaded.DisplayName == nil || *loaded.DisplayName != "显示名" {
+	loaded := manager.Current().ClientModelOverrides["☃☃🚀"]
+	if loaded.DisplayName == nil || *loaded.DisplayName != "Display name" {
 		t.Fatalf("startup overrides = %#v", manager.Current().ClientModelOverrides)
 	}
 

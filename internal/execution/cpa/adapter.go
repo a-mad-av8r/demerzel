@@ -213,7 +213,7 @@ func (a *Adapter) Execute(ctx context.Context, spec execution.AttemptSpec) (resu
 	if err != nil {
 		result := unaryExecutionError(execCtx, provider, err, credential)
 		if spec.Operation == execution.OperationWebSearch && response.StatusCode != 0 && !result.ResponseStarted {
-			// 成功状态下读体失败仍是执行错误，保留已收到的元数据但不提供可重放证据。
+			// A body-read failure after a successful status is still an execution error; retain received metadata without providing replayable evidence.
 			result.DispatchState = execution.DispatchMaybeSent
 			result.StatusCode = response.StatusCode
 			result.ResponseStarted = true
@@ -544,7 +544,7 @@ func (a *Adapter) validateSpec(spec execution.AttemptSpec) (providerBridge, stri
 	return provider, baseURL, nil
 }
 
-// resolvedTargetBaseURL 提取编译目标中的可选订阅 API 代理根地址。
+// resolvedTargetBaseURL extracts the optional subscription API proxy root from the compiled target.
 func resolvedTargetBaseURL(raw json.RawMessage) (string, error) {
 	return (subscriptionruntime.Target{Config: raw}).BaseURL()
 }

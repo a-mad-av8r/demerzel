@@ -29,7 +29,7 @@ type autoTaskCacheEntry struct {
 	expiresAt time.Time
 }
 
-// 只记住预设标识，不保存提示词或调度目标；配置变更后自然不再命中。
+// Remember only preset identifiers, never prompts or scheduling targets; configuration changes naturally stop matches.
 type autoTaskCache struct {
 	mu      sync.Mutex
 	entries map[autoTaskKey]*list.Element

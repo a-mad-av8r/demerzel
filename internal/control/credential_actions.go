@@ -14,14 +14,14 @@ import (
 	"gpt-load/internal/storage/models"
 )
 
-// CredentialDownloadResult 返回订阅 JSON 或 API Key 文本文件及其安全文件名。
+// CredentialDownloadResult returns subscription JSON or API-key text files with safe filenames.
 type CredentialDownloadResult struct {
 	Filename   string          `json:"filename"`
 	Credential json.RawMessage `json:"credential,omitempty"`
 	Content    *string         `json:"content,omitempty"`
 }
 
-// CredentialDownloadAllResult 按凭据 ID 顺序导出，并独立统计凭据数量。
+// CredentialDownloadAllResult exports credentials in credential-ID order and separately counts them.
 type CredentialDownloadAllResult struct {
 	Files           []CredentialDownloadResult `json:"files"`
 	CredentialCount int                        `json:"credential_count"`
@@ -77,7 +77,7 @@ func (s *Service) DownloadGroupCredential(
 	}, nil
 }
 
-// DownloadAllGroupCredentials 导出整个分组，不应用列表分页或筛选。
+// DownloadAllGroupCredentials exports an entire group without list pagination or filtering.
 func (s *Service) DownloadAllGroupCredentials(
 	ctx context.Context,
 	groupID uint,
@@ -148,7 +148,7 @@ func (s *Service) DownloadAllGroupCredentials(
 	return CredentialDownloadAllResult{Files: files, CredentialCount: len(rows)}, nil
 }
 
-// credentialTextLine 保持普通 Key 一行一个，结构化凭据保留完整 JSON 以便重新导入。
+// credentialTextLine keeps ordinary keys one per line and retains complete JSON for structured credentials so they can be re-imported.
 func credentialTextLine(canonical json.RawMessage) (string, error) {
 	var fields map[string]string
 	if err := json.Unmarshal(canonical, &fields); err != nil {

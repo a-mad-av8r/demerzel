@@ -346,7 +346,7 @@ func decisionForExecutionCategory(
 		case execution.OperationResponsesRetrieve, execution.OperationResponsesDelete,
 			execution.OperationResponsesCancel, execution.OperationResponsesInputItems,
 			execution.OperationResponsesPassthrough:
-			// 资源请求不通过切换模型候选恢复，也不能影响整份凭据。
+			// Resource requests cannot recover by switching model candidates and cannot affect the entire credential.
 			return decision(category, origin, scope, RetryNone, EffectNone, "model.resource_unavailable")
 		}
 	}
@@ -462,7 +462,7 @@ func decisionForExecutionCategory(
 	}
 }
 
-// retryableUpstreamResponse 区分已收到的错误响应与超时、断流等执行结果未知的失败。
+// retryableUpstreamResponse distinguishes received error responses from outcome-unknown failures such as timeouts and dropped streams.
 func retryableUpstreamResponse(attempt ExecutionAttempt) bool {
 	evidence := attempt.Evidence
 	if evidence == nil || originForEvidence(evidence) != execution.ErrorOriginUpstream ||
@@ -475,7 +475,7 @@ func retryableUpstreamResponse(attempt ExecutionAttempt) bool {
 		if status == 0 {
 			status = evidence.StatusCode
 		}
-		// 流建立后仍保留外层 2xx，流内 HTTP 错误由 Kind/Hint 承载。
+		// The outer 2xx remains after stream establishment; in-stream HTTP errors are carried by Kind/Hint.
 		return isSuccessStatus(status) || status >= http.StatusBadRequest && status <= 599
 	case execution.ErrorKindProvider:
 		switch evidence.Code {

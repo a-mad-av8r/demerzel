@@ -118,7 +118,7 @@ function handleSegmentKeydown(event: KeyboardEvent): void {
   min-height: var(--control-compact);
   padding: 4px 10px;
 }
-/* 与设置面板内同排的输入框、按钮统一 26px。 */
+/* Match 26px inputs and buttons on the same row in settings panels. */
 .segmented-control__list--xs .segmented-control__trigger {
   min-height: 26px;
   padding: 3px 9px;

@@ -23,7 +23,6 @@ function readCredential(storage?: Storage): string {
   try {
     return storage?.getItem(authStorageKey) ?? ''
   } catch {
-    // 一种存储不可用时，仍可读取另一种存储。
     return ''
   }
 }
@@ -32,9 +31,7 @@ function storeCredential(storage: Storage | undefined, value: string): void {
   try {
     if (value) storage?.setItem(authStorageKey, value)
     else storage?.removeItem(authStorageKey)
-  } catch {
-    // 内存会话始终生效；存储不可用不能阻止登录或退出。
-  }
+  } catch {}
 }
 
 export function createAuthSession(deps: {
@@ -70,7 +67,7 @@ export function createAuthSession(deps: {
     state.phase = 'anonymous'
     state.principalType = null
     state.retryAfterSeconds = 0
-    // 新版 QueryClient 独立于经典版：取消查询，并清空当前身份的查询和 mutation 缓存。
+
     deps.queryClient.clear()
   }
 
@@ -132,7 +129,7 @@ export function createAuthSession(deps: {
       cancelValidation()
       deps.queryClient.clear()
       credential = candidate
-      // 仅在认证成功后切换存储；不记住时绝不回退到持久存储。
+
       storeCredential(remember ? deps.sessionStorage : deps.localStorage, '')
       storeCredential(remember ? deps.localStorage : deps.sessionStorage, candidate)
       state.principalType = session.principal_type

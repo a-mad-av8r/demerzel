@@ -46,7 +46,7 @@ function preserveMultilineCopy(event: ClipboardEvent): void {
   if (value === undefined || !/[\r\n]/.test(value) || !event.clipboardData) return
   const input = event.target as HTMLInputElement
   if (input.selectionStart !== 0 || input.selectionEnd !== input.value.length) return
-  // 单行输入框会移除换行，全选手动复制时仍保留原始配置。
+  // Single-line inputs remove newlines, so preserve the original configuration on manual select-all copy.
   event.clipboardData.setData('text/plain', value)
   event.preventDefault()
 }

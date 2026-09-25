@@ -490,7 +490,7 @@ func TestUsageAPIValidatesModelAsUTF8BytesWithoutBoundaryWhitespaceOrControls(t 
 	)
 	validModels := []string{
 		"a",
-		strings.Repeat("a", 252) + "猫",
+		strings.Repeat("a", 252) + "☃",
 		"model variant",
 	}
 	for _, model := range validModels {
@@ -513,7 +513,7 @@ func TestUsageAPIValidatesModelAsUTF8BytesWithoutBoundaryWhitespaceOrControls(t 
 		{name: "trailing whitespace", query: "upstream_model=" + url.QueryEscape("model\u3000")},
 		{name: "embedded control", query: "upstream_model=" + url.QueryEscape("model\x00id")},
 		{name: "DEL control", query: "upstream_model=" + url.QueryEscape("model\x7fid")},
-		{name: "256 UTF-8 bytes", query: "upstream_model=" + url.QueryEscape(strings.Repeat("a", 253)+"猫")},
+		{name: "256 UTF-8 bytes", query: "upstream_model=" + url.QueryEscape(strings.Repeat("a", 253)+"☃")},
 	}
 	for _, test := range invalidModels {
 		t.Run(test.name, func(t *testing.T) {

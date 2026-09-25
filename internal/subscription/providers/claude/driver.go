@@ -17,7 +17,7 @@ type claudeDriver struct{}
 
 func newClaudeDriver() *claudeDriver { return &claudeDriver{} }
 
-// Implementations returns the concrete Claude subscription behavior
+// Implementations returns the concrete Claude subscription behaviour
 // assembled by the application composition root.
 func Implementations() subscriptionruntime.Implementations {
 	driver := newClaudeDriver()
@@ -67,7 +67,7 @@ func (*claudeDriver) MatchesRefreshIdentity(current, refreshed subscriptionrunti
 	if err != nil || before.AccountUUID != after.AccountUUID {
 		return false
 	}
-	// 桥接会保留未返回的旧组织；已经确认的组织不能被清空或替换。
+	// The bridge retains an old organisation that was not returned; a confirmed organisation cannot be cleared or replaced.
 	return before.OrganizationUUID == "" || before.OrganizationUUID == after.OrganizationUUID
 }
 

@@ -1,4 +1,4 @@
-// Package fakeupstream 提供可脚本化的三方言 AI HTTP 上游，供网关测试使用。
+// Package fakeupstream provides a scriptable three-dialect AI HTTP upstream for gateway tests.
 package fakeupstream
 
 import (
@@ -18,7 +18,7 @@ import (
 //go:embed testdata/*/*
 var fixtureFS embed.FS
 
-// Step 描述按请求顺序消费的一次响应。
+// Step describes one response consumed in request order.
 type Step struct {
 	Status   int
 	Fixture  string
@@ -28,7 +28,7 @@ type Step struct {
 	Headers  http.Header
 }
 
-// Request 是收到的上游请求快照。
+// Request is a snapshot of a received upstream request.
 type Request struct {
 	Method   string
 	Path     string
@@ -37,7 +37,7 @@ type Request struct {
 	Body     []byte
 }
 
-// Server 封装 httptest.Server，并记录请求与脚本消费位置。
+// Server wraps httptest.Server and records requests and script-consumption position.
 type Server struct {
 	*httptest.Server
 
@@ -47,14 +47,14 @@ type Server struct {
 	requests []Request
 }
 
-// New 启动一个 fake upstream。有效请求按传入顺序各消费一个 Step。
+// New starts a fake upstream. Each valid request consumes one Step in supplied order.
 func New(steps ...Step) *Server {
 	server := &Server{steps: cloneSteps(steps)}
 	server.Server = httptest.NewServer(server)
 	return server
 }
 
-// Requests 返回所有已收到请求的独立快照。
+// Requests returns independent snapshots of all received requests.
 func (s *Server) Requests() []Request {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -66,7 +66,7 @@ func (s *Server) Requests() []Request {
 	return requests
 }
 
-// ServeHTTP 实现三方言路由，并执行下一步脚本。
+// ServeHTTP implements three-dialect routes and executes the next script step.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

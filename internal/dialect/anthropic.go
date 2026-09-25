@@ -21,7 +21,7 @@ func (*Anthropic) Protocol() protocol.Protocol {
 	return protocol.Anthropic
 }
 
-// AnthropicRequestsZeroOutput 判断请求是否显式要求零输出，不把缺失、null 或字符串视为数值零。
+// AnthropicRequestsZeroOutput determines whether a request explicitly asks for zero output, without treating missing, null, or string values as numeric zero.
 func AnthropicRequestsZeroOutput(body []byte) bool {
 	var request struct {
 		MaxTokens json.RawMessage `json:"max_tokens"`
@@ -33,7 +33,7 @@ func AnthropicRequestsZeroOutput(body []byte) bool {
 	if index := bytes.IndexAny(mantissa, "eE"); index >= 0 {
 		mantissa = mantissa[:index]
 	}
-	// 按有效数字判断，避免极小的非零数值经浮点下溢被误判为零。
+	// Judge by significant digits so a very small non-zero value cannot underflow a float and be mistaken for zero.
 	return bytes.IndexByte(mantissa, '0') >= 0 && len(bytes.Trim(mantissa, "-0.")) == 0
 }
 

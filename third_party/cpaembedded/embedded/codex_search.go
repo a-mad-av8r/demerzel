@@ -29,7 +29,7 @@ func (err *codexSearchHTTPError) RetryAfter() *time.Duration {
 	return &err.retryAfter
 }
 
-// executeSearchCanonical 只执行独立搜索 HTTP 请求，不经过 Responses 转换器。
+// executeSearchCanonical performs only the standalone search HTTP request; it does not pass through the Responses converter.
 func (e *CodexHTTPExecutor) executeSearchCanonical(
 	ctx context.Context,
 	credentialID string,
@@ -52,7 +52,7 @@ func (e *CodexHTTPExecutor) executeSearchCanonical(
 	applyCodexReadHeaders(req, credential)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept-Encoding", "identity")
-	// 即使客户端带幂等头，也不允许 net/http 在一次 attempt 内隐式重放 POST。
+	// Even if the client supplies an idempotency header, do not let net/http implicitly replay POST during an attempt.
 	req.GetBody = nil
 	auth := NewCodexAuth(credentialID, credential, endpoints.ExecutionBase)
 	auth.ProxyURL = request.ProxyURL

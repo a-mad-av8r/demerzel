@@ -9,7 +9,7 @@ import (
 
 func TestPromptCacheKeyValidationAndProtocolScope(t *testing.T) {
 	cases := []struct{ name, value, want string }{
-		{"valid", `"cache-a"`, "cache-a"}, {"unicode", `"缓存分组"`, "缓存分组"},
+		{"valid", `"cache-a"`, "cache-a"}, {"unicode", `"☃cache"`, "☃cache"},
 		{"empty", `""`, ""}, {"null", `null`, ""}, {"number", `42`, ""}, {"object", `{}`, ""},
 		{"leading space", `" cache-a"`, ""}, {"trailing space", `"cache-a "`, ""}, {"control", `"cache\u0000a"`, ""},
 		{"limit", `"` + strings.Repeat("a", 256) + `"`, strings.Repeat("a", 256)}, {"too long", `"` + strings.Repeat("a", 257) + `"`, ""},

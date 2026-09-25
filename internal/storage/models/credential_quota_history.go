@@ -1,7 +1,7 @@
 package models
 
-// CredentialQuotaHistory 是有效被动额度观测，不包含凭据或原始响应头。
-// TargetIdentity 隔离同一凭据切换账号或上游目标后的历史。
+// CredentialQuotaHistory is a valid passive quota observation and excludes credentials and raw response headers.
+// TargetIdentity isolates history after one credential changes account or upstream target.
 type CredentialQuotaHistory struct {
 	ID              uint   `gorm:"primaryKey;autoIncrement"`
 	GroupID         uint   `gorm:"not null;check:chk_quota_history_group,group_id > 0"`

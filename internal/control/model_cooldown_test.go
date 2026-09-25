@@ -102,7 +102,7 @@ func TestModelCooldownCollectionAndHealthKeepIndependentAccountStatus(t *testing
 	if health.Counts.Available != 2 || health.Groups[0].Counts.ModelCooldown != 1 || len(health.CooldownCredentials) != 0 {
 		t.Fatalf("health = %#v", health)
 	}
-	// 删除的展示不再保留对应汇总字段和明细响应。
+	// Deleted displays no longer retain their corresponding summary fields or detail responses.
 	for name, value := range map[string]any{
 		"credential_summary": collection.Summary,
 		"health_counts":      health.Counts,

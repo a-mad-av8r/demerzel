@@ -127,7 +127,7 @@ func openWithSourceAndPool(
 }
 
 // openDatabase is the shared GORM/SQL lifecycle for every supported driver.
-// Driver-specific behavior is limited to dialector construction and the
+// Driver-specific behaviour is limited to dialector construction and the
 // SQLite runtime hook in sqlite.go.
 func openDatabase(
 	driver config.DatabaseDriver,
@@ -215,7 +215,7 @@ func mysqlDSNFromURL(rawDSN string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("DATABASE_DSN has an invalid MySQL query")
 	}
-	// Keep the application-visible behavior stable across MySQL installations:
+	// Keep the application-visible behaviour stable across MySQL installations:
 	// parseTime is required for time-valued driver fields, clientFoundRows is
 	// required by existing RowsAffected contracts, and utf8mb4/binary lets
 	// connection literals represent exact identifiers. Schema migration 0001

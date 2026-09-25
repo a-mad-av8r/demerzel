@@ -135,7 +135,6 @@ function dateApply(): void {
 }
 onScopeDispose(() => clearTimeout(searchTimer))
 function rangeLabel(field: LogFilterDefinition): string {
-  // 下限字段代表整段范围；重试次数没有对应列，单独取筛选文案。
   if (field.key === 'retry_count_min') return t('logs.filters.retry_count')
   const column = field.key.startsWith('cost_')
     ? 'estimated_cost_nano_usd'
@@ -366,7 +365,7 @@ const loadCredentials = computed(() => {
             @update:model-value="update('credential_id', $event)"
           />
         </template>
-        <!-- 任意分段内的下限字段都渲染成一行范围，上限并入其中。 -->
+
         <template v-for="field in section.fields" :key="field.key">
           <div v-if="field.key.includes('_min')" class="modern-log-filter-range">
             <span>{{ rangeLabel(field) }}{{ rangeUnit(field) }}</span>

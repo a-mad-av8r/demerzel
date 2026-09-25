@@ -27,7 +27,7 @@ func prepareConvertedFidelity(spec execution.AttemptSpec, providerKind channel.P
 		return spec, toolFailure
 	}
 	if (providerKind == channel.ProviderCodex || providerKind == channel.ProviderGrok) && spec.ClientProtocol == protocol.Anthropic {
-		// 两个渠道共用 Codex 转换器；先映射角色，避免 CPA 将 system 降为 user 提醒并移动位置。
+		// Both channels share the Codex converter; map roles first so CPA does not demote system to a user prompt and move its position.
 		for index, message := range gjson.GetBytes(spec.Body, "messages").Array() {
 			if message.Get("role").String() != "system" {
 				continue
@@ -76,7 +76,7 @@ func prepareConvertedToolConstraints(
 	var present, valid bool
 	switch spec.ClientProtocol {
 	case protocol.OpenAIResponses:
-		// Codex/Grok 原生接收 Responses；保留结构化白名单和完整工具定义，避免破坏缓存形态。
+		// Codex/Grok receive Responses natively; preserve structured allow-lists and complete tool definitions to avoid damaging cache shape.
 		if providerKind == channel.ProviderCodex || providerKind == channel.ProviderGrok {
 			return spec, nil
 		}

@@ -83,7 +83,7 @@ func TestQuotePriceMultipliersAppliesAfterSummingOriginalRoundedComponents(t *te
 	quote, receipt := table.QuoteForModeWithMultipliers(identity, usage.Result{
 		State: usage.StateComplete, Tokens: usage.Tokens{UncachedInput: 1, Output: 1},
 	}, ModeStandard, PriceMultipliers{Group: 2_000_000, AccessKey: DefaultPriceMultiplier})
-	// 原计价先把两个 0.6 纳美元分项各舍入为 1，基础总额 2 再乘 2 得到 4。
+	// Original pricing rounds each 0.6 nano-USD component to 1, then multiplies the base total of 2 by 2 to produce 4.
 	if quote != (Quote{State: CostStatePriced, Completeness: CompletenessComplete, EstimatedCostNanoUSD: 4}) {
 		t.Fatalf("quote = %#v, want original total 2 adjusted to 4", quote)
 	}

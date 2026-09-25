@@ -61,7 +61,7 @@ type healthProblemCredentialResponse struct {
 	Recovery                healthRecoveryResponse `json:"recovery"`
 }
 
-// healthQuotaCredentialResponse 描述额度即将耗尽的订阅凭据。
+// healthQuotaCredentialResponse describes a subscription credential whose quota is about to run out.
 type healthQuotaCredentialResponse struct {
 	CredentialID uint    `json:"credential_id"`
 	GroupID      uint    `json:"group_id"`
@@ -126,8 +126,8 @@ type healthAccessKeyCostLimitResponse struct {
 }
 
 const (
-	// healthLowQuotaRemainingRatio 是「额度快用完」的唯一阈值来源。
-	// 与管理 UI 账号卡的 danger 档保持一致，避免同一句结论在两处算出不同答案。
+	// healthLowQuotaRemainingRatio is the single threshold for “quota nearly exhausted”.
+	// Keep it consistent with the management UI account card's danger level so the same conclusion is not calculated differently in two places.
 	healthLowQuotaRemainingRatio = 0.3
 )
 
@@ -192,9 +192,9 @@ func optionalHealthStatusCode(value int) *int {
 	return &cloned
 }
 
-// healthProblemCredentialIdentity 返回健康问题列表里凭据的展示身份：
-// API 密钥仍是掩码，订阅账号给完整邮箱，与凭据卡片、日志的既有约定一致；
-// 拿不到邮箱时回退到 "Subscription #ID"。access/refresh token 绝不进入返回值。
+// healthProblemCredentialIdentity returns the display identity of a credential in the health-problem list:
+// API keys remain masked; subscription accounts use their full email address, consistent with credential cards and logs;
+// fall back to "Subscription #ID" when the email is unavailable. Access and refresh tokens never enter the response.
 func (service *Service) healthProblemCredentialIdentity(
 	ciphertexts map[uint]string,
 	credentialID uint,
@@ -291,7 +291,7 @@ func (service *Service) RuntimeHealth() (runtimeHealthResponse, error) {
 			ID: group.ID, Name: group.Name, Enabled: group.Enabled,
 		})
 	}
-	// 仅解密实际进入问题列表的凭据，同一账号的多个问题共用展示身份。
+	// Decrypt only credentials that actually enter the problem list; several problems for one account share the display identity.
 	identities := make(map[uint]string)
 	identityFor := func(credentialID, groupID uint) (string, error) {
 		if identity, exists := identities[credentialID]; exists {
@@ -325,7 +325,7 @@ func (service *Service) RuntimeHealth() (runtimeHealthResponse, error) {
 		}
 		addHealthCount(&result.Counts, bucket)
 		addHealthCount(&result.Groups[index].Counts.healthCountsResponse, bucket)
-		// 额度只用于管理面展示，不参与健康分桶或调度；低额度凭据在这里单列提示。
+		// Quota is for management display only and does not affect health buckets or scheduling; list low-quota credentials separately here.
 		if bucket == healthBucketAvailable || bucket == healthBucketCooldown {
 			if remaining := key.ObservedQuotaRemaining(); remaining != nil &&
 				*remaining <= healthLowQuotaRemainingRatio {

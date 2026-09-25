@@ -63,7 +63,7 @@ const (
 	ProviderXAI                  ProviderKind = "xai"
 )
 
-// NoticeID identifies one code-owned, frontend-localized channel notice.
+// NoticeID identifies one code-owned, frontend-localised channel notice.
 type NoticeID string
 
 const (
@@ -174,7 +174,7 @@ const (
 	AuthorizationOAuthFile    AuthorizationMethod = "oauth_file"
 )
 
-// Valid reports whether the authorization method is part of the public channel contract.
+// Valid reports whether the authorisation method is part of the public channel contract.
 func (method AuthorizationMethod) Valid() bool {
 	switch method {
 	case AuthorizationBrowserOAuth, AuthorizationDeviceOAuth, AuthorizationOAuthFile:
@@ -208,7 +208,7 @@ type ProviderBinding struct {
 	CatalogProviderID string
 	EndpointPolicy    EndpointPolicy
 	FixedBaseURL      string
-	// DefaultBaseURLs 只提供官方地址提示，不注入用户参数或执行目标。
+	// DefaultBaseURLs provides only official-address guidance; it does not inject user parameters or execution targets.
 	DefaultBaseURLs []string
 }
 

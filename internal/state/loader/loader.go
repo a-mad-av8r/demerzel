@@ -578,7 +578,7 @@ func isIgnoredSystemSetting(key string) bool {
 	return strings.HasPrefix(key, models.InternalSystemSettingPrefix) ||
 		key == automodel.SettingKey ||
 		key == outboundproxy.SystemSettingKey ||
-		key == "contact_info" // 兼容本分支旧版本保存的已移除设置。
+		key == "contact_info" // Retain compatibility with a removed setting persisted by older versions of this branch.
 }
 
 // LoadSystemSettings reads only the persisted system settings used to compile a draft Group.

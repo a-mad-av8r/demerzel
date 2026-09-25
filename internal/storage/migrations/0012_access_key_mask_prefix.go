@@ -9,7 +9,7 @@ import (
 
 const ID0012 = "0012_access_key_mask_prefix"
 
-// Up0012 为脱敏前缀保存独立元数据；既有系统生成密钥保留 sk-gl-，列表无需解密。
+// Up0012 stores independent metadata for the redacted prefix; existing system-generated keys retain sk-gl- so lists need no decryption.
 func Up0012(db *gorm.DB) error {
 	if err := ValidateRecoverable0012(db); err != nil {
 		return err
@@ -22,7 +22,7 @@ func Up0012(db *gorm.DB) error {
 	return Validate0012(db)
 }
 
-// ValidateRecoverable0012 接受原子加列前后的状态，以支持 MySQL 的 DDL 中断恢复。
+// ValidateRecoverable0012 accepts states before and after atomic column addition to support MySQL DDL-interruption recovery.
 func ValidateRecoverable0012(db *gorm.DB) error {
 	if !db.Migrator().HasTable("access_keys") {
 		return fmt.Errorf("access key mask table is missing")

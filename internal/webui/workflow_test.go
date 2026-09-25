@@ -76,10 +76,6 @@ func TestWebCICompositeActionRunsCompleteFrontendGate(t *testing.T) {
 	if strings.Contains(content, "pnpm --dir web run type-check") {
 		t.Fatal("web-ci action duplicates the type-check already run by the build script")
 	}
-	packageJSON := readRepositoryFile(t, "web/package.json")
-	if !strings.Contains(packageJSON, `"build": "pnpm run type-check && vite build"`) {
-		t.Fatal("web build script no longer includes the required type-check")
-	}
 }
 
 func TestDependencyVulnerabilityMonitoringIsDelegatedToDependabot(t *testing.T) {
@@ -860,8 +856,8 @@ func TestReleaseWorkflowUsesTrustedCurrentRunChecksumForExistingRelease(t *testi
 		}
 	}
 
-	// 行为验证：远端资产即使与它自带的 SHA256SUMS 完全自洽，只要与当前 run 的
-	// 可信副本不一致就必须被拒绝——远端那份校验和永远不会被执行。
+	// Behaviour verification: even if remote assets agree perfectly with their own SHA256SUMS, reject them when they
+	// differ from the trusted copy for the current run—the remote checksum is never executed.
 	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repository root: %v", err)
@@ -1123,62 +1119,6 @@ func TestReleaseWorkflowPreparesExactDraftWithoutSharedImageChannels(t *testing.
 	} {
 		if !strings.Contains(inventoryStep, required) {
 			t.Fatalf("publication inventory does not contain %q:\n%s", required, inventoryStep)
-		}
-	}
-}
-
-func TestCommunityTemplatesCaptureVersionCompatibilityAndSecretSafety(t *testing.T) {
-	bug := readRepositoryFile(t, ".github/ISSUE_TEMPLATE/bug_report.md")
-	for _, required := range []string{
-		"当前主版本线的最新补丁版本",
-		"GPT-Load 版本",
-		"1.x 或 2.x",
-		"部署方式",
-		"操作系统与架构",
-		"数据库",
-		"客户端协议",
-		"实际结果及脱敏日志",
-		"AUTH_KEY",
-		"ENCRYPTION_KEY",
-		"AccessKey",
-	} {
-		if !strings.Contains(bug, required) {
-			t.Fatalf("bug report template does not contain %q", required)
-		}
-	}
-
-	feature := readRepositoryFile(t, ".github/ISSUE_TEMPLATE/feature_request.md")
-	for _, required := range []string{
-		"当前主版本线的最新补丁版本",
-		"目标版本线",
-		"1.x 维护线或 2.x",
-		"应用场景",
-		"兼容性、数据与安全影响",
-		"不要提交任何凭据或令牌",
-	} {
-		if !strings.Contains(feature, required) {
-			t.Fatalf("feature request template does not contain %q", required)
-		}
-	}
-
-	pullRequest := readRepositoryFile(t, ".github/pull_request_template.md")
-	for _, heading := range []string{
-		"### 关联 Issue / Related Issue",
-		"### 变更内容 / Change Content",
-		"### 自查清单 / Checklist",
-	} {
-		if count := strings.Count(pullRequest, heading); count != 1 {
-			t.Fatalf("pull request template contains heading %q %d times, want once", heading, count)
-		}
-	}
-	for _, required := range []string{
-		"make check",
-		"未包含无关改动",
-		"敏感信息",
-		"兼容性或数据迁移",
-	} {
-		if !strings.Contains(pullRequest, required) {
-			t.Fatalf("pull request template does not contain %q", required)
 		}
 	}
 }
@@ -1458,14 +1398,13 @@ func TestReleaseWorkflowPostPublishVerifiesDraftAssetsAgainstCurrentRun(t *testi
 		}
 	}
 
-	// 已上传的原生产物不再重复跑第二遍五平台运行时 smoke：它们与发布前
-	// native-artifact-smoke 验证过的字节完全相同，这一点由上面对照当前 run
-	// 可信 SHA256SUMS 的校验保证，重复运行不会产生新信息。
+	// Uploaded native binaries do not need a second runtime smoke: the release
+	// artifact checksum comparison proves they match the pre-publication smoke.
 	if strings.Contains(content, "post-publish-native-smoke") {
 		t.Fatal("release workflow reintroduces the duplicated post-publication native smoke")
 	}
 
-	// 发布前的五平台原生 smoke 仍然是必须的门禁。
+	// The five-platform native smoke remains a required pre-publication gate.
 	nativeJob := workflowJobBlock(t, content, "native-artifact-smoke")
 	for _, required := range []string{
 		"ubuntu-24.04",
@@ -1585,12 +1524,10 @@ func TestReleaseWorkflowRemovesObsoletePublishers(t *testing.T) {
 	}
 }
 
-func TestReadmesDoNotExposeInternalReleaseTaskNames(t *testing.T) {
-	for _, name := range []string{"README.md", "README_CN.md", "README_JP.md"} {
-		content := readRepositoryFile(t, name)
-		if strings.Contains(content, "T18") {
-			t.Fatalf("%s exposes the completed internal T18 task name", name)
-		}
+func TestReadmeDoesNotExposeInternalReleaseTaskNames(t *testing.T) {
+	content := readRepositoryFile(t, "README.md")
+	if strings.Contains(content, "T18") {
+		t.Fatalf("README.md exposes the completed internal T18 task name")
 	}
 }
 
@@ -1880,7 +1817,7 @@ func TestReleaseWorkflowReusesCIVerdictOnlyOnProvenSuccess(t *testing.T) {
 func TestReleaseWorkflowSkipsOnlyCIProvenGatesAndStillFailsClosed(t *testing.T) {
 	content := readRepositoryFile(t, ".github/workflows/release.yml")
 
-	// 只有同一 commit 上确定性重跑的 gate 才允许复用 CI 结论。
+	// Reuse the CI verdict only for deterministic gates on the same commit.
 	reusable := []string{"race-tests", "race-cpa", "database-contract"}
 	for _, jobName := range reusable {
 		job := workflowJobBlock(t, content, jobName)
@@ -1888,7 +1825,7 @@ func TestReleaseWorkflowSkipsOnlyCIProvenGatesAndStillFailsClosed(t *testing.T) 
 			t.Fatalf("%s does not reuse the CI verdict:\n%s", jobName, job)
 		}
 	}
-	// Release 的静态检查仍需独立执行，不复用 CI 结论。
+	// Release static checks must run independently of the CI verdict.
 	staticChecks := workflowJobBlock(t, content, "static-checks")
 	if strings.Contains(staticChecks, "ci_verified") {
 		t.Fatalf("release static checks must run independently of the CI verdict:\n%s", staticChecks)
@@ -1899,8 +1836,8 @@ func TestReleaseWorkflowSkipsOnlyCIProvenGatesAndStillFailsClosed(t *testing.T) 
 		!strings.Contains(preflight, "!cancelled()") {
 		t.Fatalf("publication preflight does not fail closed on gate failures:\n%s", preflight)
 	}
-	// preflight 的 if 只能看到直接 needs 的 result：上游失败会让中间 job 变成
-	// skipped，因此每个 gate 都必须直接列出，漏掉任何一个都会让失败无法察觉。
+	// Preflight sees only direct needs. A failed upstream can mark an intermediate
+	// job skipped, so every required gate must be listed explicitly.
 	needsBlock := preflight[:strings.Index(preflight, "runs-on:")]
 	for _, gate := range []string{
 		"validate-tag",
@@ -1959,11 +1896,10 @@ func TestReleaseWorkflowJobsDownstreamOfSkippableGatesOverrideDefaultCondition(t
 		needsOf[name] = needs
 	}
 
-	// GitHub Actions 的默认 job 条件会沿整条依赖链传播 skip：只要某个间接祖先
-	// 因 CI 结论复用等机制变成 skipped，默认条件就会让当前 job 也被跳过，即使
-	// 它自己列出的直接 needs 全部成功（beta.8 的真实回归：publication-preflight
-	// 成功了，但下游 publish-images/publish-github/... 仍被跳过）。凡是这条链上
-	// 存在会被跳过的祖先的 job，都必须自己写显式 if，绕开默认条件的传播。
+	// GitHub Actions propagates skipped jobs through the dependency chain by
+	// default. A skipped indirect ancestor can therefore skip a job even when its
+	// direct dependencies succeed. Jobs with skippable ancestors need explicit
+	// conditions to avoid that default propagation.
 	skippable := map[string]bool{"race-tests": true, "race-cpa": true, "database-contract": true}
 	var ancestors func(name string, seen map[string]bool)
 	ancestors = func(name string, seen map[string]bool) {

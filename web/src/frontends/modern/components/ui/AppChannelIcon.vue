@@ -56,7 +56,6 @@ const tooltipLabel = computed(() => {
       :class="[`modern-channel-icon--${size}`, { 'has-surface': surface }]"
       aria-hidden="true"
     >
-      <!-- 只渲染随构建发布的 SVG，接口只提供资源名，不能提供 HTML。 -->
       <!-- eslint-disable-next-line vue/no-v-html -->
       <span v-if="markup" class="modern-channel-icon-art" v-html="markup" />
       <img v-else-if="raster" :src="raster" alt="" />

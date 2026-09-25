@@ -46,7 +46,7 @@ type ModelRewriter interface {
 // ResponseModelInspector optionally exposes provider-declared model identities
 // from one non-streaming response object or SSE data payload. Inspection is
 // observational: malformed or absent fields return no models and never change
-// proxy behavior.
+// proxy behaviour.
 type ResponseModelInspector interface {
 	InspectResponseModels(payload []byte) []string
 }
