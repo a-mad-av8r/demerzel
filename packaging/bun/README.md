@@ -6,7 +6,7 @@ This package provides a Bun-compatible command-line wrapper for the Demerzel Go 
 
 The package is prepared locally as `@amadmalik/demerzel` version `2.0.0`, but it has not been published to npm. The matching signed GitHub release is also not available, so invoking the gateway currently fails closed with a clear release-not-published message. Do not treat the package as an available install channel until both are published through their approval gates.
 
-The release workflow currently accepts tags matching its `v2.*` pattern, including supported prereleases; build metadata is not accepted. The wrapper reads its version from this package's `package.json` and requires the corresponding `v<version>` release in `a-mad-av8r/demerzel`.
+The release workflow accepts stable `v2.x.y` tags and prereleases that pass its version validation, but not build metadata. The wrapper reads its version from this package's `package.json` and requires the corresponding `v<version>` release in `a-mad-av8r/demerzel`.
 
 ## Local checks
 

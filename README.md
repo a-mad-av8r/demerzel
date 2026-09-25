@@ -20,7 +20,7 @@ See the [visual architecture](docs/demerzel/architecture.html), [module contract
 
 ## Availability and installation
 
-The source is public. **No signed GitHub release, Homebrew tap or Bun/npm package has been published.** Pre-built `curl` and Homebrew installation therefore cannot be used yet. The release workflow also requires an approved tag on `main` and protected release approval; it currently accepts only tags matching its `v2.*` release pattern, including supported prereleases. Build metadata is not accepted.
+The source is public. **No signed GitHub release, Homebrew tap or Bun/npm package has been published.** Pre-built `curl` and Homebrew installation therefore cannot be used yet. The release workflow also requires an approved tag on `main` and protected release approval; it accepts stable `v2.x.y` tags and prereleases that pass its version validation, but not build metadata.
 
 | Channel                   | Current state                                                                                                  | Guide                                                                             |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
