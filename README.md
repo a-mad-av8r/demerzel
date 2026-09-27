@@ -18,13 +18,13 @@
   <a href="https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-2f2a24"></a>
 </p>
 
-Demerzel runs on your own machine, between your AI tools and the model providers you pay for. Keep every provider account in one encrypted place, give each tool its own access key, and let Demerzel route requests, record usage and move to the next account when one runs out of quota.
+Demerzel runs on your own machine, between your AI harnesses and the model providers you pay for. Point [OpenKai](https://github.com/Kaidera-AI/OpenKai), [OMP](https://github.com/can1357/oh-my-pi) and the many other harnesses you use at one local endpoint. Keep every provider account in one encrypted place, give each harness its own access key, and let Demerzel route each request to the right provider and account, record usage and move to the next account when one runs out of quota.
 
 ## Opt-in by design
 
 In Asimov's *Foundation*, Demerzel steers the Empire from behind the throne. This Demerzel does the opposite: it only handles what you send it.
 
-- **Your tools keep their own logins and defaults.** You choose Demerzel per request, for example by picking a `demerzel/…` model in [OMP](https://github.com/can1357/oh-my-pi). Stopping Demerzel returns everything to direct use.
+- **Your harnesses keep their own logins and defaults.** You choose Demerzel per request, for example by picking a `demerzel/…` model in OpenKai, OMP or any other harness that lets you add a custom provider. Stopping Demerzel returns everything to direct use.
 - **Local by default.** The gateway listens on loopback only, so nothing else on your network can reach it unless you choose to expose it.
 
 > [!NOTE]
@@ -32,7 +32,7 @@ In Asimov's *Foundation*, Demerzel steers the Empire from behind the throne. Thi
 
 ## What it does
 
-- **One endpoint, many accounts.** Point any client at a single local endpoint that speaks OpenAI Chat Completions and Responses, with Anthropic and Gemini adapters.
+- **One endpoint for every harness.** Point OpenKai, OMP and any other harness that accepts a custom OpenAI, Anthropic or Gemini endpoint at a single local address. It speaks OpenAI Chat Completions and Responses, with Anthropic and Gemini adapters.
 - **Encrypted account vault.** Each credential is individually named and encrypted at rest. The master key is held by your operating system's keychain or secret service, or by an external age identity.
 - **Model choice separate from account choice.** Map channel protocols and model names independently of which account serves them.
 - **Predictable failover.** When an account hits its quota, Demerzel moves to the next one, remembers its place across restarts, and returns to the primary account once it recovers.
@@ -75,7 +75,8 @@ Open <http://127.0.0.1:3001>. The first run creates management credentials in `D
 ## Roadmap
 
 - **Never block other tools' sign-in.** Stop publishing the fixed OAuth callback ports that native tools use (such as 1455, 54545 and 51121) and sign in with device codes or a pasted callback instead. The gateway's own port moves from 3001 to 4474.
-- **Additive client set-up.** Every client snippet adds a separate Demerzel entry and explains how to go back to direct use.
+- **Guided set-up for any harness.** Connection snippets beyond OpenKai and OMP, each adding a separate Demerzel entry and explaining how to go back to direct use.
+- **Routing by remaining quota and speed.** Send each request to the account with the most tokens left, and reroute when a provider can no longer serve it or its token generation becomes too slow.
 - **Any subscription, per key.** More subscription sign-ins, such as Alibaba plans and Kimi Code, plus per-access-key control over which subscription and API-key accounts each client can reach.
 - **Signed releases.** macOS and Linux installers through `curl`, Homebrew and Bun, built from approved tags on `main`.
 
