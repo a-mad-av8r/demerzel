@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-c9a45c">
-  <a href="https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-2f2a24"></a>
+  <a href="https://github.com/a-mad-av8r/demerzel/blob/main/LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-2f2a24"></a>
 </p>
 
 Demerzel runs on your own machine, between your AI harnesses and the model providers you pay for. Point [OpenKai](https://github.com/Kaidera-AI/OpenKai), [OMP](https://github.com/can1357/oh-my-pi) and the many other harnesses you use at one local endpoint. Keep every provider account in one encrypted place, give each harness its own access key, and let Demerzel route each request to the right provider and account, record usage and move to the next account when one runs out of quota.
@@ -43,7 +43,7 @@ In Asimov's *Foundation*, Demerzel steers the Empire from behind the throne. Thi
 
 | API-key providers | Subscription sign-in |
 | --- | --- |
-| OpenAI · Anthropic · Google Gemini · Google Vertex AI · AWS Bedrock · Azure OpenAI · Alibaba Cloud (Qwen) · Moonshot AI (Kimi) · DeepSeek · Zhipu AI (GLM) · Groq · xAI · OpenRouter · SiliconFlow · Volcengine · TypeSafe Jev · any OpenAI-compatible API · other gateways (New API, CLIProxyAPI, Sub2API, GPT-Load) | ChatGPT (Codex) · Claude · Google Antigravity · Grok |
+| OpenAI · Anthropic · Google Gemini · Google Vertex AI · AWS Bedrock · Azure OpenAI · Alibaba Cloud (Qwen) · Moonshot AI (Kimi) · DeepSeek · Zhipu AI (GLM) · Groq · xAI · OpenRouter · SiliconFlow · Volcengine · TypeSafe Jev · any OpenAI-compatible API · other gateways (New API, CLIProxyAPI, Sub2API) | ChatGPT (Codex) · Claude · Google Antigravity · Grok |
 
 Some providers restrict using a consumer subscription outside their own apps. Demerzel shows a risk notice when you add a Claude or Antigravity subscription; you are responsible for following each provider's terms.
 
@@ -70,7 +70,7 @@ Open <http://127.0.0.1:3001>. The first run creates management credentials in `D
 - [Key custody and recovery](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/docs/demerzel/key-custody.md)
 - [Module contracts](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/docs/demerzel/module-contracts.md)
 - [Architecture](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/docs/demerzel/architecture.html) (an HTML page: download it and open it in a browser)
-- [Contributing](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/CONTRIBUTING.md) · [Security policy](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/SECURITY.md) · [Third-party notices](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/THIRD_PARTY_NOTICES.md) · [Vendoring and provenance](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/VENDORING.md)
+- [Contributing](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/CONTRIBUTING.md) · [Security policy](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/SECURITY.md) · [Third-party notices](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/THIRD_PARTY_NOTICES.md)
 
 ## Roadmap
 
@@ -82,6 +82,6 @@ Open <http://127.0.0.1:3001>. The first run creates management credentials in `D
 
 ## Licence
 
-Demerzel is released under the MIT Licence. It is a fork of [tbphp/gpt-load v2](https://github.com/tbphp/gpt-load/tree/1f615d839338) and keeps that project's history and attribution; see [`LICENSE`](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/LICENSE), [`THIRD_PARTY_NOTICES.md`](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/THIRD_PARTY_NOTICES.md) and [`VENDORING.md`](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/VENDORING.md) on the source branch.
+Demerzel is released under the [MIT Licence](LICENSE).
 
 Please report security issues privately, as described in the [security policy](https://github.com/a-mad-av8r/demerzel/blob/adam/m2-productization/SECURITY.md).
