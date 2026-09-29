@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Demerzel, a fork of GPT-Load, includes third-party open-source software. This
+Demerzel includes third-party open-source software. This
 file covers the components that require specific attribution, carry obligations
 beyond attribution, or are modified by Demerzel. Each release also ships a
 CycloneDX SBOM (`bom.cdx.json`) inventorying the resolved Go module graph.
@@ -123,6 +123,17 @@ the terms of the MPL at
 The complete Mozilla Public License 2.0 text is distributed in
 `LICENSES/MPL-2.0.txt`.
 
+## GPT-Load
+
+- Source: `github.com/tbphp/gpt-load`
+- Revision: `1f615d839338cdb97fc5d7210eb10626b51f9946`
+- Copyright: 2025-2026 GPT-Load Contributors
+- Licence: MIT License
+
+Portions of Demerzel's source code are derived from GPT-Load at this revision.
+
+The complete MIT License text is distributed in `LICENSES/MIT.txt`.
+
 ## Lobe Icons
 
 - Source: `@lobehub/icons-static-svg` `1.94.0` (vendored subset, not an npm
@@ -130,9 +141,43 @@ The complete Mozilla Public License 2.0 text is distributed in
 - Copyright: 2023 LobeHub
 - Licence: MIT License
 
-Demerzel vendors a subset of Lobe Icons' SVG marks (`web/src/assets/channels/`)
+Demerzel vendors a subset of Lobe Icons' SVG marks (`web/src/frontends/classic/assets/channels/`
+and `web/src/frontends/modern/assets/channels/`)
 to identify built-in channel presets by their upstream provider's brand in the
 management UI. The vendored icons and this notice do not grant any trademark
 rights in the marks they depict.
 
 The complete MIT License text is distributed in `LICENSES/MIT.txt`.
+
+## Octicons
+
+- Source: `github.com/primer/octicons` (`mark-github-16`)
+- Copyright: 2026 GitHub Inc.
+- Licence: MIT License
+
+Demerzel's management UI draws the GitHub mark from Octicons
+(`web/src/frontends/modern/components/GitHubIcon.vue`); its licence is kept next
+to it in `web/src/frontends/modern/assets/brand/octicons.LICENSE`. The icon and
+this notice do not grant any trademark rights in the GitHub mark.
+
+The complete MIT License text is distributed in `LICENSES/MIT.txt`.
+
+## OpenAI Codex model catalogue
+
+- Source: `github.com/openai/codex`, file `codex-rs/models-manager/models.json`
+- Version: `rust-v0.154.0` (commit `6b9826e3aa83b1a5947db50f4332cb9c65f1b340`)
+- Copyright: 2025 OpenAI
+- Licence: Apache License 2.0
+
+Demerzel embeds this file unmodified as
+`internal/catalog/codex_client_models_0.154.0.json` to describe the models the
+Codex client supports. The upstream `NOTICE` file reads, in the part that
+applies to this file:
+
+```text
+OpenAI Codex
+Copyright 2025 OpenAI
+```
+
+The complete Apache License 2.0 text is distributed in
+`LICENSES/Apache-2.0.txt`.

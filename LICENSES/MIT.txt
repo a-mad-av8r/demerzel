@@ -1,7 +1,7 @@
 MIT License
 
 The following copyright notices apply to the MIT-licensed third-party components
-distributed with GPT-Load. GPT-Load's own copyright and license are in the
+distributed with Demerzel. Demerzel's own copyright and licence are in the
 repository root LICENSE.
 
 CLIProxyAPI (github.com/router-for-me/CLIProxyAPI):
@@ -22,9 +22,17 @@ go-keychain (github.com/keybase/go-keychain):
 
     Copyright (c) 2015 Keybase
 
+GPT-Load (github.com/tbphp/gpt-load):
+
+    Copyright (c) 2025-2026 GPT-Load Contributors
+
 Lobe Icons (github.com/lobehub/lobe-icons):
 
     Copyright (c) 2023 LobeHub
+
+Octicons (github.com/primer/octicons):
+
+    Copyright (c) 2026 GitHub Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

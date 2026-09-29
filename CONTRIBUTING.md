@@ -9,7 +9,7 @@ Thanks for helping improve Demerzel. This document covers the engineering rules 
 
 ## Release versioning
 
-Demerzel releases are independent of upstream GPT-Load. Use the exact Demerzel version tag or commit when reporting issues; `tbphp/gpt-load` releases do not install this fork.
+Use the exact Demerzel version tag or commit when reporting issues.
 
 The current release workflow accepts strict SemVer `v2.x` tags only. A release tag must point to a commit already on `main` and receive the matching protected-environment approval.
 
@@ -63,6 +63,7 @@ feat(gateway): support the OpenAI Embeddings API
 ## Dependencies and security
 
 - **New dependencies need justification** in an issue or PR, along with compatible licences.
+- **Copied or vendored code needs a provenance row** in the [provenance ledger](docs/demerzel/about/acknowledgements.md#provenance-ledger), plus its licence notice in `THIRD_PARTY_NOTICES.md` and `LICENSES/`, in the same commit.
 - Never include `AUTH_KEY`, `ENCRYPTION_KEY`, upstream keys, or any real credential in commits, logs, fixtures, or screenshots.
 
 ## Code of conduct

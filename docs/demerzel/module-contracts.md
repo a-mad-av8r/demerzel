@@ -36,8 +36,9 @@ the gateway fails closed: it does not call the upstream.
 3. Bind the provider kind in `internal/container/newProviderAdapterRegistry`.
    The `provideradapter.Registry` refuses missing/duplicate/unsupported bindings.
 4. Run registry conformance plus one end-to-end request/stream; test replay policy,
-   permanent denial vs cooldown and secret redaction. Add/update a `VENDORING.md`
-   row with source paths, licence and notices if code is imported.
+   permanent denial vs cooldown and secret redaction. Add or update the row in the
+   [provenance ledger](about/acknowledgements.md#provenance-ledger) with source
+   paths, licence and notices if code is imported.
 5. Release an artifact. Roll back via the previous artifact; account IDs and
    encrypted state stay stable.
 

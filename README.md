@@ -4,8 +4,6 @@
 
 **A local-first gateway for managing provider accounts, model access and failover.**
 
-Demerzel is distributed under the MIT Licence and is forked from [tbphp/gpt-load v2](https://github.com/tbphp/gpt-load/tree/1f615d839338); see [`LICENSE`](LICENSE), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`VENDORING.md`](VENDORING.md) for attribution and component details.
-
 ## What it does
 
 - **Manages multiple provider accounts.** Keep credentials individually named and encrypted; enable or disable accounts without changing clients.
@@ -98,9 +96,8 @@ make check     # Run formatting, static checks, web validation, build and Go tes
 - [Module contracts](docs/demerzel/module-contracts.md)
 - [Visual architecture](docs/demerzel/architecture.html)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
-- [Vendoring and provenance](VENDORING.md)
 - [Security reporting](SECURITY.md)
 
 ## Licence
 
-Demerzel is distributed under the MIT Licence. It retains the upstream GPT-Load fork history and attribution; third-party licences and modifications are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`VENDORING.md`](VENDORING.md).
+Demerzel is distributed under the MIT Licence; see [`LICENSE`](LICENSE). Third-party licences are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

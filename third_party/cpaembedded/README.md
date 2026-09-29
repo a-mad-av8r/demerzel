@@ -1,12 +1,12 @@
 # CPA Embedded Bridge
 
-This nested Go module is GPT-Load's deliberately small bridge to
+This nested Go module is Demerzel's deliberately small bridge to
 CLIProxyAPI (CPA). It exists because the CPA Codex, Claude, Antigravity, and xAI executors and
-OAuth helpers needed by GPT-Load are implemented in CPA `internal` packages and
+OAuth helpers needed by Demerzel are implemented in CPA `internal` packages and
 cannot be imported from the root `gpt-load` module directly.
 
 The module path is a child of CPA's module path, so it can compile the pinned
-CPA implementation without copying CPA source into this repository. GPT-Load
+CPA implementation without copying CPA source into this repository. Demerzel
 owns persistence, account selection, affinity, retry, health, logging, and
 quota policy. This bridge only exposes:
 
@@ -42,7 +42,7 @@ the existing HTTP executor remains separate.
 
 Codex HTTP inference (including streaming and images) and WebSocket handshakes
 use the pinned CPA default User-Agent. `Version` is fixed to the matching
-`CodexClientVersion` constant, currently `0.154.0`. Downstream and GPT-Load group
+`CodexClientVersion` constant, currently `0.154.0`. Downstream and Demerzel group
 header rules cannot override, clear, or remove these two identity headers.
 This restriction applies only to Codex; other providers retain their header rules.
 HTTP continues to honor explicit `Originator` rules, including empty values and
@@ -60,7 +60,7 @@ reuse behavior.
 
 Both Codex executors explicitly enable CPA's `ModelLevelCooling`. This keeps
 `usage_limit_reached` from acquiring CPA's new credential-wide scope, preserving
-GPT-Load's credential-plus-model cooldown policy. GPT-Load still owns scheduling,
+Demerzel's credential-plus-model cooldown policy. Demerzel still owns scheduling,
 retries, and health state. Pre-generation capacity rejections and explicitly
 retryable `server_error` responses are classified in the HTTP bridge; ordinary
 server failures do not acquire safe-replay evidence. WebSocket model-capacity
@@ -70,7 +70,7 @@ existing conservative replay policy remains in effect.
 ## Codex WebSocket Session
 
 `internal/subscription/providers/codex.NewWSSession` exposes this independent
-capability to GPT-Load callers. The existing `NewExecutor` remains HTTP-only.
+capability to Demerzel callers. The existing `NewExecutor` remains HTTP-only.
 
 - Supply an already selected credential, optional HTTPS API proxy root (with the
   same native-path mapping as HTTP), and the proxy URL selected by the existing
@@ -172,7 +172,7 @@ bumps:
    do not adopt CPA Manager, business-request retry, Auto, fallback, or file persistence.
    Revalidate the explicit WS facade's lifecycle, continuation, proxy and cancellation
    contracts when changing the pinned SDK.
-4. Run `go test -count=1 ./...` in this module, then GPT-Load's full
+4. Run `go test -count=1 ./...` in this module, then Demerzel's full
    `make check` from the repository root.
 5. With authorized disposable CPA credentials, run the applicable opt-in live
    contracts. Verify Codex discovery/observation and both providers'
@@ -195,7 +195,7 @@ The Claude contract requires all account observation sources, discovers account
 entitlements, then exercises unary and streaming Anthropic Messages, OpenAI Chat
 Completions, OpenAI Responses, and Gemini conversions. It also calls the real
 Anthropic CountTokens endpoint for the three CountTokens routes exposed by
-GPT-Load. A model override is optional:
+Demerzel. A model override is optional:
 
 ```bash
 CPA_LIVE_CLAUDE_CREDENTIAL_FILE=/absolute/path/to/claude.json \
